@@ -3,16 +3,16 @@ class SiteHeader extends HTMLElement {
         this.innerHTML = `
             <header class="site-header">
                 <div class="container">
-                    <a href="index.html" class="logo">
-                        <img src="images/logo.png" alt="אהרוני שיווק" style="height: 60px;">
+                    <a href="/" class="logo">
+                        <img src="/images/logo.png" alt="אהרוני שיווק" style="height: 60px;">
                     </a>
                     <div class="menu-toggle" id="menu-toggle">☰</div>
                     <nav class="main-nav" id="main-nav">
                         <ul>
-                            <li><a href="index.html">דף הבית</a></li>
-                            <li><a href="catalog.html">קטלוג מוצרים</a></li>
-                            <li><a href="about.html">אודות</a></li>
-                            <li><a href="contact.html">צור קשר</a></li>
+                            <li><a href="/">דף הבית</a></li>
+                            <li><a href="/catalog/">קטלוג מוצרים</a></li>
+                            <li><a href="/about/">אודות</a></li>
+                            <li><a href="/contact/">צור קשר</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -24,10 +24,21 @@ class SiteHeader extends HTMLElement {
     }
 
     highlightActiveLink() {
-        const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+        // Normalize path: "/catalog/" -> "/catalog/"
+        // "/catalog/index.html" -> "/catalog/"
+        let currentPath = window.location.pathname;
+        if (currentPath.endsWith('index.html')) {
+            currentPath = currentPath.replace('index.html', '');
+        }
+        // Ensure trailing slash for root or directories if missing (though browsers usually add it)
+        if (currentPath !== '/' && !currentPath.endsWith('/')) {
+            currentPath += '/';
+        }
+
         const links = this.querySelectorAll('.main-nav a');
         links.forEach(link => {
-            if (link.getAttribute('href') === currentPath) {
+            let href = link.getAttribute('href');
+            if (href === currentPath) {
                 link.classList.add('active');
             }
         });
@@ -57,10 +68,10 @@ class SiteFooter extends HTMLElement {
                         <div class="footer-col">
                             <h4>קישורים מהירים</h4>
                             <ul class="footer-links">
-                                <li><a href="index.html">דף הבית</a></li>
-                                <li><a href="catalog.html">קטלוג</a></li>
-                                <li><a href="about.html">אודות</a></li>
-                                <li><a href="contact.html">צור קשר</a></li>
+                                <li><a href="/">דף הבית</a></li>
+                                <li><a href="/catalog/">קטלוג</a></li>
+                                <li><a href="/about/">אודות</a></li>
+                                <li><a href="/contact/">צור קשר</a></li>
                             </ul>
                         </div>
                         <div class="footer-col">
@@ -86,11 +97,11 @@ class MobileNav extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
             <nav class="mobile-bottom-nav">
-                <a href="index.html" class="nav-item">
+                <a href="/" class="nav-item">
                     <span class="nav-icon">🏠</span>
                     <span class="nav-label">בית</span>
                 </a>
-                <a href="catalog.html" class="nav-item">
+                <a href="/catalog/" class="nav-item">
                     <span class="nav-icon">🛍️</span>
                     <span class="nav-label">קטלוג</span>
                 </a>
@@ -101,7 +112,7 @@ class MobileNav extends HTMLElement {
                     </div>
                     <span class="nav-label">עגלה</span>
                 </a>
-                <a href="contact.html" class="nav-item">
+                <a href="/contact/" class="nav-item">
                     <span class="nav-icon">📞</span>
                     <span class="nav-label">חייג</span>
                 </a>
@@ -119,17 +130,22 @@ class MobileNav extends HTMLElement {
                     openOrderBtn.click();
                 } else {
                     // If we are not on catalog page, go to catalog
-                    window.location.href = 'catalog.html?openCart=true';
+                    window.location.href = '/catalog/?openCart=true';
                 }
             });
         }
     }
 
     highlightActiveLink() {
-        const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+        // Normalize path
+        let currentPath = window.location.pathname;
+        if (currentPath.endsWith('index.html')) currentPath = currentPath.replace('index.html', '');
+        if (currentPath !== '/' && !currentPath.endsWith('/')) currentPath += '/';
+
         const links = this.querySelectorAll('.nav-item');
         links.forEach(link => {
-            if (link.getAttribute('href') === currentPath) {
+            let href = link.getAttribute('href');
+            if (href === currentPath) {
                 link.classList.add('active');
             }
         });

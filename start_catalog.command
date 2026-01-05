@@ -45,7 +45,7 @@ echo "Server started with PID: $PID"
 sleep 1
 
 # Open Browser
-URL="http://localhost:$PORT/catalog.html"
+URL="http://localhost:$PORT/"
 echo "Opening $URL"
 open "$URL"
 

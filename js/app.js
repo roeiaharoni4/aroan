@@ -49,11 +49,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // State
     let activeCategory = null;
     const cart = {}; // id -> quantity
+    let favorites = new Set(); // ids
 
     // Initialize App
     init();
 
     async function init() {
+        // Create Skeleton
+        renderSkeleton(8);
+
         // Check for correct protocol
         if (window.location.protocol === 'file:') {
             alert("שים לב: הקטלוג לא יכול לעבוד כקובץ מקומי.\nעליך להפעיל את הקובץ start_catalog.command כדי לצפות במוצרים.");
@@ -72,6 +76,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Load Data
         await loadProducts();
+
+        // Load Favorites
+        const storedFavs = localStorage.getItem('catalog_favorites');
+        if (storedFavs) {
+            favorites = new Set(JSON.parse(storedFavs));
+        }
 
         // Initial Render
         const categories = Array.from(new Set(PRODUCTS.map(p => p.category))).filter(c => c);
@@ -157,7 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         name: item.name,
                         category: item.category,
                         unit: item.unit,
-                        image: item.image,
+                        // Ensure absolute path for images
+                        image: (item.image && !item.image.startsWith('http') && !item.image.startsWith('/')) ? '/' + item.image : item.image,
                         price: parseFloat(item.price) || 0
                     })).filter(p => p.id && p.name);
 
@@ -176,6 +187,22 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderCategories(categories) {
         if (!categoriesEl) return;
         categoriesEl.innerHTML = "";
+        categoriesEl.innerHTML = "";
+
+        // Add "Favorites" Button
+        const favBtn = document.createElement("button");
+        favBtn.type = "button";
+        favBtn.className = "cat-btn" + (activeCategory === 'favorites' ? " active" : "");
+        favBtn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Favorites" style="width:16px; height:16px; margin-left:5px; vertical-align:middle;"> המועדפים שלי';
+        favBtn.addEventListener("click", () => {
+            if (searchInput) searchInput.value = "";
+            activeCategory = 'favorites';
+            document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+            favBtn.classList.add("active");
+            renderProducts();
+        });
+        categoriesEl.appendChild(favBtn);
+
         categories.forEach(cat => {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -201,6 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (searchQuery !== "") {
             const q = searchQuery.toLowerCase();
             filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+        } else if (activeCategory === 'favorites') {
+            filtered = PRODUCTS.filter(p => favorites.has(p.id));
         } else if (activeCategory) {
             filtered = PRODUCTS.filter(p => p.category === activeCategory);
         }
@@ -226,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Quick View Trigger
             const qvBtn = document.createElement("button");
             qvBtn.className = "qv-btn-trigger";
-            qvBtn.innerHTML = "👁️";
+            qvBtn.innerHTML = '<img src="/images/icon_eye.png" alt="Quick View">';
             qvBtn.title = "תצוגה מהירה";
             qvBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -239,6 +268,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
             imgContainer.appendChild(img);
             imgContainer.appendChild(qvBtn);
+
+            // Favorites Button
+            const favBtn = document.createElement("button");
+            favBtn.className = "fav-btn" + (favorites.has(product.id) ? " active" : "");
+            favBtn.innerHTML = favorites.has(product.id) ?
+                '<img src="/images/icon_heart_filled.png" alt="Remove from favorites">' :
+                '<img src="/images/icon_heart_empty.png" alt="Add to favorites">';
+            favBtn.title = "הוסף למועדפים";
+            favBtn.onclick = (e) => {
+                e.stopPropagation();
+                toggleFavorite(product.id, favBtn);
+            };
+            imgContainer.appendChild(favBtn);
+
             imgContainer.onclick = () => openQuickView(product); // Also open on image click
             imgContainer.style.cursor = "pointer";
 
@@ -641,5 +684,74 @@ document.addEventListener("DOMContentLoaded", () => {
         qvInput.value = currentQty > 0 ? currentQty : 1; // Default to 1 if not in cart
 
         quickViewModal.classList.add("open");
+    }
+
+    function renderSkeleton(count) {
+        if (!productsEl) return;
+        productsEl.innerHTML = "";
+
+        for (let i = 0; i < count; i++) {
+            const card = document.createElement("div");
+            card.className = "product-card skeleton";
+
+            // Image
+            const imgContainer = document.createElement("div");
+            imgContainer.className = "card-img-container";
+            // No img element needed, handled by CSS ::after
+
+            // Body
+            const body = document.createElement("div");
+            body.className = "card-body";
+
+            const catLabel = document.createElement("div");
+            catLabel.className = "product-cat-label";
+
+            const title = document.createElement("div");
+            title.className = "product-title";
+
+            const sku = document.createElement("div");
+            sku.className = "product-sku";
+
+            body.appendChild(catLabel);
+            body.appendChild(title);
+            body.appendChild(sku);
+
+            // Footer
+            const footer = document.createElement("div");
+            footer.className = "card-footer";
+            footer.style.minHeight = "40px";
+            footer.style.background = "#f9f9f9";
+
+            card.appendChild(imgContainer);
+            card.appendChild(body);
+            card.appendChild(footer);
+
+            productsEl.appendChild(card);
+        }
+    }
+
+    function toggleFavorite(id, btn) {
+        if (favorites.has(id)) {
+            favorites.delete(id);
+            btn.classList.remove("active");
+            btn.innerHTML = '<img src="/images/icon_heart_empty.png" alt="Add to favorites">';
+        } else {
+            favorites.add(id);
+            btn.classList.add("active");
+            btn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Remove from favorites">';
+
+            // Pulse animation
+            btn.animate([
+                { transform: 'scale(1)' },
+                { transform: 'scale(1.4)' },
+                { transform: 'scale(1)' }
+            ], { duration: 300 });
+        }
+        localStorage.setItem('catalog_favorites', JSON.stringify([...favorites]));
+
+        // If we are in favorites view, remove the card or refresh
+        if (activeCategory === 'favorites') {
+            renderProducts();
+        }
     }
 });

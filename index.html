@@ -60,9 +60,14 @@
         }
 
         .feature-icon {
-            font-size: 3rem;
             margin-bottom: 20px;
             display: inline-block;
+        }
+
+        .feature-icon img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
         }
 
         .feature-card h3 {
@@ -175,8 +180,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
             margin: 0 auto 15px;
+            padding: 40px;
+        }
+
+        .more-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
         }
 
         /* Testimonials Styles */
@@ -245,10 +257,10 @@
                 <p>כל פתרונות הניקיון,
                     הכלים החד-פעמיים והציוד המקצועי תחת קורת גג אחת.</p>
                 <!-- Hero Search -->
-                <form action="catalog.html" method="GET" class="hero-search"><input type="text" name="search"
+                <form action="/catalog/" method="GET" class="hero-search"><input type="text" name="search"
                         placeholder="מה תרצו להזמין היום? (למשל: אקונומיקה, כוסות...)" required><button
                         type="submit">חפש</button></form>
-                <div style="margin-top: 20px;"><a href="catalog.html" class="btn btn-primary">למעבר לקטלוג המלא</a>
+                <div style="margin-top: 20px;"><a href="/catalog/" class="btn btn-primary">למעבר לקטלוג המלא</a>
                 </div>
             </div>
         </div>
@@ -257,17 +269,17 @@
         <section class="categories-section">
             <div class="container">
                 <h2 class="section-title">קטגוריות מובילות</h2>
-                <div class="categories-grid"><a href="catalog.html?category=ניקיון" class="category-card"><img
+                <div class="categories-grid"><a href="/catalog/?category=ניקיון" class="category-card"><img
                             src="images/cat_cleaning.png" alt="חומרי ניקיון">
                         <h3>חומרי ניקוי</h3>
-                    </a><a href="catalog.html?category=מוצרי נייר" class="category-card"><img src="images/cat_paper.png"
+                    </a><a href="/catalog/?category=מוצרי נייר" class="category-card"><img src="images/cat_paper.png"
                             alt="מוצרי נייר">
                         <h3>מוצרי נייר</h3>
-                    </a><a href="catalog.html?category=חד פעמי ואריזות" class="category-card"><img
+                    </a><a href="/catalog/?category=חד פעמי ואריזות" class="category-card"><img
                             src="images/cat_disposables.png" alt="חד פעמי">
                         <h3>חד פעמי</h3>
-                    </a><a href="catalog.html" class="category-card">
-                        <div class="more-icon">➜</div>
+                    </a><a href="/catalog/" class="category-card">
+                        <div class="more-icon"><img src="images/icon_arrow.png" alt="More Categories"></div>
                         <h3>לכל הקטגוריות</h3>
                     </a></div>
             </div>
@@ -275,15 +287,18 @@
         <section class="features">
             <div class="container">
                 <div class="features-grid">
-                    <div class="feature-card"><span class="feature-icon">🚀</span>
+                    <div class="feature-card"><span class="feature-icon"><img src="images/icon_rocket.png"
+                                alt="Fast Shipping"></span>
                         <h3>משלוח מהיר</h3>
                         <p>הזמינו היום וקבלו את הסחורה עד בית העסק במהירות וביעילות.</p>
                     </div>
-                    <div class="feature-card"><span class="feature-icon">💎</span>
+                    <div class="feature-card"><span class="feature-icon"><img src="images/icon_diamond.png"
+                                alt="Premium Quality"></span>
                         <h3>איכות ללא פשרות</h3>
                         <p>אנו עובדים עם המותגים המובילים בשוק כדי להבטיח תוצאות מושלמות.</p>
                     </div>
-                    <div class="feature-card"><span class="feature-icon">🏷️</span>
+                    <div class="feature-card"><span class="feature-icon"><img src="images/icon_tag.png"
+                                alt="Fair Prices"></span>
                         <h3>מחירים הוגנים</h3>
                         <p>פתרונות סיטונאיים המותאמים לתקציב שלכם,
                             ללא הפתעות.</p>
@@ -319,7 +334,7 @@
                 <div class="container">
                     <h2>מוכנים להתחיל?</h2>
                     <p style="margin-bottom: 30px; font-size: 1.2rem; opacity: 0.8;">הצטרפו למאות לקוחות מרוצים ותיהנו
-                        משירות VIP</p><a href="catalog.html" class="btn btn-outline" style="border-width: 2px;">צפייה
+                        משירות VIP</p><a href="/catalog/" class="btn btn-outline" style="border-width: 2px;">צפייה
                         בקטלוג המלא</a>
                 </div>
             </section><site-footer></site-footer>

@@ -450,3 +450,121 @@ ul {
         font-size: 1.5rem;
     }
 }
+
+/* Skeleton Loader */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.product-card.skeleton {
+    cursor: default;
+    pointer-events: none;
+}
+
+.skeleton-bg {
+    background: #f0f0f0;
+    background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+.skeleton .card-img-container {
+    background: #f0f0f0;
+    /* Fallback */
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton .card-img-container::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+.skeleton .product-cat-label {
+    width: 50%;
+    height: 15px;
+    margin-bottom: 8px;
+    background: #f0f0f0;
+    background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+.skeleton .product-title {
+    width: 80%;
+    height: 20px;
+    margin-bottom: 15px;
+    background: #f0f0f0;
+    background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+.skeleton .product-sku {
+    width: 40%;
+    height: 12px;
+    background: #f0f0f0;
+    background-image: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+.skeleton .card-footer {
+    opacity: 0.5;
+}
+
+/* Favorites Button */
+.fav-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    /* Opposite to Quick View */
+    background: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: all 0.2s;
+    z-index: 5;
+}
+
+.fav-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.fav-btn.active {
+    opacity: 1;
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.3);
+}
+
+.fav-btn img,
+.qv-btn-trigger img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}

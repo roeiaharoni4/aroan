@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>קטלוג אהרוני - סוכן מכירות</title>
+    <title>קטלוג אהרוני - הזמנה ללקוח</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,50 +14,49 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* Adjust catalog layout for site wrapper */
+        body {
+            padding-top: 0;
+        }
+
+        .fixed-header {
+            position: sticky;
+            top: 80px;
+            /* Below site header */
+            z-index: 900;
+        }
+
+        /* Ensure catalog doesn't overlap site header on mobile */
+        @media (max-width: 768px) {
+            .fixed-header {
+                top: 80px;
+            }
+        }
+    </style>
 
     <!-- Scripts -->
     <script>
-        // CONFIGURATION: AGENT VERSION
         window.CATALOG_CONFIG = {
-            showPrices: true,
-            allowPdf: true,
-            allowShare: false
+            showPrices: false,
+            allowPdf: false,
+            allowShare: true
         };
     </script>
-    <script src="js/lib/papaparse.min.js"></script>
-    <script src="js/app.js" defer></script>
+    <script src="/js/lib/papaparse.min.js"></script>
+    <script src="/js/app.js?v=2" defer></script>
 </head>
 
 <body>
+    <site-header></site-header>
 
-    <!-- Login Screen -->
-    <div id="login-screen"
-        style="position:fixed; top:0; left:0; width:100%; height:100%; background:#f5f5f5; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:10000;">
-        <div
-            style="background:white; padding:2rem; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1); text-align:center; max-width:300px; width:90%;">
-            <div style="font-size:3rem; margin-bottom:1rem;">🔒</div>
-            <h2 style="margin-bottom:1.5rem; color:#333;">כניסת סוכן</h2>
-            <input type="password" id="agent-pin" placeholder="קוד גישה"
-                style="width:100%; padding:0.8rem; border:1px solid #ddd; border-radius:8px; margin-bottom:1rem; font-size:1.1rem; text-align:center;">
-            <button id="login-btn"
-                style="width:100%; padding:0.8rem; background:var(--primary); color:white; border:none; border-radius:8px; font-size:1.1rem; cursor:pointer;">כניסה</button>
-            <p id="login-error" style="color:red; margin-top:0.5rem; display:none;">קוד שגוי</p>
-        </div>
-    </div>
-
-    <div class="app-container" id="app-content" style="display:none;">
+    <div class="app-container">
 
         <!-- Header -->
         <header class="main-header">
-            <div class="header-content">
-                <div class="brand">
-                    <img src="images/logo.png" alt="לוגו אהרוני" class="brand-logo" onerror="this.style.display='none'">
-                    <h1 class="brand-name">אהרוני שיווק והפצה</h1>
-                    <span
-                        style="background:var(--accent); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-right:8px;">סוכן</span>
-                </div>
-            </div>
+            <div class="header-content" style="display:none;"></div>
 
             <div class="search-container">
                 <input type="text" id="search-input" class="search-input" placeholder="חיפוש מוצר...">
@@ -130,7 +129,7 @@
 
             <div class="modal-footer">
                 <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
-                    <div style="text-align: right;" id="summary-total-container">
+                    <div style="text-align: right;">
                         <div style="font-size: 0.9rem; color: #666;">סה״כ פריטים: <span id="summary-items">0</span>
                         </div>
                         <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">סה״כ לתשלום: <span
@@ -147,49 +146,44 @@
                         style="background:#25D366; color:white; min-width: 140px;">
                         📱 שלח ב-WhatsApp
                     </button>
-                    <button id="print-pdf-btn" class="btn btn-primary"
-                        style="background:var(--accent); color:white; min-width: 140px; display:none;">
-                        🖨️ הדפס הצעת מחיר (PDF)
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const loginScreen = document.getElementById('login-screen');
-            const appContent = document.getElementById('app-content');
-            const pinInput = document.getElementById('agent-pin');
-            const loginBtn = document.getElementById('login-btn');
-            const errorMsg = document.getElementById('login-error');
+    <!-- Quick View Modal -->
+    <div class="modal-overlay" id="quick-view-modal">
+        <div class="modal-content quick-view-content">
+            <button id="close-quick-view-btn" class="btn-close-absolute">&times;</button>
+            <div class="quick-view-grid">
+                <div class="quick-view-image-container">
+                    <img id="qv-image" src="" alt="">
+                </div>
+                <div class="quick-view-details">
+                    <div class="qv-category" id="qv-category"></div>
+                    <h2 class="qv-title" id="qv-title"></h2>
+                    <div class="qv-sku" id="qv-sku"></div>
+                    <div class="qv-price" id="qv-price"></div>
+                    <div class="qv-description" id="qv-description">
+                        <!-- Description if available -->
+                    </div>
 
-            // Simple PIN (Not secure against hackers, but good enough for average users)
-            const CORRECT_PIN = "0526"; // Using part of the phone number as initial PIN
+                    <div class="qv-controls">
+                        <div class="qty-control large">
+                            <button class="qty-btn" id="qv-minus">–</button>
+                            <input type="number" class="qty-input" id="qv-input" min="0">
+                            <button class="qty-btn" id="qv-plus">+</button>
+                        </div>
+                        <button id="qv-add-to-cart" class="btn btn-primary btn-block">הוסף להזמנה</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            function checkLogin() {
-                if (pinInput.value === CORRECT_PIN) {
-                    loginScreen.style.display = 'none';
-                    appContent.style.display = 'block';
-                    localStorage.setItem('agent_logged_in', 'true');
-                } else {
-                    errorMsg.style.display = 'block';
-                }
-            }
-
-            // Check if already logged in this session
-            if (localStorage.getItem('agent_logged_in') === 'true') {
-                loginScreen.style.display = 'none';
-                appContent.style.display = 'block';
-            }
-
-            loginBtn.addEventListener('click', checkLogin);
-            pinInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') checkLogin();
-            });
-        });
-    </script>
-
+    <site-footer></site-footer>
+    <site-footer></site-footer>
+    <script src="/js/components.js"></script>
 </body>
 
 </html>
