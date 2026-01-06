@@ -73,6 +73,8 @@ ul {
     cursor: pointer;
     font-size: 1.1rem;
     transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    /* Context for absolute positioning of icons */
 }
 
 .btn-primary {
@@ -547,7 +549,9 @@ ul {
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.8;
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.05);
     transition: all 0.2s;
     z-index: 5;
 }
@@ -567,4 +571,20 @@ ul {
     width: 20px;
     height: 20px;
     object-fit: contain;
+}
+/* Product Card Position Fix */
+.product-card {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }

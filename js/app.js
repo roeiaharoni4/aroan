@@ -169,7 +169,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         unit: item.unit,
                         // Ensure absolute path for images
                         image: (item.image && !item.image.startsWith('http') && !item.image.startsWith('/')) ? '/' + item.image : item.image,
-                        price: parseFloat(item.price) || 0
+                        price: parseFloat(item.price) || 0,
+                        description: item.description || "" // Optional description
                     })).filter(p => p.id && p.name);
 
                     console.log(`Loaded ${PRODUCTS.length} products`);
@@ -676,8 +677,16 @@ document.addEventListener("DOMContentLoaded", () => {
             qvPrice.style.display = 'none';
         }
 
-        // Description - mocked for now or from CSV if added later
-        qvDesc.textContent = "תיאור מוצר מורחב יופיע כאן. זהו מוצר איכותי מקטגוריית " + product.category + ".";
+        // Description
+        // Use the description from the CSV/Sheet
+        if (product.description && product.description.trim() !== "") {
+            qvDesc.textContent = product.description;
+            qvDesc.style.display = 'block';
+        } else {
+            // Hide description if empty
+            qvDesc.textContent = "";
+            qvDesc.style.display = 'none';
+        }
 
         // Init Quantity
         const currentQty = cart[product.id] || 0;
