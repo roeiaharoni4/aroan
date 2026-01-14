@@ -195,9 +195,18 @@ body.a11y-high-contrast #a11y-menu .a11y-btn.active {
 }
 
 body.a11y-high-contrast #a11y-reset-btn {
-    background-color: #d9534f !important;
     color: white !important;
 }
+
+/* --- Keyboard Navigation Support --- */
+/* Only show outline when navigating with keyboard */
+body.kbd-nav :focus {
+    outline: 3px solid var(--a11y-btn-color) !important;
+    outline-offset: 2px !important;
+}
+
+/* Default state: remove outline for mouse users if desired, but keeping default is safer. 
+   Here we just enhance it for kbd users. */
 
 /* Highlight Links */
 body.a11y-links-highlight a {

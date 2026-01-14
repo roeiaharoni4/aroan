@@ -213,4 +213,15 @@
         init();
     }
 
+    // Keyboard Navigation Logic
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            document.body.classList.add('kbd-nav');
+        }
+    });
+
+    document.addEventListener('mousedown', () => {
+        document.body.classList.remove('kbd-nav');
+    });
+
 })();
