@@ -155,6 +155,50 @@ body.a11y-high-contrast img {
     filter: grayscale(100%) contrast(150%);
 }
 
+/* --- High Contrast Overrides for Widget --- */
+/* Ensure the widget stays visible and usable */
+body.a11y-high-contrast #a11y-toggle-btn {
+    background-color: var(--a11y-btn-color) !important;
+    border-color: #fff !important;
+}
+
+body.a11y-high-contrast #a11y-toggle-btn svg,
+body.a11y-high-contrast #a11y-toggle-btn svg path {
+    fill: #fff !important;
+    background-color: transparent !important;
+}
+
+body.a11y-high-contrast #a11y-menu {
+    background-color: #fff !important;
+    border-color: #ddd !important;
+}
+
+body.a11y-high-contrast #a11y-menu * {
+    background-color: transparent !important;
+    color: #333 !important;
+    border-color: #eee !important;
+}
+
+body.a11y-high-contrast #a11y-menu .a11y-btn {
+    background-color: #f8f8f8 !important;
+    border: 1px solid #ccc !important;
+}
+
+body.a11y-high-contrast #a11y-menu .a11y-btn:hover {
+    background-color: #eee !important;
+}
+
+body.a11y-high-contrast #a11y-menu .a11y-btn.active {
+    background-color: var(--a11y-btn-color) !important;
+    color: #fff !important;
+    border-color: var(--a11y-btn-color) !important;
+}
+
+body.a11y-high-contrast #a11y-reset-btn {
+    background-color: #d9534f !important;
+    color: white !important;
+}
+
 /* Highlight Links */
 body.a11y-links-highlight a {
     text-decoration: underline !important;
