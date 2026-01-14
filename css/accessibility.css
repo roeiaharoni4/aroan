@@ -229,3 +229,14 @@ body.a11y-text-large {
 body.a11y-text-xlarge {
     font-size: 140% !important;
 }
+
+/* Product Title Resizing Overrides */
+body.a11y-text-large .product-title {
+    font-size: 1.3rem !important;
+    /* Larger than default */
+}
+
+body.a11y-text-xlarge .product-title {
+    font-size: 1.5rem !important;
+    /* Even larger */
+}

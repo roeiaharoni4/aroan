@@ -249,6 +249,8 @@ document.addEventListener("DOMContentLoaded", () => {
             imgContainer.className = "card-img-container";
             const img = document.createElement("img");
             img.className = "product-img";
+            img.loading = "lazy"; // Performance optimization
+            img.decoding = "async";
             img.src = product.image || "#";
             img.alt = product.name;
             img.onerror = () => { img.style.display = 'none'; imgContainer.textContent = 'אין תמונה'; };
