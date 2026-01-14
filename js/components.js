@@ -167,14 +167,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const link = document.createElement('link');
         link.id = 'aroam-a11y-css';
         link.rel = 'stylesheet';
-        link.href = '/css/accessibility.css';
+        link.href = '/css/accessibility.css?v=3';
         document.head.appendChild(link);
     }
 
     if (!document.getElementById('aroam-a11y-js')) {
         const script = document.createElement('script');
         script.id = 'aroam-a11y-js';
-        script.src = '/js/accessibility.js';
+        script.src = '/js/accessibility.js?v=3';
         document.body.appendChild(script);
     }
 });
