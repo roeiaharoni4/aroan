@@ -161,4 +161,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.querySelector('mobile-nav')) {
         document.body.appendChild(document.createElement('mobile-nav'));
     }
+
+    // Auto-inject Accessibility Widget
+    if (!document.getElementById('aroam-a11y-css')) {
+        const link = document.createElement('link');
+        link.id = 'aroam-a11y-css';
+        link.rel = 'stylesheet';
+        link.href = '/css/accessibility.css';
+        document.head.appendChild(link);
+    }
+
+    if (!document.getElementById('aroam-a11y-js')) {
+        const script = document.createElement('script');
+        script.id = 'aroam-a11y-js';
+        script.src = '/js/accessibility.js';
+        document.body.appendChild(script);
+    }
 });
