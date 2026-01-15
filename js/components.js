@@ -6,7 +6,10 @@ class SiteHeader extends HTMLElement {
                     <a href="/" class="logo">
                         <img src="/images/logo.png" alt="אהרוני שיווק" style="height: 60px;">
                     </a>
-                    <div class="menu-toggle" id="menu-toggle">☰</div>
+                    <div class="header-controls" style="display: flex; align-items: center; gap: 10px;">
+                        <button id="theme-toggle" class="theme-toggle" title="מצב כהה/בהיר" style="background:none; border:none; cursor:pointer; font-size:1.5rem;">🌙</button>
+                        <div class="menu-toggle" id="menu-toggle">☰</div>
+                    </div>
                     <nav class="main-nav" id="main-nav">
                         <ul>
                             <li><a href="/">דף הבית</a></li>
@@ -21,6 +24,25 @@ class SiteHeader extends HTMLElement {
 
         this.highlightActiveLink();
         this.setupMobileMenu();
+        this.setupThemeToggle();
+    }
+
+    setupThemeToggle() {
+        const toggleBtn = this.querySelector('#theme-toggle');
+        const html = document.documentElement;
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        toggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+        toggleBtn.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            toggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        });
     }
 
     highlightActiveLink() {

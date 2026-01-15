@@ -104,6 +104,20 @@ document.addEventListener("DOMContentLoaded", () => {
         renderProducts();
         updateSummary();
 
+        // Check for Deep Link
+        const productIdParam = urlParams.get('product');
+        if (productIdParam) {
+            // Wait for DOM
+            setTimeout(() => {
+                const el = document.getElementById(`product-${productIdParam}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('highlight-product');
+                    setTimeout(() => el.classList.remove('highlight-product'), 2000);
+                }
+            }, 500);
+        }
+
         // Event Listeners
         setupEventListeners();
     }
@@ -243,6 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
         filtered.forEach(product => {
             const card = document.createElement("div");
             card.className = "product-card";
+            card.id = `product-${product.id}`;
 
             // Image Container
             const imgContainer = document.createElement("div");
@@ -271,6 +286,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
             imgContainer.appendChild(img);
             imgContainer.appendChild(qvBtn);
+
+            // Share Button
+            if (CONFIG.allowShare) {
+                const shareBtn = document.createElement("button");
+                shareBtn.className = "share-btn";
+                shareBtn.innerHTML = '<img src="/images/icon_rocket.png" alt="Share">'; // Using rocket as share icon temporarily or generic share svg? Rocket is available.
+                // Or better, use a standard SVG for share to not confuse with "Fast Shipping" rocket feature if any.
+                // Let's use a simple SVG for share.
+                shareBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
+                shareBtn.title = "שתף מוצר";
+                shareBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    shareProduct(product);
+                };
+                imgContainer.appendChild(shareBtn);
+            }
 
             // Favorites Button
             const favBtn = document.createElement("button");
@@ -835,5 +866,33 @@ document.addEventListener("DOMContentLoaded", () => {
         renderProducts(); // Update grid
         // Optional: Open Quick View immediately
         openQuickView(product);
+    }
+
+    function shareProduct(product) {
+        const url = `${window.location.origin}${window.location.pathname}?product=${product.id}`;
+        if (navigator.share) {
+            navigator.share({
+                title: product.name,
+                text: `בדוק את המוצר: ${product.name} מקטלוג אהרוני`,
+                url: url
+            }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast(`קישור למוצר הועתק!`);
+            });
+        }
+    }
+
+    function showToast(message) {
+        let toast = document.getElementById("toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "toast";
+            toast.className = "toast";
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
     }
 });
