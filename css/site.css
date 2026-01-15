@@ -572,12 +572,13 @@ ul {
     height: 20px;
     object-fit: contain;
 }
+
 /* Product Card Position Fix */
 .product-card {
     position: relative;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -586,5 +587,132 @@ ul {
 
 .product-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Floating Improvements --- */
+
+/* WhatsApp Button */
+.floating-whatsapp {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background-color: #25d366;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s;
+}
+
+.floating-whatsapp:hover {
+    transform: scale(1.1);
+}
+
+.floating-whatsapp img {
+    width: 35px;
+    height: 35px;
+    filter: brightness(0) invert(1);
+}
+
+/* Scroll To Top */
+.scroll-top-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 9998;
+    cursor: pointer;
+    font-size: 1.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.scroll-top-btn.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroll-top-btn:hover {
+    background-color: var(--accent-color);
+    transform: translateY(-3px);
+}
+
+/* --- Search Suggestions --- */
+.search-container {
+    position: relative;
+    /* Ensure specific context */
+}
+
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    background: white;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    overflow: hidden;
+    margin-top: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background-color: var(--bg-light);
+}
+
+.suggestion-item img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: white;
+}
+
+.s-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.s-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--secondary-color);
+}
+
+.s-sku {
+    font-size: 0.75rem;
+    color: var(--text-light);
 }

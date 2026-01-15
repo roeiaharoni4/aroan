@@ -1,0 +1,21 @@
+{
+    "name": "אהרוני שיווק והפצה",
+    "short_name": "אהרוני שיווק",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#F8FAFC",
+    "theme_color": "#639C7D",
+    "description": "הבית של מוצרי הניקיון והחד פעמי.",
+    "icons": [
+        {
+            "src": "/images/logo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/images/logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

@@ -73,6 +73,8 @@ class SiteFooter extends HTMLElement {
                                 <li><a href="/about/">אודות</a></li>
                                 <li><a href="/contact/">צור קשר</a></li>
                                 <li><a href="/accessibility/">הצהרת נגישות</a></li>
+                                <li><a href="/terms/">תנאי שימוש</a></li>
+                                <li><a href="/privacy/">מדיניות פרטיות</a></li>
                             </ul>
                         </div>
                         <div class="footer-col">
@@ -177,5 +179,62 @@ document.addEventListener('DOMContentLoaded', () => {
         script.id = 'aroam-a11y-js';
         script.src = '/js/accessibility.js?v=3';
         document.body.appendChild(script);
+    }
+
+    // --- PWA: Manifest & Service Worker ---
+    if (!document.querySelector("link[rel='manifest']")) {
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = '/manifest.json';
+        document.head.appendChild(link);
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.log('Service Worker registration failed', err));
+    }
+
+
+    // --- 1. Auto-inject Favicon ---
+    if (!document.querySelector("link[rel*='icon']")) {
+        const link = document.createElement('link');
+        link.type = 'image/png';
+        link.rel = 'shortcut icon';
+        link.href = '/images/logo.png';
+        document.head.appendChild(link);
+    }
+
+    // --- 2. Floating WhatsApp ---
+    if (!document.querySelector('.floating-whatsapp')) {
+        const waBtn = document.createElement('a');
+        waBtn.className = 'floating-whatsapp';
+        waBtn.href = 'https://wa.me/972526000158'; // User's phone
+        waBtn.target = '_blank';
+        waBtn.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">';
+        waBtn.title = "צ'אט בוואטסאפ";
+        document.body.appendChild(waBtn);
+    }
+
+    // --- 3. Scroll to Top ---
+    if (!document.querySelector('.scroll-top-btn')) {
+        const scrollBtn = document.createElement('button');
+        scrollBtn.className = 'scroll-top-btn';
+        scrollBtn.innerHTML = '↑';
+        scrollBtn.title = 'חזור למעלה';
+        document.body.appendChild(scrollBtn);
+
+        // Logic
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollBtn.classList.add('visible');
+            } else {
+                scrollBtn.classList.remove('visible');
+            }
+        });
+
+        scrollBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     }
 });

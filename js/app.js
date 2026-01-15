@@ -362,7 +362,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function setupEventListeners() {
-        if (searchInput) searchInput.addEventListener("input", renderProducts);
+        if (searchInput) {
+            searchInput.addEventListener("input", () => {
+                renderProducts();
+                handleSearchSuggestions();
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener("click", (e) => {
+                if (!e.target.closest(".search-container")) {
+                    hideSuggestions();
+                }
+            });
+        }
+
 
         if (openOrderBtn) {
             openOrderBtn.addEventListener("click", () => {
@@ -764,5 +777,63 @@ document.addEventListener("DOMContentLoaded", () => {
         if (activeCategory === 'favorites') {
             renderProducts();
         }
+    }
+
+    // --- Autocomplete Search Logic ---
+    function handleSearchSuggestions() {
+        const query = searchInput.value.trim().toLowerCase();
+        let suggestionsContainer = document.getElementById("search-suggestions");
+
+        // Create container if not exists
+        if (!suggestionsContainer) {
+            suggestionsContainer = document.createElement("div");
+            suggestionsContainer.id = "search-suggestions";
+            suggestionsContainer.className = "search-suggestions";
+            searchInput.parentNode.appendChild(suggestionsContainer);
+        }
+
+        if (query.length < 2) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        const matches = PRODUCTS
+            .filter(p => p.name.toLowerCase().includes(query) || p.id.includes(query))
+            .slice(0, 5); // Limit to 5 suggestions
+
+        if (matches.length === 0) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        suggestionsContainer.innerHTML = "";
+        matches.forEach(product => {
+            const div = document.createElement("div");
+            div.className = "suggestion-item";
+            div.innerHTML = `
+                <img src="${product.image || '/images/logo.png'}" alt="product">
+                <div class="s-info">
+                    <span class="s-name">${product.name}</span>
+                    <span class="s-sku">${product.id}</span>
+                </div>
+            `;
+            div.onclick = () => selectSuggestion(product);
+            suggestionsContainer.appendChild(div);
+        });
+
+        suggestionsContainer.style.display = 'block';
+    }
+
+    function hideSuggestions() {
+        const el = document.getElementById("search-suggestions");
+        if (el) el.style.display = 'none';
+    }
+
+    function selectSuggestion(product) {
+        searchInput.value = product.name;
+        hideSuggestions();
+        renderProducts(); // Update grid
+        // Optional: Open Quick View immediately
+        openQuickView(product);
     }
 });
