@@ -26,21 +26,21 @@
 [data-theme="dark"] {
     --primary-color: #639C7D;
     /* Keep brand color */
-    --secondary-color: #A3C9B8;
-    /* Lighter matching green for text */
+    --secondary-color: #FFFFFF;
+    /* White for text/headers */
     --accent-color: #52856A;
     /* Darker accent */
     --accent-hover: #3E6651;
 
-    --text-color: #E2E8F0;
-    /* Off-white text */
-    --text-light: #94A3B8;
+    --text-color: #FFFFFF;
+    /* Pure White text */
+    --text-light: #CCCCCC;
     /* Light gray */
 
-    --bg-light: #0F172A;
-    /* Slate 900 (Dark Blue/Gray) */
-    --white: #1E293B;
-    /* Slate 800 (Card BG) */
+    --bg-light: #121212;
+    /* Almost Black */
+    --white: #1E1E1E;
+    /* Dark Gray (Card BG) */
 
     /* Global overrides */
     background-color: var(--bg-light);
@@ -54,8 +54,8 @@
 [data-theme="dark"] .mobile-bottom-nav {
     background-color: var(--white);
     color: var(--text-color);
-    border-color: #334155;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border-color: #333;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
 [data-theme="dark"] .product-title,
@@ -63,7 +63,7 @@
 [data-theme="dark"] h2,
 [data-theme="dark"] h3,
 [data-theme="dark"] h4 {
-    color: var(--secondary-color);
+    color: var(--text-color);
 }
 
 [data-theme="dark"] input,
