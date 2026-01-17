@@ -28,6 +28,18 @@
     --header-height: 70px;
 }
 
+[data-theme="dark"] {
+    --bg-body: #121212;
+    --bg-surface: #1E1E1E;
+    --text-main: #FFFFFF;
+    --text-secondary: #CCCCCC;
+    --border-color: #333333;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+    --primary-light: #1A4231;
+    /* Darker tint for hover states */
+}
+
 * {
     box-sizing: border-box;
 }
