@@ -178,8 +178,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Process and validate data
                     PRODUCTS = results.data.map(item => {
                         let img = item.image;
-                        if (img && !img.startsWith('http') && !img.startsWith('/')) {
-                            img = '/' + img;
+                        if (img && !img.startsWith('http')) {
+                            // Ensure starts with /
+                            if (!img.startsWith('/')) {
+                                img = '/' + img;
+                            }
+                            // Encode URI components but keep slashes
+                            // Actually encodeURI() does exactly this (keeps / : etc)
+                            // But file system might need un-encoded? No, web requests need encoded.
+                            // Let's safe encode only if it contains Hebrew or spaces
+                            img = encodeURI(img);
                         }
                         return {
                             id: item.id,
@@ -564,6 +572,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 td.textContent = text;
                 return td;
             };
+
+            // Image
+            const tdImage = document.createElement("td");
+            tdImage.style.textAlign = "center";
+            if (product.image) {
+                const img = document.createElement("img");
+                img.src = product.image;
+                img.alt = product.name;
+                img.style.width = "40px";
+                img.style.height = "40px";
+                img.style.objectFit = "contain";
+                tdImage.appendChild(img);
+            }
+            row.appendChild(tdImage);
 
             row.appendChild(createCell(product.id));
             row.appendChild(createCell(product.name));
@@ -1024,10 +1046,11 @@ document.addEventListener("DOMContentLoaded", () => {
         headerDiv.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start; text-align:right;">
                 <div>
-                    <h1 style="margin:0;">חאן מכשירי כתיבה בע״מ</h1>
-                    <div>רח׳ כנרת 12 קריית שדה התעופה</div>
-                    <div>ח.פ. 510908734</div>
-                    <div>טלפון: 03-9738888</div>
+                    <img src="/images/logo.png" alt="לוגו אהרוני" style="height: 60px; margin-bottom: 10px;">
+                    <h1 style="margin:0; font-size:1.5rem;">אהרוני שיווק והפצה</h1>
+                    <div>סוכן: רועי אהרוני</div>
+                    <div>כתובת: היצירה 16, אור יהודה</div>
+                    <div>טלפון: 052-6000158</div>
                 </div>
                 <div style="text-align:left;">
                     <h2>הצעת מחיר / הזמנה</h2>

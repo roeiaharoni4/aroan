@@ -203,7 +203,7 @@ button {
 }
 
 .product-card:hover {
-    transform: translateY(-4px);
+    /* transform: translateY(-4px); - Disabled to prevent UI jumping */
     box-shadow: var(--shadow-hover);
     border-color: transparent;
 }
@@ -227,8 +227,7 @@ button {
 }
 
 .product-card:hover .product-img {
-    transform: scale(1.05);
-    /* Subtle zoom */
+    /* transform: scale(1.05); - Disabled */
 }
 
 .card-body {
@@ -239,37 +238,16 @@ button {
     gap: 0.5rem;
 }
 
-.product-cat-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.product-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: auto;
-    line-height: 1.3;
-}
-
-.product-price {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--primary-dark);
-}
-
-.product-sku {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-}
+/* ... skipped ... */
 
 .card-footer {
     margin-top: 0.75rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    z-index: 5;
+    /* Ensure above other elements */
 }
 
 /* Quantity Controls */
