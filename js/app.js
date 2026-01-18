@@ -176,16 +176,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 skipEmptyLines: true,
                 complete: function (results) {
                     // Process and validate data
-                    PRODUCTS = results.data.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        category: item.category,
-                        unit: item.unit,
-                        // Ensure absolute path for images
-                        image: (item.image && !item.image.startsWith('http') && !item.image.startsWith('/')) ? '/' + item.image : item.image,
-                        price: parseFloat(item.price) || 0,
-                        description: item.description || "" // Optional description
-                    })).filter(p => p.id && p.name);
+                    PRODUCTS = results.data.map(item => {
+                        let img = item.image;
+                        if (img && !img.startsWith('http') && !img.startsWith('/')) {
+                            img = '/' + img;
+                        }
+                        return {
+                            id: item.id,
+                            name: item.name,
+                            category: item.category,
+                            unit: item.unit,
+                            image: img,
+                            price: parseFloat(item.price) || 0,
+                            description: item.description || "" // Optional description
+                        }
+                    }).filter(p => p.id && p.name);
 
                     console.log(`Loaded ${PRODUCTS.length} products`);
                     resolve();

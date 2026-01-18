@@ -337,7 +337,8 @@ button {
     bottom: 2rem;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 90;
+    z-index: 10002;
+    /* Above mobile bottom nav (9999) and toast (10000) */
 }
 
 .fab {
@@ -550,7 +551,8 @@ button {
     }
 
     .fab-container {
-        bottom: 1rem;
+        bottom: 90px;
+        /* Above mobile bottom nav */
         width: 90%;
     }
 
