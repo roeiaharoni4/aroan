@@ -241,11 +241,15 @@
 
             // Render
             Object.keys(categories).sort().forEach(cat => {
+                // Section Wrapper
+                const section = document.createElement('div');
+                section.className = 'category-section';
+
                 // Header
                 const header = document.createElement('div');
                 header.className = 'category-header';
                 header.textContent = cat;
-                container.appendChild(header);
+                section.appendChild(header);
 
                 // Grid
                 const grid = document.createElement('div');
@@ -258,12 +262,12 @@
                         <img src="${product.image || '/images/logo.png'}" class="product-img" onerror="this.style.opacity='0.2'">
                         <div class="product-name">${product.name}</div>
                         <div class="product-meta">${product.id} | ${product.unit}</div>
-                        <div class="product-price">${parseFloat(product.price).toFixed(2)} ₪</div>
                     `;
                     grid.appendChild(card);
                 });
 
-                container.appendChild(grid);
+                section.appendChild(grid);
+                container.appendChild(section);
             });
         }
     </script>
