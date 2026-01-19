@@ -217,18 +217,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                     PRODUCTS = results.data.map(item => {
                         let img = item.image;
                         if (img && !img.startsWith('http')) {
-                            // Strip existing prefixes to get "images/..."
-                            const cleanPath = img.replace(/^(\.\.\/)+/, '').replace(/^\/+/, '');
+                            // Revert to simple ../ strategy which works for Catalog
+                            // Ensure clean relative path first
+                            let cleanPath = img.replace(/^(\.\.\/)+/, '').replace(/^\/+/, '');
 
-                            // Combine with determine base
-                            img = IMAGE_BASE_URL + cleanPath;
+                            // Add one level up (assuming agent/ and catalog/ are siblings or at same depth relative to images)
+                            img = '../' + cleanPath;
 
-                            try {
-                                // Prevent double encoding if already encoded
-                                img = encodeURI(decodeURI(img));
-                            } catch (e) {
-                                img = encodeURI(img);
-                            }
+                            // Simple encode
+                            img = encodeURI(img);
                         }
                         return {
                             id: item.id,
