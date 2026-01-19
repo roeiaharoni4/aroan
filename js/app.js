@@ -11,7 +11,13 @@ const DEFAULT_CONFIG = {
 };
 let CONFIG = {};
 
-document.addEventListener("DOMContentLoaded", () => {
+let IMAGE_BASE_URL = '';
+
+document.addEventListener("DOMContentLoaded", async () => {
+    // Determine Image Base URL dynamically
+    IMAGE_BASE_URL = await determineImageBaseUrl();
+    console.log("Determined Image Base URL:", IMAGE_BASE_URL);
+
     // UI Elements
     const categoriesEl = document.getElementById("categories");
     const productsEl = document.getElementById("products");
@@ -168,6 +174,38 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    async function determineImageBaseUrl() {
+        const candidates = [
+            '/',               // Absolute root
+            '../',             // Sibling
+            '',                // Relative
+            '/catalog/',       // Common subfolder
+            '/aroam-catalog/'  // Repository name
+        ];
+
+        for (const base of candidates) {
+            const testUrl = base + 'images/logo.png';
+            if (await checkImageExists(testUrl)) {
+                return base;
+            }
+        }
+        return '/'; // Default fallback
+    }
+
+    function checkImageExists(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                // Verify it's not a soft 404 (HTML page masquerading as image)
+                // Real logo should be larger than 1x1. typical logo is >50px width
+                if (img.naturalWidth > 10) resolve(true);
+                else resolve(false);
+            };
+            img.onerror = () => resolve(false);
+            img.src = url;
+        });
+    }
+
     async function loadProducts() {
         return new Promise((resolve) => {
             Papa.parse(DATA_SOURCE_URL + "&_t=" + Date.now(), {
@@ -179,11 +217,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     PRODUCTS = results.data.map(item => {
                         let img = item.image;
                         if (img && !img.startsWith('http')) {
-                            // Ensure absolute relative path
-                            if (img && !img.startsWith('/') && !img.startsWith('http')) {
-                                // Default to root relative
-                                img = '/' + img.replace(/^(\.\.\/)+/, '');
-                            }
+                            // Strip existing prefixes to get "images/..."
+                            const cleanPath = img.replace(/^(\.\.\/)+/, '').replace(/^\/+/, '');
+
+                            // Combine with determine base
+                            img = IMAGE_BASE_URL + cleanPath;
 
                             try {
                                 // Prevent double encoding if already encoded
