@@ -1154,4 +1154,24 @@ document.addEventListener("DOMContentLoaded", () => {
         printPdfBtn.style.display = "inline-flex";
         printPdfBtn.onclick = printQuote;
     }
+
+    // --- Initialize ---
+    setupDate();
+    loadProducts().then(() => {
+        // Extract categories
+        const categories = [...new Set(PRODUCTS.map(p => p.category))].sort();
+        renderCategories(categories);
+        renderProducts();
+
+        // Check URL for ?q=... (deep link)
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        if (q) {
+            openQuickViewFromId(q);
+        }
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener("input", renderProducts);
+    }
 });
