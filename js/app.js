@@ -285,7 +285,40 @@ document.addEventListener("DOMContentLoaded", () => {
             img.decoding = "async";
             img.src = product.image || "#";
             img.alt = product.name;
-            img.onerror = () => { img.style.display = 'none'; imgContainer.textContent = 'אין תמונה'; };
+
+            // Robust Image Loading Strategy
+            img.onerror = function () {
+                const currentSrc = this.src;
+                // Avoid infinite loops
+                if (this.dataset.retried) {
+                    this.style.display = 'none';
+                    imgContainer.textContent = 'אין תמונה';
+                    return;
+                }
+                this.dataset.retried = "true";
+
+                // Try Safe Encoded version
+                if (!currentSrc.includes('%')) {
+                    const encoded = encodeURI(product.image);
+                    if (encoded !== product.image) {
+                        this.src = encoded;
+                        return;
+                    }
+                }
+
+                // Try NFD Normalization (Fix for Mac file systems)
+                if (product.image.normalize) {
+                    const nfd = product.image.normalize('NFD');
+                    if (nfd !== product.image) {
+                        this.src = nfd;
+                        return;
+                    }
+                }
+
+                // If all else fails
+                this.style.display = 'none';
+                imgContainer.textContent = 'אין תמונה';
+            };
 
             // Quick View Trigger
             const qvBtn = document.createElement("button");
