@@ -179,12 +179,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     PRODUCTS = results.data.map(item => {
                         let img = item.image;
                         if (img && !img.startsWith('http')) {
-                            // Ensure starts with /
-                            if (!img.startsWith('/')) {
-                                img = '/' + img;
+                            // Ensure relative path from agent/ or catalog/ (both 1 level deep)
+                            // CSV has "images/..."
+                            if (!img.startsWith('../') && !img.startsWith('/')) {
+                                img = '../' + img;
                             }
-                            // Removing encodeURI as it might be double-encoding or causing issues on live server
-                            // img = encodeURI(img);
+                            // Encode URI for safe paths (spaces, hebrew)
+                            img = encodeURI(img);
                         }
                         return {
                             id: item.id,
