@@ -264,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        filtered.forEach(product => {
+        filtered.forEach((product, index) => {
             const card = document.createElement("div");
             card.className = "product-card";
             card.id = `product-${product.id}`;
@@ -315,7 +315,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 shareBtn.title = "שתף מוצר";
                 shareBtn.onclick = (e) => {
                     e.stopPropagation();
-                    shareProduct(product);
+                    // shareProduct(product); // Missing function
+                    if (navigator.share) {
+                        navigator.share({
+                            title: product.name,
+                            text: `בדוק את המוצר ${product.name} בקטלוג אהרוני`,
+                            url: window.location.origin + window.location.pathname + '?product=' + product.id
+                        }).catch(console.error);
+                    } else {
+                        // Fallback
+                        prompt("העתק את הקישור:", window.location.origin + window.location.pathname + '?product=' + product.id);
+                    }
                 };
                 imgContainer.appendChild(shareBtn);
             }
@@ -329,7 +339,39 @@ document.addEventListener("DOMContentLoaded", () => {
             favBtn.title = "הוסף למועדפים";
             favBtn.onclick = (e) => {
                 e.stopPropagation();
-                toggleFavorite(product.id, favBtn);
+                // toggleFavorite(product.id, favBtn); // This function is missing in the file! 
+                // Restore it inline or logic
+                if (favorites.has(product.id)) {
+                    favorites.delete(product.id);
+                    favBtn.classList.remove("active");
+                    favBtn.innerHTML = '<img src="/images/icon_heart_empty.png" alt="Add to favorites">';
+                } else {
+                    favorites.add(product.id);
+                    favBtn.classList.add("active");
+                    favBtn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Remove from favorites">';
+
+                    // Animation
+                    const flyer = document.createElement('div');
+                    flyer.innerHTML = '❤️';
+                    flyer.style.position = 'fixed';
+                    flyer.style.left = e.clientX + 'px';
+                    flyer.style.top = e.clientY + 'px';
+                    flyer.style.fontSize = '20px';
+                    flyer.style.pointerEvents = 'none';
+                    flyer.style.zIndex = '9999';
+                    document.body.appendChild(flyer);
+
+                    flyer.animate([
+                        { transform: 'scale(1) translateY(0)', opacity: 1 },
+                        { transform: 'scale(1.5) translateY(-50px)', opacity: 0 }
+                    ], { duration: 800 }).onfinish = () => flyer.remove();
+                }
+                localStorage.setItem('catalog_favorites', JSON.stringify([...favorites]));
+
+                // If we are in favorites view, verify if we should remove the card
+                if (activeCategory === 'favorites' && !favorites.has(product.id)) {
+                    renderProducts();
+                }
             };
             imgContainer.appendChild(favBtn);
 
@@ -1155,23 +1197,4 @@ document.addEventListener("DOMContentLoaded", () => {
         printPdfBtn.onclick = printQuote;
     }
 
-    // --- Initialize ---
-    setupDate();
-    loadProducts().then(() => {
-        // Extract categories
-        const categories = [...new Set(PRODUCTS.map(p => p.category))].sort();
-        renderCategories(categories);
-        renderProducts();
-
-        // Check URL for ?q=... (deep link)
-        const urlParams = new URLSearchParams(window.location.search);
-        const q = urlParams.get('q');
-        if (q) {
-            openQuickViewFromId(q);
-        }
-    });
-
-    if (searchInput) {
-        searchInput.addEventListener("input", renderProducts);
-    }
 });
