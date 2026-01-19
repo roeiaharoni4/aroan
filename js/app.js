@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             // Ensure relative path from agent/ or catalog/ (both 1 level deep)
                             // CSV has "images/..."
                             if (!img.startsWith('../') && !img.startsWith('/')) {
-                                img = '../' + img;
+                                img = '/' + img;
                             }
                             // Encode URI for safe paths (spaces, hebrew)
                             img = encodeURI(img);
@@ -331,9 +331,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 openQuickView(product);
             };
             // Style locally or add to generic CSS
-            qvBtn.style.cssText = "position:absolute; top:10px; right:10px; background:white; border:none; border-radius:50%; width:35px; height:35px; box-shadow:0 2px 5px rgba(0,0,0,0.2); cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; opacity:0.8; transition: opacity 0.2s;";
-            qvBtn.onmouseover = () => qvBtn.style.opacity = "1";
-            qvBtn.onmouseout = () => qvBtn.style.opacity = "0.8";
+            // qvBtn.style.cssText = "position:absolute; top:10px; right:10px; background:white; border:none; border-radius:50%; width:35px; height:35px; box-shadow:0 2px 5px rgba(0,0,0,0.2); cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; opacity:0.8; transition: opacity 0.2s;";
+            // qvBtn.onmouseover = () => qvBtn.style.opacity = "1";
+            // qvBtn.onmouseout = () => qvBtn.style.opacity = "0.8";
 
             imgContainer.appendChild(img);
             imgContainer.appendChild(qvBtn);
