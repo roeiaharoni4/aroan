@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>קטלוג מוצרים - אהרוני שיווק והפצה</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="/js/lib/papaparse.min.js"></script>
+    <style>
+        :root {
+            --text-dark: #0e2036;
+            --accent-green: #c3dfb1;
+            --bg-beige: #eae9e2;
+        }
+
+        body {
+            font-family: 'Assistant', sans-serif;
+            background-color: var(--bg-beige);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* --- COVER PAGE --- */
+        .cover-page {
+            text-align: center;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            page-break-after: always;
+            border: 10px solid var(--accent-green);
+        }
+
+        .cover-logo {
+            max-width: 250px;
+            margin-bottom: 20px;
+        }
+
+        .cover-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0;
+        }
+
+        .cover-subtitle {
+            font-size: 1.5rem;
+            margin-top: 10px;
+            color: var(--text-dark);
+        }
+
+        .cover-contact {
+            margin-top: 50px;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        /* --- CATALOG GRID --- */
+        .category-header {
+            background-color: var(--text-dark);
+            color: var(--accent-green);
+            padding: 10px 20px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-right: 5px solid var(--accent-green);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            /* 4 per row */
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .product-img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+
+        .product-name {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            height: 3em;
+            /* limit height */
+            overflow: hidden;
+        }
+
+        .product-meta {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .product-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            background: var(--accent-green);
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+        }
+
+        /* Print Controls */
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            z-index: 999;
+        }
+
+        .btn {
+            background: var(--text-dark);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            border-radius: 5px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        @media print {
+            #controls {
+                display: none;
+            }
+
+            body {
+                background-color: white;
+            }
+
+            /* Save ink */
+            .product-card {
+                border: 1px solid #eee;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Controls -->
+    <div id="controls">
+        <button class="btn" onclick="window.print()">🖨️ הדפס / שמור כ-PDF</button>
+    </div>
+
+    <div class="container">
+        <!-- Cover Page -->
+        <div class="cover-page">
+            <img src="/images/logo.png" alt="לוגו" class="cover-logo">
+            <h1 class="cover-title">קטלוג מוצרים 2026</h1>
+            <div class="cover-subtitle">אהרוני שיווק והפצה</div>
+
+            <div class="cover-contact">
+                <strong>רועי אהרוני</strong><br>
+                052-6000158<br>
+                היצירה 16, אור יהודה
+            </div>
+        </div>
+
+        <!-- Catalog Content -->
+        <div id="catalog-content">
+            <div style="text-align:center; padding:50px;">טוען קטלוג...</div>
+        </div>
+    </div>
+
+    <script>
+        const DATA_SOURCE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBWFKxPdiKYdXiLDKnwiRb47xAJO-TzD4XmKybUEn4DeFzduPwdTEixsSMNL8rRzN0vCj9PYRGJlyH/pub?output=csv';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Use PIN check on load? Maybe just minimal protection via obfuscation or rely on parent page. 
+            // Let's load immediately.
+
+            Papa.parse(DATA_SOURCE_URL, {
+                download: true,
+                header: true,
+                complete: function (results) {
+                    renderCatalog(results.data);
+                }
+            });
+        });
+
+        function renderCatalog(data) {
+            const container = document.getElementById('catalog-content');
+            container.innerHTML = '';
+
+            // Group by Category
+            const categories = {};
+            data.forEach(item => {
+                if (!item.id || !item.name) return;
+
+                let cat = item.category || 'שונות';
+                if (!categories[cat]) categories[cat] = [];
+
+                // Fix image
+                let img = item.image;
+                if (img && !img.startsWith('http')) {
+                    if (!img.startsWith('/')) img = '/' + img;
+                    img = encodeURI(img);
+                }
+                item.image = img;
+
+                categories[cat].push(item);
+            });
+
+            // Render
+            Object.keys(categories).sort().forEach(cat => {
+                // Header
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.textContent = cat;
+                container.appendChild(header);
+
+                // Grid
+                const grid = document.createElement('div');
+                grid.className = 'products-grid';
+
+                categories[cat].forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.innerHTML = `
+                        <img src="${product.image || '/images/logo.png'}" class="product-img" onerror="this.style.opacity='0.2'">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-meta">${product.id} | ${product.unit}</div>
+                        <div class="product-price">${parseFloat(product.price).toFixed(2)} ₪</div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                container.appendChild(grid);
+            });
+        }
+    </script>
+</body>
+
+</html>

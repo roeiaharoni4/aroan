@@ -994,6 +994,46 @@ document.addEventListener("DOMContentLoaded", () => {
         openOrderModal();
     }
 
+    // --- Custom Product Logic ---
+    function addCustomProduct() {
+        const name = prompt("שם/תיאור המוצר:");
+        if (!name) return;
+
+        const priceStr = prompt("מחיר יחידה (₪):", "0");
+        const price = parseFloat(priceStr) || 0;
+
+        const qtyStr = prompt("כמות:", "1");
+        const qty = parseInt(qtyStr) || 1;
+
+        if (qty <= 0) return;
+
+        const customId = 'custom_' + Date.now();
+        const customProduct = {
+            id: customId,
+            name: name,
+            price: price,
+            unit: 'יח׳',
+            image: '',
+            category: 'כללי',
+            isCustom: true
+        };
+
+        PRODUCTS.push(customProduct);
+        cart[customId] = qty;
+
+        updateSummary();
+        showToast(`הוסף: ${name}`);
+
+        const fab = document.querySelector('.fab');
+        if (fab) {
+            fab.animate([
+                { transform: 'scale(1)' },
+                { transform: 'scale(1.3)' },
+                { transform: 'scale(1)' }
+            ], { duration: 200 });
+        }
+    }
+
     function openHistoryModal() {
         const modal = document.getElementById("history-modal");
         if (!modal) return;
@@ -1092,7 +1132,8 @@ document.addEventListener("DOMContentLoaded", () => {
         deleteQuote,
         openHistoryModal,
         closeHistoryModal,
-        printQuote
+        printQuote,
+        addCustomProduct
     };
 
     // Hook up buttons
