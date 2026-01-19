@@ -179,13 +179,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     PRODUCTS = results.data.map(item => {
                         let img = item.image;
                         if (img && !img.startsWith('http')) {
-                            // Ensure relative path from agent/ or catalog/ (both 1 level deep)
-                            // CSV has "images/..."
-                            if (!img.startsWith('../') && !img.startsWith('/')) {
-                                img = '/' + img;
+                            // Ensure absolute relative path
+                            if (img && !img.startsWith('/') && !img.startsWith('http')) {
+                                // Default to root relative
+                                img = '/' + img.replace(/^(\.\.\/)+/, '');
                             }
-                            // Encode URI for safe paths (spaces, hebrew)
-                            img = encodeURI(img);
+
+                            try {
+                                // Prevent double encoding if already encoded
+                                img = encodeURI(decodeURI(img));
+                            } catch (e) {
+                                img = encodeURI(img);
+                            }
                         }
                         return {
                             id: item.id,
@@ -317,8 +322,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // If all else fails
-                this.style.display = 'none';
-                imgContainer.textContent = 'אין תמונה';
+                // this.style.display = 'none';
+                // imgContainer.textContent = 'אין תמונה';
+                this.style.width = '50px';
+                this.style.height = '50px';
+                this.src = '/images/logo.png'; // Fallback to logo to indicate broken path
             };
 
             // Quick View Trigger
