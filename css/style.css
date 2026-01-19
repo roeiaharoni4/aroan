@@ -28,6 +28,25 @@
     --header-height: 70px;
 }
 
+/* Fix for giant icons in Agent view (since site.css is missing there) */
+.fav-btn img,
+.qv-btn-trigger img,
+.share-btn img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    display: block;
+    /* Removes bottom spacing */
+}
+
+.qv-btn-trigger,
+.fav-btn,
+.share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 [data-theme="dark"] {
     --bg-body: #121212;
     --bg-surface: #1E1E1E;
