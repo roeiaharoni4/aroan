@@ -24,7 +24,6 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/css/site.css">
     <link rel="stylesheet" href="/css/style.css">
 
     <!-- Scripts -->
@@ -37,7 +36,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js"></script>
-    <script src="/js/app.js?v=4" defer></script>
+    <script src="/js/app.js?v=3" defer></script>
 </head>
 
 <body>
@@ -77,9 +76,6 @@
 
             <div class="search-container">
                 <input type="text" id="search-input" class="search-input" placeholder="חיפוש מוצר...">
-                <button onclick="window.APP.addCustomProduct()" class="btn btn-outline"
-                    style="margin-right:10px; min-width:auto; padding:0 15px; font-size:1.2rem;"
-                    title="הוסף מוצר כללי">➕</button>
             </div>
 
             <nav class="categories-nav" id="categories">
@@ -130,7 +126,6 @@
                     <table class="order-table">
                         <thead>
                             <tr>
-                                <th>תמונה</th>
                                 <th>מק״ט</th>
                                 <th>שם מוצר</th>
                                 <th>קטגוריה</th>
@@ -171,30 +166,7 @@
                         style="background:var(--accent); color:white; min-width: 140px; display:none;">
                         🖨️ הדפס הצעת מחיר (PDF)
                     </button>
-                    <button id="history-btn" class="btn btn-outline" onclick="window.APP.openHistoryModal()">
-                        📜 היסטוריה
-                    </button>
-                    <a href="/catalog-print.html" target="_blank" class="btn btn-outline"
-                        style="text-decoration:none; display:flex; align-items:center; border-color:var(--text-main);">
-                        📗 קטלוג מלא להדפסה
-                    </a>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- History Modal -->
-    <div class="modal-overlay" id="history-modal">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h2 class="modal-title">היסטוריית הצעות מחיר</h2>
-                <button onclick="window.APP.closeHistoryModal()" class="btn-close">&times;</button>
-            </div>
-            <div class="modal-body" id="history-list" style="max-height: 60vh; overflow-y: auto;">
-                <!-- Injected by JS -->
-            </div>
-            <div class="modal-footer">
-                <button onclick="window.APP.closeHistoryModal()" class="btn btn-outline">סגור</button>
             </div>
         </div>
     </div>

@@ -41,7 +41,10 @@
             justify-content: center;
             align-items: center;
             page-break-after: always;
+            break-after: page;
             border: 10px solid var(--accent-green);
+            background-color: var(--bg-beige);
+            /* Ensure cover has bg */
         }
 
         .cover-logo {
@@ -68,16 +71,64 @@
             line-height: 1.6;
         }
 
+        /* --- TOC --- */
+        .toc-page {
+            break-after: page;
+            page-break-after: always;
+            padding: 40px 0;
+            min-height: 80vh;
+            /* Ensure it takes a full page */
+        }
+
+        .toc-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            color: var(--text-dark);
+        }
+
+        .toc-list {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: bottom;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            color: var(--text-dark);
+            text-decoration: none;
+            border-bottom: 1px dotted #ccc;
+            padding-bottom: 5px;
+        }
+
+        .toc-name {
+            flex: 1;
+            text-align: right;
+        }
+
         /* --- CATALOG GRID --- */
+        .category-section {
+            break-before: page;
+            page-break-before: always;
+            padding-top: 20px;
+            break-inside: avoid-page;
+            /* Try to keep start together */
+        }
+
         .category-header {
             background-color: var(--text-dark);
             color: var(--accent-green);
             padding: 10px 20px;
             font-size: 1.5rem;
             font-weight: 600;
-            margin-top: 40px;
             margin-bottom: 20px;
             border-right: 5px solid var(--accent-green);
+
+            /* Prevent orphan header */
+            break-after: avoid;
+            page-break-after: avoid;
         }
 
         .products-grid {
@@ -109,7 +160,6 @@
             font-weight: 600;
             margin-bottom: 5px;
             height: 3em;
-            /* limit height */
             overflow: hidden;
         }
 
@@ -119,14 +169,21 @@
             margin-bottom: 5px;
         }
 
-        .product-price {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-dark);
-            background: var(--accent-green);
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 4px;
+        /* Repeating styling */
+        .page-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            text-align: center;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+            font-size: 0.8rem;
+            color: #999;
+            background: white;
+            /* Footer can be white or beige, kept white for contrast */
+            z-index: 100;
         }
 
         /* Print Controls */
@@ -152,22 +209,26 @@
             border-radius: 5px;
         }
 
-        .btn:hover {
-            opacity: 0.9;
-        }
-
         @media print {
             #controls {
                 display: none;
             }
 
+            /* IMPORTANT: We WANT background color */
             body {
-                background-color: white;
+                background-color: var(--bg-beige) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
-            /* Save ink */
             .product-card {
-                border: 1px solid #eee;
+                border: 1px solid #ddd;
+            }
+
+            /* Hide browser headers/footers if possible */
+            @page {
+                margin-top: 10mm;
+                margin-bottom: 15mm;
             }
         }
     </style>
@@ -178,6 +239,14 @@
     <!-- Controls -->
     <div id="controls">
         <button class="btn" onclick="window.print()">🖨️ הדפס / שמור כ-PDF</button>
+        <div style="font-size:0.8rem; margin-top:10px; color:red;">
+            * שים לב: בחלון ההדפסה יש לסמן "Background graphics"
+        </div>
+    </div>
+
+    <!-- Repeating Page Footer -->
+    <div class="page-footer">
+        אהרוני שיווק והפצה | קטלוג 2026 | טל: 052-6000158
     </div>
 
     <div class="container">
@@ -194,6 +263,12 @@
             </div>
         </div>
 
+        <!-- Table of Contents -->
+        <div class="toc-page" id="toc-page" style="display:none;">
+            <h2 class="toc-title">תוכן עניינים</h2>
+            <div class="toc-list" id="toc-list"></div>
+        </div>
+
         <!-- Catalog Content -->
         <div id="catalog-content">
             <div style="text-align:center; padding:50px;">טוען קטלוג...</div>
@@ -204,9 +279,6 @@
         const DATA_SOURCE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBWFKxPdiKYdXiLDKnwiRb47xAJO-TzD4XmKybUEn4DeFzduPwdTEixsSMNL8rRzN0vCj9PYRGJlyH/pub?output=csv';
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Use PIN check on load? Maybe just minimal protection via obfuscation or rely on parent page. 
-            // Let's load immediately.
-
             Papa.parse(DATA_SOURCE_URL, {
                 download: true,
                 header: true,
@@ -218,7 +290,11 @@
 
         function renderCatalog(data) {
             const container = document.getElementById('catalog-content');
+            const tocPage = document.getElementById('toc-page');
+            const tocList = document.getElementById('toc-list');
+
             container.innerHTML = '';
+            tocList.innerHTML = '';
 
             // Group by Category
             const categories = {};
@@ -239,11 +315,31 @@
                 categories[cat].push(item);
             });
 
-            // Render
-            Object.keys(categories).sort().forEach(cat => {
+            const sortedCats = Object.keys(categories).sort();
+
+            // Build TOC
+            if (sortedCats.length > 0) {
+                tocPage.style.display = 'block';
+                sortedCats.forEach(cat => {
+                    const safeId = 'cat-' + cat.replace(/\s+/g, '-');
+                    const item = document.createElement('a');
+                    item.className = 'toc-item';
+                    item.href = '#' + safeId;
+                    item.innerHTML = `
+                        <span class="toc-name">${cat}</span>
+                    `;
+                    tocList.appendChild(item);
+                });
+            }
+
+            // Render Categories
+            sortedCats.forEach(cat => {
+                const safeId = 'cat-' + cat.replace(/\s+/g, '-');
+
                 // Section Wrapper
                 const section = document.createElement('div');
                 section.className = 'category-section';
+                section.id = safeId; // Anchor target
 
                 // Header
                 const header = document.createElement('div');

@@ -178,16 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Process and validate data
                     PRODUCTS = results.data.map(item => {
                         let img = item.image;
-                        if (img && !img.startsWith('http')) {
-                            // Ensure starts with /
-                            if (!img.startsWith('/')) {
-                                img = '/' + img;
-                            }
-                            // Encode URI components but keep slashes
-                            // Actually encodeURI() does exactly this (keeps / : etc)
-                            // But file system might need un-encoded? No, web requests need encoded.
-                            // Let's safe encode only if it contains Hebrew or spaces
-                            img = encodeURI(img);
+                        if (img && !img.startsWith('http') && !img.startsWith('/')) {
+                            img = '/' + img;
                         }
                         return {
                             id: item.id,
@@ -267,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        filtered.forEach((product, index) => {
+        filtered.forEach(product => {
             const card = document.createElement("div");
             card.className = "product-card";
             card.id = `product-${product.id}`;
@@ -277,14 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
             imgContainer.className = "card-img-container";
             const img = document.createElement("img");
             img.className = "product-img";
-
-            // Optimization: Eager load first 4 images
-            if (index < 4) {
-                img.loading = "eager";
-                img.fetchPriority = "high";
-            } else {
-                img.loading = "lazy";
-            }
+            img.loading = "lazy"; // Performance optimization
             img.decoding = "async";
             img.src = product.image || "#";
             img.alt = product.name;
@@ -572,20 +557,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 td.textContent = text;
                 return td;
             };
-
-            // Image
-            const tdImage = document.createElement("td");
-            tdImage.style.textAlign = "center";
-            if (product.image) {
-                const img = document.createElement("img");
-                img.src = product.image;
-                img.alt = product.name;
-                img.style.width = "40px";
-                img.style.height = "40px";
-                img.style.objectFit = "contain";
-                tdImage.appendChild(img);
-            }
-            row.appendChild(tdImage);
 
             row.appendChild(createCell(product.id));
             row.appendChild(createCell(product.name));
@@ -928,217 +899,5 @@ document.addEventListener("DOMContentLoaded", () => {
         toast.textContent = message;
         toast.classList.add("show");
         setTimeout(() => toast.classList.remove("show"), 3000);
-    }
-    // --- Quote History Management ---
-    const STORAGE_KEY_HISTORY = 'agent_quote_history';
-
-    function getQuoteHistory() {
-        const historyJson = localStorage.getItem(STORAGE_KEY_HISTORY);
-        return historyJson ? JSON.parse(historyJson) : [];
-    }
-
-    function saveQuote(customerName = "לקוח כללי") {
-        const currentCartItems = Object.entries(cart).map(([id, qty]) => {
-            const product = PRODUCTS.find(p => p.id === id);
-            return {
-                id: id,
-                name: product ? product.name : 'Unknown',
-                price: product ? product.price : 0,
-                unit: product ? product.unit : 'יח׳',
-                image: product ? product.image : '',
-                quantity: qty
-            };
-        });
-
-        if (currentCartItems.length === 0) {
-            alert("העגלה ריקה. אין מה לשמור.");
-            return null;
-        }
-
-        const newQuote = {
-            id: 'Q-' + Date.now(),
-            date: new Date().toISOString().split('T')[0],
-            customer: customerName,
-            items: currentCartItems,
-            total: currentCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-        };
-
-        const history = getQuoteHistory();
-        history.unshift(newQuote); // Add to top
-        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
-
-        return newQuote;
-    }
-
-    function deleteQuote(quoteId) {
-        if (!confirm("האם למחוק את ההצעה מההיסטוריה?")) return;
-        const history = getQuoteHistory().filter(q => q.id !== quoteId);
-        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
-        renderHistoryList();
-    }
-
-    function loadQuote(quoteId) {
-        const history = getQuoteHistory();
-        const quote = history.find(q => q.id === quoteId);
-        if (!quote) return;
-
-        if (Object.keys(cart).length > 0 && !confirm("טעינת הצעה תמחק את העגלה הנוכחית. להמשיך?")) return;
-
-        Object.keys(cart).forEach(k => delete cart[k]); // Clear
-        quote.items.forEach(item => {
-            cart[item.id] = item.quantity;
-        });
-
-        updateFab();
-        closeHistoryModal();
-        openOrderModal();
-    }
-
-    // --- Custom Product Logic ---
-    function addCustomProduct() {
-        const name = prompt("שם/תיאור המוצר:");
-        if (!name) return;
-
-        const priceStr = prompt("מחיר יחידה (₪):", "0");
-        const price = parseFloat(priceStr) || 0;
-
-        const qtyStr = prompt("כמות:", "1");
-        const qty = parseInt(qtyStr) || 1;
-
-        if (qty <= 0) return;
-
-        const customId = 'custom_' + Date.now();
-        const customProduct = {
-            id: customId,
-            name: name,
-            price: price,
-            unit: 'יח׳',
-            image: '',
-            category: 'כללי',
-            isCustom: true
-        };
-
-        PRODUCTS.push(customProduct);
-        cart[customId] = qty;
-
-        updateSummary();
-        showToast(`הוסף: ${name}`);
-
-        const fab = document.querySelector('.fab');
-        if (fab) {
-            fab.animate([
-                { transform: 'scale(1)' },
-                { transform: 'scale(1.3)' },
-                { transform: 'scale(1)' }
-            ], { duration: 200 });
-        }
-    }
-
-    function openHistoryModal() {
-        const modal = document.getElementById("history-modal");
-        if (!modal) return;
-        renderHistoryList();
-        modal.classList.add("open");
-    }
-
-    function closeHistoryModal() {
-        const modal = document.getElementById("history-modal");
-        if (modal) modal.classList.remove("open");
-    }
-
-    function renderHistoryList() {
-        const listEl = document.getElementById("history-list");
-        if (!listEl) return;
-
-        const history = getQuoteHistory();
-        if (history.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">אין הצעות שמורות.</div>';
-            return;
-        }
-
-        listEl.innerHTML = history.map(q => `
-            <div class="history-item" style="border-bottom:1px solid #eee; padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="font-weight:bold;">${q.date} | ${q.customer}</div>
-                    <div style="font-size:0.9rem; color:#666;">פריטים: ${q.items.length} | סה״כ: ${q.total.toFixed(2)} ₪</div>
-                    <div style="font-size:0.8rem; color:#ccc;">${q.id}</div>
-                </div>
-                <div style="display:flex; gap:5px;">
-                    <button onclick="window.APP.loadQuote('${q.id}')" class="btn btn-outline" style="padding:5px 10px; font-size:0.9rem;">טען</button>
-                    <button onclick="window.APP.deleteQuote('${q.id}')" class="btn btn-danger" style="padding:5px 10px; font-size:0.9rem;">&times;</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // --- Print PDF Logic ---
-    function printQuote() {
-        const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", "לקוח כללי");
-        if (customerName === null) return;
-
-        const savedQuote = saveQuote(customerName);
-        if (!savedQuote) return;
-
-        const modalBody = document.querySelector("#order-modal .modal-body");
-
-        const headerDiv = document.createElement("div");
-        headerDiv.className = "print-header";
-        headerDiv.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; text-align:right;">
-                <div>
-                    <img src="/images/logo.png" alt="לוגו אהרוני" style="height: 60px; margin-bottom: 10px;">
-                    <h1 style="margin:0; font-size:1.5rem;">אהרוני שיווק והפצה</h1>
-                    <div>סוכן: רועי אהרוני</div>
-                    <div>כתובת: היצירה 16, אור יהודה</div>
-                    <div>טלפון: 052-6000158</div>
-                </div>
-                <div style="text-align:left;">
-                    <h2>הצעת מחיר / הזמנה</h2>
-                    <div>מספר: ${savedQuote.id}</div>
-                    <div>תאריך: ${savedQuote.date}</div>
-                    <div>לכבוד: <strong>${savedQuote.customer}</strong></div>
-                </div>
-            </div>
-            <hr style="margin-top:20px; border-color:#000;">
-        `;
-
-        const footerDiv = document.createElement("div");
-        footerDiv.className = "print-footer";
-        footerDiv.innerHTML = `
-            <div style="margin-top:40px; border-top:2px solid #000; padding-top:10px; display:flex; justify-content:space-between;">
-                <div class="signature-box">חתימת המזמין</div>
-                <div class="signature-box" style="float:left;">חתימת סוכן/מאשר</div>
-            </div>
-            <div style="text-align:center; font-size:0.8rem; margin-top:20px;">
-                ט.ל.ח | המחירים אינם כוללים מע״מ | תוקף ההצעה: 14 יום
-            </div>
-        `;
-
-        modalBody.insertBefore(headerDiv, modalBody.firstChild);
-        modalBody.appendChild(footerDiv);
-
-        window.print();
-
-        setTimeout(() => {
-            if (headerDiv.parentNode) headerDiv.parentNode.removeChild(headerDiv);
-            if (footerDiv.parentNode) footerDiv.parentNode.removeChild(footerDiv);
-        }, 1000);
-    }
-
-    // Expose functions globally
-    window.APP = {
-        saveQuote,
-        loadQuote,
-        deleteQuote,
-        openHistoryModal,
-        closeHistoryModal,
-        printQuote,
-        addCustomProduct
-    };
-
-    // Hook up buttons
-    if (printPdfBtn) {
-        printPdfBtn.style.display = "inline-flex";
-        printPdfBtn.onclick = printQuote;
     }
 });
