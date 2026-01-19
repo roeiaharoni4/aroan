@@ -183,8 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (!img.startsWith('/')) {
                                 img = '/' + img;
                             }
-                            // Encode URI for safe paths (spaces, hebrew)
-                            img = encodeURI(img);
+                            // Removing encodeURI as it might be double-encoding or causing issues on live server
+                            // img = encodeURI(img);
                         }
                         return {
                             id: item.id,
