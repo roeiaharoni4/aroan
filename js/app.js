@@ -696,10 +696,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Image
             const tdImage = document.createElement("td");
             tdImage.style.textAlign = "center";
-            if (item.image) {
+            if (product.image) {
                 const img = document.createElement("img");
-                img.src = item.image;
-                img.alt = item.name;
+                img.src = product.image;
+                img.alt = product.name;
                 img.style.width = "40px";
                 img.style.height = "40px";
                 img.style.objectFit = "contain";
@@ -707,7 +707,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             row.appendChild(tdImage);
 
-            row.appendChild(createCell(item.id));
+            row.appendChild(createCell(product.id));
             row.appendChild(createCell(product.name));
             row.appendChild(createCell(product.category));
 
