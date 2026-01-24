@@ -304,11 +304,18 @@
                 let cat = item.category || 'שונות';
                 if (!categories[cat]) categories[cat] = [];
 
-                // Fix image
+                // Fix image path (Match app.js v12 logic)
                 let img = item.image;
                 if (img && !img.startsWith('http')) {
-                    if (!img.startsWith('/')) img = '/' + img;
-                    img = encodeURI(img);
+                    // Force Absolute Path
+                    let cleanPath = img.replace(/^(\.\.\/)+/, '').replace(/^\/+/, '');
+                    img = '/' + cleanPath;
+
+                    try {
+                        img = encodeURI(decodeURI(img));
+                    } catch (e) {
+                        img = encodeURI(img);
+                    }
                 }
                 item.image = img;
 
