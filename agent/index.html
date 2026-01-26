@@ -36,7 +36,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js"></script>
-    <script src="/js/app.js?v=12" defer></script>
+    <script src="/js/app.js?v=13" defer></script>
 </head>
 
 <body>
@@ -159,6 +159,10 @@
 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
                     <button id="clear-cart-btn" class="btn btn-danger">נקה הזמנה</button>
+                    <button id="share-link-btn" class="btn btn-outline" style="border-color: #00897b; color: #00897b;"
+                        onclick="window.APP.shareCartLink()">
+                        🔗 שתף קישור (סנכרון)
+                    </button>
                     <button id="send-email" class="btn btn-outline" style="min-width: 120px;">
                         ✉️ שלח במייל
                     </button>

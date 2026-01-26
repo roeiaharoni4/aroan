@@ -96,6 +96,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const categoryParam = urlParams.get('category');
         const searchParam = urlParams.get('search');
+        const cartParam = urlParams.get('cart');
+
+        // Restore Cart from URL
+        if (cartParam) {
+            try {
+                // Format: id:qty,id:qty
+                const items = cartParam.split(',');
+                items.forEach(item => {
+                    const [id, qty] = item.split(':');
+                    if (id && qty) {
+                        cart[id] = parseInt(qty, 10);
+                    }
+                });
+                console.log("Restored cart from URL:", cart);
+                updateSummary();
+            } catch (e) {
+                console.error("Failed to parse cart param", e);
+            }
+        }
 
         if (searchParam) {
             if (searchInput) searchInput.value = searchParam;
@@ -1261,6 +1280,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         }, 1000);
     }
 
+    function shareCartLink() {
+        if (Object.keys(cart).length === 0) {
+            alert("העגלה ריקה. אין מה לשתף.");
+            return;
+        }
+
+        // Serialize
+        const param = Object.entries(cart)
+            .map(([id, qty]) => `${id}:${qty}`)
+            .join(',');
+
+        const url = `${window.location.origin}${window.location.pathname}?cart=${param}`;
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert("הקישור הועתק! ניתן לשלוח אותו בוואטסאפ ולפתוח במחשב.");
+            }).catch(err => {
+                prompt("העתק את הקישור:", url);
+            });
+        } else {
+            prompt("העתק את הקישור:", url);
+        }
+    }
+
     // Expose functions globally
     window.APP = {
         saveQuote,
@@ -1269,7 +1312,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         openHistoryModal,
         closeHistoryModal,
         printQuote,
-        addCustomProduct
+        addCustomProduct,
+        shareCartLink
     };
 
     // Hook up buttons

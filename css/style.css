@@ -637,8 +637,10 @@ button {
 @media print {
     body {
         background: white;
-        height: 100vh;
-        overflow: hidden;
+        height: auto;
+        overflow: visible;
+        margin: 0;
+        padding: 0;
     }
 
     /* Hide Everything NOT in the modal */
@@ -655,7 +657,8 @@ button {
         display: block;
         opacity: 1;
         width: 100%;
-        height: 100%;
+        height: auto;
+        overflow: visible;
     }
 
     .modal-content {
@@ -665,10 +668,12 @@ button {
         height: auto;
         border-radius: 0;
         animation: none;
+        overflow: visible;
     }
 
     .modal-body {
         overflow: visible;
+        height: auto;
     }
 
     /* Hide Controls in Print */
