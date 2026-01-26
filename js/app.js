@@ -1273,17 +1273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
         `).join('');
     }
-                    <div style="font-weight:bold;">${q.date} | ${q.customer}</div>
-                    <div style="font-size:0.9rem; color:#666;">פריטים: ${q.items.length} | סה״כ: ${q.total.toFixed(2)} ₪</div>
-                    <div style="font-size:0.8rem; color:#ccc;">${q.id}</div>
-                </div >
-        <div style="display:flex; gap:5px;">
-            <button onclick="window.APP.loadQuote('${q.id}')" class="btn btn-outline" style="padding:5px 10px; font-size:0.9rem;">טען</button>
-            <button onclick="window.APP.deleteQuote('${q.id}')" class="btn btn-danger" style="padding:5px 10px; font-size:0.9rem;">&times;</button>
-        </div>
-            </div >
-        `).join('');
-    }
+
 
     // --- Print PDF Logic ---
     function printQuote() {
@@ -1316,9 +1306,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         <hr style="margin-top:20px; border-color:#000;">
             `;
 
-            const footerDiv = document.createElement("div");
-            footerDiv.className = "print-footer";
-            footerDiv.innerHTML = `
+        const footerDiv = document.createElement("div");
+        footerDiv.className = "print-footer";
+        footerDiv.innerHTML = `
             <div style="margin-top:40px; border-top:2px solid #000; padding-top:10px; display:flex; justify-content:space-between;">
                 <div class="signature-box">חתימת המזמין</div>
                 <div class="signature-box" style="float:left;">חתימת סוכן/מאשר</div>
@@ -1328,10 +1318,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
             `;
 
-            modalBody.insertBefore(headerDiv, modalBody.firstChild);
-            modalBody.appendChild(footerDiv);
+        modalBody.insertBefore(headerDiv, modalBody.firstChild);
+        modalBody.appendChild(footerDiv);
 
-            window.print();
+        window.print();
 
         setTimeout(() => {
             if (headerDiv.parentNode) headerDiv.parentNode.removeChild(headerDiv);
@@ -1339,46 +1329,46 @@ document.addEventListener("DOMContentLoaded", async () => {
         }, 1000);
     }
 
-            function shareCartLink() {
+    function shareCartLink() {
         if (Object.keys(cart).length === 0) {
-                alert("העגלה ריקה. אין מה לשתף.");
+            alert("העגלה ריקה. אין מה לשתף.");
             return;
         }
 
-            // Serialize
-            const param = Object.entries(cart)
+        // Serialize
+        const param = Object.entries(cart)
             .map(([id, qty]) => `${id}:${qty}`)
             .join(',');
 
-            const url = `${window.location.origin}${window.location.pathname}?cart=${param}`;
+        const url = `${window.location.origin}${window.location.pathname}?cart=${param}`;
 
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert("הקישור הועתק! ניתן לשלוח אותו בוואטסאפ ולפתוח במחשב.");
-                }).catch(err => {
-                    prompt("העתק את הקישור:", url);
-                });
-        } else {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert("הקישור הועתק! ניתן לשלוח אותו בוואטסאפ ולפתוח במחשב.");
+            }).catch(err => {
                 prompt("העתק את הקישור:", url);
+            });
+        } else {
+            prompt("העתק את הקישור:", url);
         }
     }
 
-            // Expose functions globally
-            window.APP = {
-                saveQuote,
-                loadQuote,
-                deleteQuote,
-                openHistoryModal,
-                closeHistoryModal,
-                printQuote,
-                addCustomProduct,
-                shareCartLink
-            };
+    // Expose functions globally
+    window.APP = {
+        saveQuote,
+        loadQuote,
+        deleteQuote,
+        openHistoryModal,
+        closeHistoryModal,
+        printQuote,
+        addCustomProduct,
+        shareCartLink
+    };
 
-            // Hook up buttons
-            if (printPdfBtn) {
-                printPdfBtn.style.display = "inline-flex";
-            printPdfBtn.onclick = printQuote;
+    // Hook up buttons
+    if (printPdfBtn) {
+        printPdfBtn.style.display = "inline-flex";
+        printPdfBtn.onclick = printQuote;
     }
 
 });
