@@ -1069,15 +1069,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         setTimeout(() => toast.classList.remove("show"), 3000);
     }
 
-    // --- Quote History Management ---
-    const STORAGE_KEY_HISTORY = 'agent_quote_history';
+    // --- Quote History Management (Cloud API) ---
+    const API_URL = "https://script.google.com/macros/s/AKfycbyasqqt8uTERc__hWjJTW59M6z2mNN-VEUksh5PUT94h1EAG5xwnyCIYzX0u7jmnNRZ/exec";
+    const API_PASSWORD = "Aroam2026";
 
-    function getQuoteHistory() {
-        const historyJson = localStorage.getItem(STORAGE_KEY_HISTORY);
-        return historyJson ? JSON.parse(historyJson) : [];
+    async function getQuoteHistory() {
+        try {
+            const res = await fetch(`${API_URL}?action=get&password=${API_PASSWORD}`);
+            const data = await res.json();
+            if (data.error) {
+                console.error("API Error:", data.error);
+                return [];
+            }
+            return data;
+        } catch (e) {
+            console.error("Failed to fetch history:", e);
+            showToast("שגיאה בטעינת היסטוריה");
+            return [];
+        }
     }
 
-    function saveQuote(customerName = "לקוח כללי") {
+    async function saveQuote(customerName = "לקוח כללי") {
         const currentCartItems = Object.entries(cart).map(([id, qty]) => {
             const product = PRODUCTS.find(p => p.id === id);
             return {
@@ -1095,6 +1107,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             return null;
         }
 
+        showToast("שומר הצעה בענן...");
+
         const newQuote = {
             id: 'Q-' + Date.now(),
             date: new Date().toISOString().split('T')[0],
@@ -1103,24 +1117,53 @@ document.addEventListener("DOMContentLoaded", async () => {
             total: currentCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
         };
 
-        const history = getQuoteHistory();
-        history.unshift(newQuote); // Add to top
-        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
+        try {
+            const res = await fetch(`${API_URL}?action=save&password=${API_PASSWORD}`, {
+                method: 'POST',
+                body: JSON.stringify(newQuote)
+            });
+            const data = await res.json();
 
-        return newQuote;
+            if (data.success) {
+                showToast("ההצעה נשמרה בענן!");
+                return newQuote;
+            } else {
+                alert("שגיאה בשמירה: " + (data.error || "Unknown"));
+                return null;
+            }
+        } catch (e) {
+            console.error(e);
+            alert("תקלת תקשורת בשמירה");
+            return null;
+        }
     }
 
-    function deleteQuote(quoteId) {
-        if (!confirm("האם למחוק את ההצעה מההיסטוריה?")) return;
-        const history = getQuoteHistory().filter(q => q.id !== quoteId);
-        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
-        renderHistoryList();
+    async function deleteQuote(quoteId) {
+        if (!confirm("האם למחוק את ההצעה מהענן לצמיתות?")) return;
+
+        showToast("מוחק...");
+        try {
+            const res = await fetch(`${API_URL}?action=delete&id=${quoteId}&password=${API_PASSWORD}`);
+            const data = await res.json();
+            if (data.success) {
+                showToast("נמחק בהצלחה");
+                openHistoryModal(); // Refresh
+            } else {
+                alert("שגיאה במחיקה: " + data.error);
+            }
+        } catch (e) {
+            alert("תקלת תקשורת במחיקה");
+        }
     }
 
-    function loadQuote(quoteId) {
-        const history = getQuoteHistory();
+    async function loadQuote(quoteId) {
+        showToast("טוען הצעה...");
+        const history = await getQuoteHistory();
         const quote = history.find(q => q.id === quoteId);
-        if (!quote) return;
+        if (!quote) {
+            alert("ההצעה לא נמצאה");
+            return;
+        }
 
         if (Object.keys(cart).length > 0 && !confirm("טעינת הצעה תמחק את העגלה הנוכחית. להמשיך?")) return;
 
@@ -1146,6 +1189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateFab();
         closeHistoryModal();
         openOrderModal();
+        showToast("ההצעה נטענה בהצלחה");
     }
 
     // --- Custom Product Logic ---
@@ -1201,11 +1245,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (modal) modal.classList.remove("open");
     }
 
-    function renderHistoryList() {
+    async function renderHistoryList() {
         const listEl = document.getElementById("history-list");
         if (!listEl) return;
 
-        const history = getQuoteHistory();
+        listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">טוען היסטוריה מהענן...</div>';
+
+        const history = await getQuoteHistory();
         if (history.length === 0) {
             listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">אין הצעות שמורות.</div>';
             return;
@@ -1214,15 +1260,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         listEl.innerHTML = history.map(q => `
             <div class="history-item" style="border-bottom:1px solid #eee; padding:10px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
+                    <div style="font-weight:bold;">${q.customer || 'לקוח כללי'}</div>
+                    <div style="font-size:0.85rem; color:#666;">${q.date} | ${q.items.length} פריטים</div>
+                </div>
+                <div style="text-align:left;">
+                    <div style="font-weight:bold; color:var(--primary);">${q.total.toFixed(2)} ₪</div>
+                    <div style="margin-top:5px;">
+                        <button class="btn btn-sm btn-outline" onclick="window.APP.loadQuote('${q.id}')">טען</button>
+                        <button class="btn btn-sm btn-danger" onclick="window.APP.deleteQuote('${q.id}')">&times;</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
                     <div style="font-weight:bold;">${q.date} | ${q.customer}</div>
                     <div style="font-size:0.9rem; color:#666;">פריטים: ${q.items.length} | סה״כ: ${q.total.toFixed(2)} ₪</div>
                     <div style="font-size:0.8rem; color:#ccc;">${q.id}</div>
-                </div>
-                <div style="display:flex; gap:5px;">
-                    <button onclick="window.APP.loadQuote('${q.id}')" class="btn btn-outline" style="padding:5px 10px; font-size:0.9rem;">טען</button>
-                    <button onclick="window.APP.deleteQuote('${q.id}')" class="btn btn-danger" style="padding:5px 10px; font-size:0.9rem;">&times;</button>
-                </div>
-            </div>
+                </div >
+        <div style="display:flex; gap:5px;">
+            <button onclick="window.APP.loadQuote('${q.id}')" class="btn btn-outline" style="padding:5px 10px; font-size:0.9rem;">טען</button>
+            <button onclick="window.APP.deleteQuote('${q.id}')" class="btn btn-danger" style="padding:5px 10px; font-size:0.9rem;">&times;</button>
+        </div>
+            </div >
         `).join('');
     }
 
@@ -1239,7 +1298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const headerDiv = document.createElement("div");
         headerDiv.className = "print-header";
         headerDiv.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; text-align:right;">
+        < div style = "display:flex; justify-content:space-between; align-items:flex-start; text-align:right;" >
                 <div>
                     <img src="/images/logo.png" alt="לוגו אהרוני" style="height: 60px; margin-bottom: 10px;">
                     <h1 style="margin:0; font-size:1.5rem;">אהרוני שיווק והפצה</h1>
@@ -1253,13 +1312,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <div>תאריך: ${savedQuote.date}</div>
                     <div>לכבוד: <strong>${savedQuote.customer}</strong></div>
                 </div>
-            </div>
-            <hr style="margin-top:20px; border-color:#000;">
-        `;
+            </div >
+        <hr style="margin-top:20px; border-color:#000;">
+            `;
 
-        const footerDiv = document.createElement("div");
-        footerDiv.className = "print-footer";
-        footerDiv.innerHTML = `
+            const footerDiv = document.createElement("div");
+            footerDiv.className = "print-footer";
+            footerDiv.innerHTML = `
             <div style="margin-top:40px; border-top:2px solid #000; padding-top:10px; display:flex; justify-content:space-between;">
                 <div class="signature-box">חתימת המזמין</div>
                 <div class="signature-box" style="float:left;">חתימת סוכן/מאשר</div>
@@ -1267,12 +1326,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div style="text-align:center; font-size:0.8rem; margin-top:20px;">
                 ט.ל.ח | המחירים אינם כוללים מע״מ | תוקף ההצעה: 14 יום
             </div>
-        `;
+            `;
 
-        modalBody.insertBefore(headerDiv, modalBody.firstChild);
-        modalBody.appendChild(footerDiv);
+            modalBody.insertBefore(headerDiv, modalBody.firstChild);
+            modalBody.appendChild(footerDiv);
 
-        window.print();
+            window.print();
 
         setTimeout(() => {
             if (headerDiv.parentNode) headerDiv.parentNode.removeChild(headerDiv);
@@ -1280,46 +1339,46 @@ document.addEventListener("DOMContentLoaded", async () => {
         }, 1000);
     }
 
-    function shareCartLink() {
+            function shareCartLink() {
         if (Object.keys(cart).length === 0) {
-            alert("העגלה ריקה. אין מה לשתף.");
+                alert("העגלה ריקה. אין מה לשתף.");
             return;
         }
 
-        // Serialize
-        const param = Object.entries(cart)
+            // Serialize
+            const param = Object.entries(cart)
             .map(([id, qty]) => `${id}:${qty}`)
             .join(',');
 
-        const url = `${window.location.origin}${window.location.pathname}?cart=${param}`;
+            const url = `${window.location.origin}${window.location.pathname}?cart=${param}`;
 
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(() => {
-                alert("הקישור הועתק! ניתן לשלוח אותו בוואטסאפ ולפתוח במחשב.");
-            }).catch(err => {
-                prompt("העתק את הקישור:", url);
-            });
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert("הקישור הועתק! ניתן לשלוח אותו בוואטסאפ ולפתוח במחשב.");
+                }).catch(err => {
+                    prompt("העתק את הקישור:", url);
+                });
         } else {
-            prompt("העתק את הקישור:", url);
+                prompt("העתק את הקישור:", url);
         }
     }
 
-    // Expose functions globally
-    window.APP = {
-        saveQuote,
-        loadQuote,
-        deleteQuote,
-        openHistoryModal,
-        closeHistoryModal,
-        printQuote,
-        addCustomProduct,
-        shareCartLink
-    };
+            // Expose functions globally
+            window.APP = {
+                saveQuote,
+                loadQuote,
+                deleteQuote,
+                openHistoryModal,
+                closeHistoryModal,
+                printQuote,
+                addCustomProduct,
+                shareCartLink
+            };
 
-    // Hook up buttons
-    if (printPdfBtn) {
-        printPdfBtn.style.display = "inline-flex";
-        printPdfBtn.onclick = printQuote;
+            // Hook up buttons
+            if (printPdfBtn) {
+                printPdfBtn.style.display = "inline-flex";
+            printPdfBtn.onclick = printQuote;
     }
 
 });
