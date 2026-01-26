@@ -276,7 +276,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function renderCategories(categories) {
         if (!categoriesEl) return;
         categoriesEl.innerHTML = "";
-        categoriesEl.innerHTML = "";
+        console.log("Rendering categories:", categories);
 
         // Add "Favorites" Button
         const favBtn = document.createElement("button");
