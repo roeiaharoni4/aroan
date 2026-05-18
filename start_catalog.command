@@ -33,7 +33,8 @@ echo "Starting server..."
 # Start Python server
 # Using python3 (standard on Mac)
 if command -v python3 &>/dev/null; then
-    python3 -m http.server $PORT &
+    export PORT=$PORT
+    python3 server.py &
     PID=$!
 else
     echo "Error: Python 3 is not installed or not found in PATH."

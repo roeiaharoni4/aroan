@@ -1,5 +1,5 @@
 // Configurable Data Source
-const DATA_SOURCE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBWFKxPdiKYdXiLDKnwiRb47xAJO-TzD4XmKybUEn4DeFzduPwdTEixsSMNL8rRzN0vCj9PYRGJlyH/pub?output=csv';
+const DATA_SOURCE_URL = '/data/products.csv?v=1';
 
 let PRODUCTS = [];
 
