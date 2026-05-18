@@ -1,4 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Security layer: Block access if not running locally
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        alert('הגישה למערכת הניהול מותרת רק מהמחשב המקומי.');
+        window.location.href = '../index.html';
+        return;
+    }
+
     let products = [];
     const DATA_URL = '/data/products.csv?v=' + Date.now();
     
