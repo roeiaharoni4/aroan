@@ -1089,33 +1089,38 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    async function saveQuote(customerName = "לקוח כללי") {
-        const currentCartItems = Object.entries(cart).map(([id, qty]) => {
-            const product = PRODUCTS.find(p => p.id === id);
-            return {
-                id: id,
-                name: product ? product.name : 'Unknown',
-                price: product ? product.price : 0,
-                unit: product ? product.unit : 'יח׳',
-                image: product ? product.image : '',
-                quantity: qty
-            };
-        });
+    async function saveQuote(customerNameOrQuote = "לקוח כללי") {
+        let newQuote;
+        if (typeof customerNameOrQuote === 'object') {
+            newQuote = customerNameOrQuote;
+        } else {
+            const currentCartItems = Object.entries(cart).map(([id, qty]) => {
+                const product = PRODUCTS.find(p => p.id === id);
+                return {
+                    id: id,
+                    name: product ? product.name : 'Unknown',
+                    price: product ? product.price : 0,
+                    unit: product ? product.unit : 'יח׳',
+                    image: product ? product.image : '',
+                    quantity: qty
+                };
+            });
 
-        if (currentCartItems.length === 0) {
-            alert("העגלה ריקה. אין מה לשמור.");
-            return null;
+            if (currentCartItems.length === 0) {
+                alert("העגלה ריקה. אין מה לשמור.");
+                return null;
+            }
+
+            newQuote = {
+                id: 'Q-' + Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                customer: customerNameOrQuote,
+                items: currentCartItems,
+                total: currentCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+            };
         }
 
         showToast("שומר הצעה בענן...");
-
-        const newQuote = {
-            id: 'Q-' + Date.now(),
-            date: new Date().toISOString().split('T')[0],
-            customer: customerName,
-            items: currentCartItems,
-            total: currentCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-        };
 
         try {
             const res = await fetch(`${API_URL}?action=save&password=${API_PASSWORD}`, {
@@ -1128,13 +1133,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 showToast("ההצעה נשמרה בענן!");
                 return newQuote;
             } else {
-                alert("שגיאה בשמירה: " + (data.error || "Unknown"));
-                return null;
+                console.error("שגיאה בשמירה בענן:", data.error);
+                return newQuote; // Return quote anyway so printing can proceed
             }
         } catch (e) {
-            console.error(e);
-            alert("תקלת תקשורת בשמירה");
-            return null;
+            console.error("תקלת תקשורת בשמירה בענן:", e);
+            return newQuote; // Return quote anyway so printing can proceed
         }
     }
 
@@ -1276,11 +1280,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     // --- Print PDF Logic ---
-    function printQuote() {
+    async function printQuote() {
         const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", "לקוח כללי");
         if (customerName === null) return;
 
-        const savedQuote = saveQuote(customerName);
+        const savedQuote = await saveQuote(customerName);
         if (!savedQuote) return;
 
         const modalBody = document.querySelector("#order-modal .modal-body");
@@ -1288,7 +1292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const headerDiv = document.createElement("div");
         headerDiv.className = "print-header";
         headerDiv.innerHTML = `
-        < div style = "display:flex; justify-content:space-between; align-items:flex-start; text-align:right;" >
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; text-align:right;">
                 <div>
                     <img src="/images/logo.png" alt="לוגו אהרוני" style="height: 60px; margin-bottom: 10px;">
                     <h1 style="margin:0; font-size:1.5rem;">אהרוני שיווק והפצה</h1>
@@ -1302,9 +1306,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <div>תאריך: ${savedQuote.date}</div>
                     <div>לכבוד: <strong>${savedQuote.customer}</strong></div>
                 </div>
-            </div >
-        <hr style="margin-top:20px; border-color:#000;">
-            `;
+            </div>
+            <hr style="margin-top:20px; border-color:#000;">
+        `;
 
         const footerDiv = document.createElement("div");
         footerDiv.className = "print-footer";
@@ -1316,7 +1320,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div style="text-align:center; font-size:0.8rem; margin-top:20px;">
                 ט.ל.ח | המחירים אינם כוללים מע״מ | תוקף ההצעה: 14 יום
             </div>
-            `;
+        `;
 
         modalBody.insertBefore(headerDiv, modalBody.firstChild);
         modalBody.appendChild(footerDiv);
