@@ -1,5 +1,7 @@
 // Configurable Data Source
 const DATA_SOURCE_URL = '/data/products.csv?v=1';
+const GOOGLE_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz_rRjFdy2MqPMXX0cHkAh7zHBV4plQIEVL9H45DqdRRnU19ShwNCfguva7WBa0y-F1PQ/exec'; // הזן כאן את הקישור שקיבלת מגוגל סקריפט לשליחת המייל
+
 
 let PRODUCTS = [];
 
@@ -600,7 +602,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.allowShare) {
             if (sendWhatsappBtn) {
                 sendWhatsappBtn.addEventListener("click", () => {
-                    const text = encodeURIComponent(buildMessage());
+                    const orderId = generateOrderId();
+                    const { items, totalItems, totalPrice } = getCartItemsData();
+                    
+                    // Send backup to Google Script in the background
+                    sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
+                    
+                    const text = encodeURIComponent(buildMessage(orderId));
                     const phone = "972526000158";
                     window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
                 });
@@ -608,8 +616,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             if (sendEmailBtn) {
                 sendEmailBtn.addEventListener("click", () => {
-                    const subject = encodeURIComponent("הצעת מחיר");
-                    const body = encodeURIComponent(buildMessage());
+                    const orderId = generateOrderId();
+                    const { items, totalItems, totalPrice } = getCartItemsData();
+                    
+                    // Send backup to Google Script in the background
+                    sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
+                    
+                    const subject = encodeURIComponent(`הצעת מחיר - מספר הזמנה #${orderId}`);
+                    const body = encodeURIComponent(buildMessage(orderId));
                     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent("meiraroam@gmail.com")}&su=${subject}&body=${body}`, "_blank");
                 });
             }
@@ -772,8 +786,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    function buildMessage() {
-        let lines = ["שלום,", "", "פירוט הזמנה:", ""];
+    function buildMessage(orderId) {
+        let lines = ["שלום,", ""];
+        if (orderId) {
+            lines.push(`מספר הזמנה: #${orderId}`, "");
+        }
+        lines.push("פירוט הזמנה:", "");
         for (const [id, qty] of Object.entries(cart)) {
             const product = PRODUCTS.find(p => p.id === id);
             if (!product || qty <= 0) continue;
@@ -781,6 +799,69 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         lines.push("", "תודה");
         return lines.join("\n");
+    }
+
+    function generateOrderId() {
+        const today = new Date();
+        const yyyymmdd = today.getFullYear() +
+            String(today.getMonth() + 1).padStart(2, '0') +
+            String(today.getDate()).padStart(2, '0');
+        const rand = Math.floor(1000 + Math.random() * 9000);
+        return `AR-${yyyymmdd}-${rand}`;
+    }
+
+    function getCartItemsData() {
+        const items = [];
+        let totalItems = 0;
+        let totalPrice = 0;
+        for (const [id, qty] of Object.entries(cart)) {
+            const product = PRODUCTS.find(p => p.id === id);
+            if (!product || qty <= 0) continue;
+            const price = parseFloat(product.price) || 0;
+            const itemTotal = price * qty;
+            items.push({
+                id: product.id,
+                name: product.name,
+                category: product.category,
+                qty: qty,
+                unit: product.unit,
+                price: price,
+                total: itemTotal
+            });
+            totalItems += qty;
+            totalPrice += itemTotal;
+        }
+        return { items, totalItems, totalPrice };
+    }
+
+    async function sendOrderBackupToGoogleScript(orderId, items, totalPrice, totalItems) {
+        if (!GOOGLE_SCRIPT_WEBHOOK_URL) {
+            console.log("Google Script Webhook URL is not set. Skipping backup email.");
+            return;
+        }
+        
+        try {
+            const orderDate = orderDateInput ? orderDateInput.value : new Date().toLocaleDateString('he-IL');
+            const payload = {
+                orderId: orderId,
+                date: orderDate,
+                items: items,
+                totalPrice: totalPrice,
+                totalItems: totalItems
+            };
+
+            await fetch(GOOGLE_SCRIPT_WEBHOOK_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+            console.log("Successfully sent order data to Google Script Webhook");
+        } catch (error) {
+            console.error("Error sending order data to Webhook:", error);
+        }
     }
 
     function animateAddToCart(startEl) {
