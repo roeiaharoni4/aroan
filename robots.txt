@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://aroam.co.il/sitemap.xml
+llms: https://aroam.co.il/llms.txt
