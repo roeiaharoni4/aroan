@@ -314,12 +314,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             try {
-                // Send request to FormSubmit.co via AJAX
-                const response = await fetch('https://formsubmit.co/ajax/meiraroam@gmail.com', {
+                // Send request to Google Apps Script Webhook via AJAX
+                await fetch('https://script.google.com/macros/s/AKfycbxfp0qDK0ergyj-cVzdCVWiLieGXDjsSAymi1vvk-fWPnDPpiPc9nO8ujJye6JREyyL/exec', {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         'שם מלא': name,
@@ -331,25 +331,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                 });
                 
-                const data = await response.json();
-                
-                if (response.ok && data.success === 'true') {
-                    // Success state
-                    if (alertBox) {
-                        alertBox.className = 'form-status-alert success';
-                        alertBox.textContent = 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
-                        alertBox.style.display = 'block';
-                    }
-                    form.reset();
-                } else {
-                    // Error state
-                    throw new Error(data.message || 'שגיאה בשליחת הטופס');
+                // Since mode is no-cors, we assume success if no exception is thrown
+                if (alertBox) {
+                    alertBox.className = 'form-status-alert success';
+                    alertBox.textContent = 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
+                    alertBox.style.display = 'block';
                 }
+                form.reset();
             } catch (error) {
                 console.error('Form submission error:', error);
                 if (alertBox) {
                     alertBox.className = 'form-status-alert error';
-                    alertBox.textContent = 'אירעה שגיאה בשליחת הטופס. אנא נסו שוב או פנו אלינו טלפונית.';
+                    alertBox.textContent = 'אירעה שגיאה בשליחת הטופס. אנא נסו שוב או פנו אלינו טלפונית או בוואטסאפ.';
                     alertBox.style.display = 'block';
                 }
             } finally {

@@ -8,12 +8,12 @@
     "description": "הבית של מוצרי הניקיון והחד פעמי.",
     "icons": [
         {
-            "src": "/images/logo.png",
+            "src": "/images/logo_192.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "/images/logo.png",
+            "src": "/images/logo_512.png",
             "sizes": "512x512",
             "type": "image/png"
         }
