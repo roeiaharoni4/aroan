@@ -376,23 +376,12 @@ ul {
 
 @media (max-width: 768px) {
     .mobile-bottom-nav {
-        display: flex;
+        display: none !important;
     }
 
     body {
-        padding-bottom: 70px;
+        padding-bottom: 0px;
     }
-
-    /* Optional: adjustments for existing FAB if needed
-       For now, we might want to hide the FAB if the bottom nav has a cart button.
-       However, the FAB in catalog.html is specific. 
-       Let's keep FAB but maybe move it up? 
-       Actually, standard is to replace FAB with bottom nav action. 
-       We will hide FAB in style.css or here? 
-       FAB is defined in style.css (catalog only). 
-       We are editing site.css (global).
-       Let's leave FAB alone for a moment, user can see duplicate, we can fix in next step.
-    */
 }
 
 /* Quick View Styles */

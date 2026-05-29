@@ -451,7 +451,7 @@ button {
     /* toggled via JS */
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 11000;
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
 }
@@ -622,8 +622,8 @@ button {
     }
 
     .fab-container {
-        bottom: 90px;
-        /* Above mobile bottom nav */
+        bottom: 20px;
+        /* Balanced with other floating buttons */
         width: 90%;
     }
 

@@ -128,74 +128,11 @@ class SiteFooter extends HTMLElement {
     }
 }
 
-class MobileNav extends HTMLElement {
-    connectedCallback() {
-        this.innerHTML = `
-            <nav class="mobile-bottom-nav">
-                <a href="/" class="nav-item">
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-label">בית</span>
-                </a>
-                <a href="/catalog/" class="nav-item">
-                    <span class="nav-icon">🛍️</span>
-                    <span class="nav-label">קטלוג</span>
-                </a>
-                <a href="#" class="nav-item" id="mobile-cart-btn">
-                    <div class="icon-container">
-                        <span class="nav-icon">🛒</span>
-                        <span class="nav-badge" id="mobile-nav-count">0</span>
-                    </div>
-                    <span class="nav-label">עגלה</span>
-                </a>
-                <a href="/contact/" class="nav-item">
-                    <span class="nav-icon">📞</span>
-                    <span class="nav-label">חייג</span>
-                </a>
-            </nav>
-        `;
-
-        this.highlightActiveLink();
-
-        const cartBtn = this.querySelector('#mobile-cart-btn');
-        if (cartBtn) {
-            cartBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const openOrderBtn = document.getElementById('open-order-btn');
-                if (openOrderBtn) {
-                    openOrderBtn.click();
-                } else {
-                    // If we are not on catalog page, go to catalog
-                    window.location.href = '/catalog/?openCart=true';
-                }
-            });
-        }
-    }
-
-    highlightActiveLink() {
-        // Normalize path
-        let currentPath = window.location.pathname;
-        if (currentPath.endsWith('index.html')) currentPath = currentPath.replace('index.html', '');
-        if (currentPath !== '/' && !currentPath.endsWith('/')) currentPath += '/';
-
-        const links = this.querySelectorAll('.nav-item');
-        links.forEach(link => {
-            let href = link.getAttribute('href');
-            if (href === currentPath) {
-                link.classList.add('active');
-            }
-        });
-    }
-}
-
 customElements.define('site-header', SiteHeader);
 customElements.define('site-footer', SiteFooter);
-customElements.define('mobile-nav', MobileNav);
 
-// Auto-inject Mobile Nav
+// Auto-inject components
 document.addEventListener('DOMContentLoaded', () => {
-    if (!document.querySelector('mobile-nav')) {
-        document.body.appendChild(document.createElement('mobile-nav'));
-    }
 
     // Auto-inject Accessibility Widget
     if (!document.getElementById('aroam-a11y-css')) {
