@@ -191,17 +191,17 @@
             <h2 class="section-title">מה אנחנו מספקים למסעדות?</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <span class="feature-icon"><img src="/images/cat_disposables.png" alt="אריזות למשלוחים וכלים חד פעמיים"></span>
+                    <span class="feature-icon"><img src="/images/cat_disposables.png" alt="אריזות למשלוחים וכלים חד פעמיים" width="70" height="70" loading="lazy" decoding="async"></span>
                     <h3>אריזות מזון וכלים חד פעמיים</h3>
                     <p>קופסאות משלוחים מכל הסוגים (לסלטים, חם/קר, רטבים), שקיות נייר חום/לבן, שקיות גופייה חזקות, כוסות לשתייה חמה/קרה, קשיות וסכו"ם עבה ואיכותי למסעדות.</p>
                 </div>
                 <div class="feature-card">
-                    <span class="feature-icon"><img src="/images/cat_paper.png" alt="נייר תעשייתי למטבחי מסעדות"></span>
+                    <span class="feature-icon"><img src="/images/cat_paper.png" alt="נייר תעשייתי למטבחי מסעדות" width="70" height="70" loading="lazy" decoding="async"></span>
                     <h3>מוצרי נייר והיגיינה למטבח</h3>
                     <p>גלילי נייר תעשייתיים לניגוב ידיים (1200 פרח), מגבות מטבח סופגות, מפיות בשלל גדלים, וסבון חיטוי מיוחד למטבחים ומתקנים לשטיפת ידיים.</p>
                 </div>
                 <div class="feature-card">
-                    <span class="feature-icon"><img src="/images/cat_cleaning.png" alt="חומרי ניקוי למסעדות"></span>
+                    <span class="feature-icon"><img src="/images/cat_cleaning.png" alt="חומרי ניקוי למסעדות" width="70" height="70" loading="lazy" decoding="async"></span>
                     <h3>חומרי ניקוי למטבחים מקצועיים</h3>
                     <p>מסירי שומנים תעשייתיים בריכוז גבוה, נוזלי כלים מרוכזים לשטיפה ידנית ומכונת כלים, חומרי חיטוי לרצפות וציוד ניקוי מלא (מטאטאים, מגבים, מטליות).</p>
                 </div>
@@ -226,6 +226,62 @@
                     <h3>📞 ליווי אישי והתאמה של מוצרים</h3>
                     <p>מענה אנושי מהיר בוואטסאפ או בטלפון, התאמה של סוגי האריזות לתפריט שלכם, ואפשרות להזמנות חוזרות קבועות ופשוטות.</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Request Quote Section -->
+    <section class="lead-section">
+        <div class="container lead-grid">
+            <div class="lead-content">
+                <h2>קבלו הצעת מחיר מותאמת למסעדה שלכם</h2>
+                <p>מלאו את הפרטים והצרכים שלכם (קופסאות משלוחים, שקיות נייר, כוסות לשתייה חמה/קרה, סכו"ם, חומרי ניקוי למטבח תעשייתי, נייר תעשייתי לניגוב וכו'), ונציגנו יחזור אליכם עם הצעת מחיר סיטונאית אטרקטיבית ואפשרות לאספקה שוטפת.</p>
+                <div class="lead-benefits">
+                    <div class="benefit-item">
+                        <span class="benefit-icon">📦</span>
+                        <span>מגוון רחב של אריזות טייק-אווי וכלים חד-פעמיים</span>
+                    </div>
+                    <div class="benefit-item">
+                        <span class="benefit-icon">🧼</span>
+                        <span>חומרי ניקוי וחיטוי מקצועיים ברישיון למטבחים</span>
+                    </div>
+                    <div class="benefit-item">
+                        <span class="benefit-icon">⚡</span>
+                        <span>מענה מהיר ואספקה גמישה כדי שלא תיתקעו בשעות הלחץ</span>
+                    </div>
+                </div>
+            </div>
+            <div class="contact-form-container">
+                <form class="contact-form-ajax">
+                    <!-- Honeypot spam prevention -->
+                    <input type="text" name="_honey" style="display:none">
+                    <!-- Subject -->
+                    <input type="hidden" name="_subject" value="בקשת הצעת מחיר - מסעדות">
+                    
+                    <div class="form-group">
+                        <label for="rest-name">שם מלא / שם המסעדה או הקייטרינג <span style="color: red;">*</span></label>
+                        <input type="text" id="rest-name" name="name" required placeholder="שם העסק או שם איש קשר">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="rest-phone">טלפון ליצירת קשר <span style="color: red;">*</span></label>
+                        <input type="tel" id="rest-phone" name="phone" required placeholder="050-1234567">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="rest-email">אימייל (אופציונלי)</label>
+                        <input type="email" id="rest-email" name="email" placeholder="order@restaurant.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="rest-message">פרטו את סוג האריזות או חומרי הניקוי הדרושים</label>
+                        <textarea id="rest-message" name="message" rows="3" placeholder="לדוגמה: קופסאות המבורגר, שקיות קראפט עם ידית, כוסות דאבל וול, מסיר שומנים..."></textarea>
+                    </div>
+                    
+                    <div class="form-status-alert"></div>
+                    
+                    <button type="submit" class="btn-form-submit">שליחת בקשה להצעה</button>
+                </form>
             </div>
         </div>
     </section>

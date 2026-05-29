@@ -4,7 +4,7 @@ class SiteHeader extends HTMLElement {
             <header class="site-header">
                 <div class="container">
                     <a href="/" class="logo">
-                        <img src="/images/logo.png" alt="אהרוני שיווק" style="height: 60px;">
+                        <img src="/images/logo.png" alt="אהרוני שיווק" width="100" height="60" style="height: 60px; width: auto;" fetchpriority="high">
                     </a>
                     <div class="header-controls" style="display: flex; align-items: center; gap: 10px;">
                         <button id="theme-toggle" class="theme-toggle" title="מצב כהה/בהיר" style="background:none; border:none; cursor:pointer; padding: 5px; display: flex; align-items: center; justify-content: center;"></button>
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         waBtn.className = 'floating-whatsapp';
         waBtn.href = 'https://wa.me/972526000158'; // User's phone
         waBtn.target = '_blank';
-        waBtn.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">';
+        waBtn.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" width="35" height="35" loading="lazy" decoding="async">';
         waBtn.title = "צ'אט בוואטסאפ";
         document.body.appendChild(waBtn);
     }
@@ -269,4 +269,97 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
+
+    // --- 4. AJAX Contact Forms Handler ---
+    const contactForms = document.querySelectorAll('.contact-form-ajax');
+    contactForms.forEach(form => {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = form.querySelector('.btn-form-submit');
+            const alertBox = form.querySelector('.form-status-alert');
+            
+            // Get form values
+            const nameInput = form.querySelector('[name="name"]');
+            const phoneInput = form.querySelector('[name="phone"]');
+            const emailInput = form.querySelector('[name="email"]');
+            const messageInput = form.querySelector('[name="message"]');
+            
+            const name = nameInput ? nameInput.value.trim() : '';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+            const email = emailInput ? emailInput.value.trim() : '';
+            const message = messageInput ? messageInput.value.trim() : '';
+            const subject = form.querySelector('[name="_subject"]')?.value || 'פנייה חדשה מאתר אהרוני שיווק';
+            
+            // Simple validation
+            if (!name || !phone) {
+                if (alertBox) {
+                    alertBox.className = 'form-status-alert error';
+                    alertBox.textContent = 'אנא מלאו את שדות החובה (שם וטלפון)';
+                    alertBox.style.display = 'block';
+                }
+                return;
+            }
+            
+            // Disable button and show loading state
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                const originalText = submitBtn.innerHTML;
+                submitBtn.textContent = 'שולח...';
+                form.dataset.originalBtnText = originalText;
+            }
+            
+            if (alertBox) {
+                alertBox.style.display = 'none';
+            }
+            
+            try {
+                // Send request to FormSubmit.co via AJAX
+                const response = await fetch('https://formsubmit.co/ajax/meiraroam@gmail.com', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        'שם מלא': name,
+                        'טלפון': phone,
+                        'אימייל': email || 'לא צוין',
+                        'הודעה / בקשה': message || 'ללא הודעה',
+                        '_subject': subject,
+                        '_honey': form.querySelector('[name="_honey"]')?.value || '' // Honeypot spam prevention
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success === 'true') {
+                    // Success state
+                    if (alertBox) {
+                        alertBox.className = 'form-status-alert success';
+                        alertBox.textContent = 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
+                        alertBox.style.display = 'block';
+                    }
+                    form.reset();
+                } else {
+                    // Error state
+                    throw new Error(data.message || 'שגיאה בשליחת הטופס');
+                }
+            } catch (error) {
+                console.error('Form submission error:', error);
+                if (alertBox) {
+                    alertBox.className = 'form-status-alert error';
+                    alertBox.textContent = 'אירעה שגיאה בשליחת הטופס. אנא נסו שוב או פנו אלינו טלפונית.';
+                    alertBox.style.display = 'block';
+                }
+            } finally {
+                // Restore button state
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = form.dataset.originalBtnText || 'שליחה';
+                }
+            }
+        });
+    });
 });
+

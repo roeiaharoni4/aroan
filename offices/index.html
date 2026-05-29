@@ -191,17 +191,17 @@
             <h2 class="section-title">מה אנחנו מספקים למשרדים?</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <span class="feature-icon"><img src="/images/cat_paper.png" alt="מוצרי נייר והיגיינה למשרדים"></span>
+                    <span class="feature-icon"><img src="/images/cat_paper.png" alt="מוצרי נייר והיגיינה למשרדים" width="70" height="70" loading="lazy" decoding="async"></span>
                     <h3>מוצרי נייר והיגיינה</h3>
                     <p>נייר מגבת צץ-רץ/מכווץ, נייר טואלט איכותי, גלילי נייר תעשייתיים, סבון ידיים למתקנים, ומוצרי היגיינה וטואלטיקה למשרדים בגדלים מוסדיים חסכוניים.</p>
                 </div>
                 <div class="feature-card">
-                    <span class="feature-icon"><img src="/images/cat_cleaning.png" alt="חומרי ניקוי למשרדים"></span>
+                    <span class="feature-icon"><img src="/images/cat_cleaning.png" alt="חומרי ניקוי למשרדים" width="70" height="70" loading="lazy" decoding="async"></span>
                     <h3>חומרי ניקוי וחיטוי</h3>
                     <p>נוזל רצפות מבושם, אקונומיקה, נוזלי כלים, מטליות מיקרופייבר, מטהרי אוויר, ותרסיסים לניקוי שולחנות, מסכים וחלונות לחוויית עבודה נקייה.</p>
                 </div>
                 <div class="feature-card">
-                    <span class="feature-icon"><img src="/images/cat_disposables.png" alt="חד פעמי למטבחון משרדי"></span>
+                    <span class="feature-icon"><img src="/images/cat_disposables.png" alt="חד פעמי למטבחון משרדי" width="70" height="70" loading="lazy" decoding="async"></span>
                     <h3>כלים חד-פעמיים וכיבוד</h3>
                     <p>כוסות לשתייה חמה וקרה, בוחשנים, צלחות, סכו"ם, שקיות אשפה בכל הגדלים, ומוצרים משלימים כמו קפה, תה וסוכר למטבחון המשרדי שלכם.</p>
                 </div>
@@ -226,6 +226,62 @@
                     <h3>📞 שירות אישי וגמיש</h3>
                     <p>הרכבת סל מוצרים מותאם אישית למשרד שלכם, הזמנה קלה ומהירה בוואטסאפ או במייל, ומענה אנושי ומהיר לכל שאלה או צורך מיוחד.</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Request Quote Section -->
+    <section class="lead-section">
+        <div class="container lead-grid">
+            <div class="lead-content">
+                <h2>קבלו הצעת מחיר מותאמת למשרד שלכם</h2>
+                <p>מלאו את הפרטים והמוצרים הדרושים לכם למשרד (למשל: סוג כוסות חד-פעמיות, חומרי ניקוי, מוצרי נייר לניגוב ידיים וכו'), ונציגנו יבנה עבורכם סל אספקה משרדית שוטפת בהתאמה אישית ובמחיר סיטונאי משתלם.</p>
+                <div class="lead-benefits">
+                    <div class="benefit-item">
+                        <span class="benefit-icon">🚚</span>
+                        <span>משלוח ישיר ומהיר עד המשרד</span>
+                    </div>
+                    <div class="benefit-item">
+                        <span class="benefit-icon">💰</span>
+                        <span>הנחות מיוחדות על כמויות גדולות</span>
+                    </div>
+                    <div class="benefit-item">
+                        <span class="benefit-icon">📄</span>
+                        <span>ריכוז רכש וחשבונית חודשית מרוכזת</span>
+                    </div>
+                </div>
+            </div>
+            <div class="contact-form-container">
+                <form class="contact-form-ajax">
+                    <!-- Honeypot spam prevention -->
+                    <input type="text" name="_honey" style="display:none">
+                    <!-- Subject -->
+                    <input type="hidden" name="_subject" value="בקשת הצעת מחיר - משרדים">
+                    
+                    <div class="form-group">
+                        <label for="offices-name">שם מלא / שם המשרד <span style="color: red;">*</span></label>
+                        <input type="text" id="offices-name" name="name" required placeholder="שם החברה או שם איש קשר">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="offices-phone">טלפון ליצירת קשר <span style="color: red;">*</span></label>
+                        <input type="tel" id="offices-phone" name="phone" required placeholder="050-1234567">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="offices-email">אימייל (אופציונלי)</label>
+                        <input type="email" id="offices-email" name="email" placeholder="hr@company.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="offices-message">פרטו את הציוד או המוצרים הדרושים</label>
+                        <textarea id="offices-message" name="message" rows="3" placeholder="לדוגמה: נייר צץ-רץ, כוסות לשתייה חמה, סבון כלים, נוזל רצפות..."></textarea>
+                    </div>
+                    
+                    <div class="form-status-alert"></div>
+                    
+                    <button type="submit" class="btn-form-submit">שליחת בקשה להצעה</button>
+                </form>
             </div>
         </div>
     </section>

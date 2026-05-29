@@ -852,3 +852,178 @@ ul {
     animation: highlight-pulse 1s ease-in-out;
     border: 2px solid var(--accent-color);
 }
+
+/* Contact and Lead Capture Forms styling */
+.contact-form-container {
+    background-color: var(--white);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.contact-form-ajax {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: right;
+}
+
+.form-group label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.form-group input,
+.form-group textarea {
+    padding: 12px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    background-color: var(--white);
+    color: var(--text-color);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 156, 125, 0.25);
+}
+
+.form-status-alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: none;
+    text-align: center;
+}
+
+.form-status-alert.success {
+    background-color: #DEF7EC;
+    color: #03543F;
+    border: 1px solid #BCF0DA;
+    display: block;
+}
+
+.form-status-alert.error {
+    background-color: #FDE8E8;
+    color: #9B1C1C;
+    border: 1px solid #FBD5D5;
+    display: block;
+}
+
+.btn-form-submit {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-form-submit:hover {
+    background-color: var(--accent-hover);
+}
+
+.btn-form-submit:active {
+    transform: scale(0.98);
+}
+
+.btn-form-submit:disabled {
+    background-color: var(--text-light);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.lead-section {
+    padding: 80px 0;
+    background: linear-gradient(135deg, #f0fdf4, #e8f5e9);
+}
+
+[data-theme="dark"] .lead-section {
+    background: linear-gradient(135deg, #14231b, #1b3327);
+}
+
+.lead-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .lead-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+}
+
+.lead-content h2 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+    color: var(--secondary-color);
+}
+
+.lead-content p {
+    font-size: 1.15rem;
+    color: var(--text-light);
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+.lead-benefits {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+.benefit-icon {
+    color: var(--primary-color);
+    font-size: 1.3rem;
+}
+
+/* Full width map section */
+.map-section {
+    padding: 0 0 60px 0;
+}
+
+.map-container {
+    width: 100%;
+    height: 450px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.map-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
