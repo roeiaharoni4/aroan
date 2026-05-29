@@ -229,7 +229,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     async function loadProducts() {
         return new Promise((resolve) => {
-            Papa.parse(DATA_SOURCE_URL + "&_t=" + Date.now(), {
+            const hourlyTimestamp = Math.floor(Date.now() / 3600000);
+            Papa.parse(DATA_SOURCE_URL + "&_t=" + hourlyTimestamp, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
@@ -349,6 +350,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 img.loading = "lazy";
             }
             img.decoding = "async";
+            img.width = 240;
+            img.height = 200;
             img.src = product.image || "#";
             img.alt = product.name;
 
