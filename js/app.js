@@ -56,8 +56,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // State
     let activeCategory = null;
+    let activeBrand = null; // סינון לפי מותג
     const cart = {}; // id -> quantity
     let favorites = new Set(); // ids
+
+    // --- Brand Detection (זיהוי מותג אוטומטי משם המוצר) ---
+    const BRAND_PATTERNS = [
+        ['סנו', ['סנו']],
+        ['יעקובי', ['יעקובי', 'יעקבי', 'kh7']],
+        ['קימברלי קלארק', ['קימברלי']],
+        ['פיירי', ['פיירי']],
+        ['פיניש', ['פיניש']],
+        ['דטול', ['דטול', 'dettol']],
+        ['אסטוניש', ['אסטוניש']],
+        ['קלין', ['קלין']],
+        ['סנט מוריץ', ['סנט מוריץ']],
+        ['זוהר דליה', ['זוהר דליה']],
+        ['ויסוצקי', ['ויסוצקי']],
+        ['טבורי', ['טבורי']]
+    ];
+
+    function detectBrand(name) {
+        if (!name) return "";
+        const lower = name.toLowerCase();
+        for (const [brand, patterns] of BRAND_PATTERNS) {
+            if (patterns.some(p => lower.includes(p))) return brand;
+        }
+        return "";
+    }
+
+    // Recent orders key - היסטוריית הזמנות אחרונות (נשמר בנפרד לקטלוג לקוחות ולגרסת הסוכן)
+    const RECENT_KEY = 'aroam_recent_orders_' + (window.location.pathname.split('/')[1] || 'root');
 
     // Initialize App
     init();
@@ -79,6 +108,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Setup Date defaults
         setupDate();
 
+        // Prefill saved customer details (אם הלקוח הזמין בעבר)
+        prefillCustomerDetails();
+
         // Apply Config to UI (hide/show buttons)
         applyConfiguration();
 
@@ -96,7 +128,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Check URL params
         const urlParams = new URLSearchParams(window.location.search);
-        const categoryParam = urlParams.get('category');
+        // presetCategory מאפשר לדפי קטגוריה סטטיים (/catalog/cleaning/ וכו') לקבע קטגוריה
+        const categoryParam = urlParams.get('category') || CONFIG.presetCategory || null;
         const searchParam = urlParams.get('search');
         const cartParam = urlParams.get('cart');
 
@@ -127,6 +160,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             activeCategory = categories[0];
         }
 
+        setupBrandFilter();
         renderCategories(categories);
         renderProducts();
         updateSummary();
@@ -260,7 +294,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             unit: item.unit,
                             image: img,
                             price: parseFloat(item.price) || 0,
-                            description: item.description || "" // Optional description
+                            description: item.description || "", // Optional description
+                            brand: (item.brand || "").trim() || detectBrand(item.name) // עמודת brand בקובץ גוברת על זיהוי אוטומטי
                         }
                     }).filter(p => p.id && p.name);
 
@@ -276,6 +311,44 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // --- Brand Filter UI (תפריט סינון מותגים ליד החיפוש) ---
+    function setupBrandFilter() {
+        const container = document.querySelector(".search-container");
+        if (!container || document.getElementById("brand-filter")) return;
+
+        const brands = Array.from(new Set(PRODUCTS.map(p => p.brand).filter(b => b)))
+            .sort((a, b) => a.localeCompare(b, 'he'));
+        if (brands.length < 2) return;
+
+        container.style.display = "flex";
+        container.style.gap = "8px";
+        container.style.alignItems = "center";
+        if (searchInput) searchInput.style.flex = "1";
+
+        const select = document.createElement("select");
+        select.id = "brand-filter";
+        select.setAttribute("aria-label", "סינון לפי מותג");
+        select.style.cssText = "padding:0.55rem 0.8rem; border:1px solid #ccc; border-radius:10px; font-family:inherit; font-size:0.95rem; background:#fff; color:#2F3E35; cursor:pointer; max-width:170px;";
+        select.innerHTML = '<option value="">כל המותגים</option>' +
+            brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        select.addEventListener("change", () => {
+            activeBrand = select.value || null;
+            // בחירת מותג מבטלת את הדגשת הקטגוריה (המותג חוצה קטגוריות)
+            document.querySelectorAll(".cat-btn").forEach(b => {
+                b.classList.toggle("active", !activeBrand && b.textContent === activeCategory);
+            });
+            renderProducts();
+        });
+        container.appendChild(select);
+    }
+
+    // איפוס סינון המותג (בלחיצה על קטגוריה)
+    function resetBrandFilter() {
+        activeBrand = null;
+        const sel = document.getElementById("brand-filter");
+        if (sel) sel.value = "";
+    }
+
     function renderCategories(categories) {
         if (!categoriesEl) return;
         categoriesEl.innerHTML = "";
@@ -288,12 +361,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         favBtn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Favorites" style="width:16px; height:16px; margin-left:5px; vertical-align:middle;"> המועדפים שלי';
         favBtn.addEventListener("click", () => {
             if (searchInput) searchInput.value = "";
+            resetBrandFilter();
             activeCategory = 'favorites';
             document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
             favBtn.classList.add("active");
             renderProducts();
         });
         categoriesEl.appendChild(favBtn);
+
+        // "Recent Orders" Button - מוצג רק אם קיימות הזמנות קודמות במכשיר
+        if (getRecentProductIds().size > 0) {
+            const recentBtn = document.createElement("button");
+            recentBtn.type = "button";
+            recentBtn.className = "cat-btn" + (activeCategory === 'recent' ? " active" : "");
+            recentBtn.textContent = "הזמנות אחרונות";
+            recentBtn.addEventListener("click", () => {
+                if (searchInput) searchInput.value = "";
+                resetBrandFilter();
+                activeCategory = 'recent';
+                document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+                recentBtn.classList.add("active");
+                renderProducts();
+            });
+            categoriesEl.appendChild(recentBtn);
+        }
 
         categories.forEach(cat => {
             const btn = document.createElement("button");
@@ -302,6 +393,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             btn.textContent = cat;
             btn.addEventListener("click", () => {
                 if (searchInput) searchInput.value = ""; // Clear search
+                resetBrandFilter();
                 activeCategory = cat;
                 document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
                 btn.classList.add("active");
@@ -320,8 +412,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (searchQuery !== "") {
             const q = searchQuery.toLowerCase();
             filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+        } else if (activeBrand) {
+            // בחירת מותג מציגה את כל מוצרי המותג מכל הקטגוריות
+            filtered = PRODUCTS.filter(p => p.brand === activeBrand);
         } else if (activeCategory === 'favorites') {
             filtered = PRODUCTS.filter(p => favorites.has(p.id));
+        } else if (activeCategory === 'recent') {
+            const recentIds = getRecentProductIds();
+            filtered = PRODUCTS.filter(p => recentIds.has(p.id));
         } else if (activeCategory) {
             filtered = PRODUCTS.filter(p => p.category === activeCategory);
         }
@@ -605,29 +703,55 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.allowShare) {
             if (sendWhatsappBtn) {
                 sendWhatsappBtn.addEventListener("click", () => {
+                    const customer = getCustomerDetails();
+                    if (customer && !validateCustomerDetails(customer)) return;
+
                     const orderId = generateOrderId();
                     const { items, totalItems, totalPrice } = getCartItemsData();
-                    
+
+                    // Save to recent orders history (הזמנות אחרונות)
+                    if (items.length > 0) saveRecentOrder(items);
+
                     // Send backup to Google Script in the background
                     sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
                     
+                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM
+                    window.dataLayer = window.dataLayer || [];
+                    window.dataLayer.push({ event: 'order_sent', order_method: 'whatsapp', order_id: orderId, order_items: totalItems });
+
                     const text = encodeURIComponent(buildMessage(orderId));
                     const phone = "972526000158";
                     window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
+
+                    // חלון אישור ללקוח
+                    showOrderConfirmation(orderId, 'whatsapp');
                 });
             }
 
             if (sendEmailBtn) {
                 sendEmailBtn.addEventListener("click", () => {
+                    const customer = getCustomerDetails();
+                    if (customer && !validateCustomerDetails(customer)) return;
+
                     const orderId = generateOrderId();
                     const { items, totalItems, totalPrice } = getCartItemsData();
-                    
+
+                    // Save to recent orders history (הזמנות אחרונות)
+                    if (items.length > 0) saveRecentOrder(items);
+
                     // Send backup to Google Script in the background
                     sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
                     
+                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM
+                    window.dataLayer = window.dataLayer || [];
+                    window.dataLayer.push({ event: 'order_sent', order_method: 'email', order_id: orderId, order_items: totalItems });
+
                     const subject = encodeURIComponent(`הצעת מחיר - מספר הזמנה #${orderId}`);
                     const body = encodeURIComponent(buildMessage(orderId));
                     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent("meiraroam@gmail.com")}&su=${subject}&body=${body}`, "_blank");
+
+                    // חלון אישור ללקוח
+                    showOrderConfirmation(orderId, 'email');
                 });
             }
         }
@@ -703,6 +827,103 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Update Mobile Nav Badge
         const mobileNavCountEl = document.getElementById("mobile-nav-count");
         if (mobileNavCountEl) mobileNavCountEl.textContent = totalItems;
+    }
+
+    // --- Order Confirmation (אישור לאחר שליחת הזמנה) ---
+    function showOrderConfirmation(orderId, method) {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
+
+        const methodText = method === 'whatsapp'
+            ? 'ההזמנה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.'
+            : 'ההזמנה נפתחה במייל - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.';
+
+        const box = document.createElement("div");
+        box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
+        box.innerHTML = `
+            <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#639C7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>
+            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">ההזמנה נשלחה!</h2>
+            <p style="margin:0 0 0.4rem; font-weight:700;">מספר הזמנה: ${orderId}</p>
+            <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">${methodText}<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.</p>
+            <button id="order-confirm-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">סגור</button>
+        `;
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const close = () => {
+            overlay.remove();
+            if (orderModal) orderModal.classList.remove("open");
+        };
+        box.querySelector("#order-confirm-close").addEventListener("click", close);
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+    }
+
+    // --- Customer Details (פרטי לקוח בהזמנה) ---
+    function getCustomerDetails() {
+        const businessEl = document.getElementById("cust-business");
+        if (!businessEl) return null; // גרסת סוכן - אין טופס פרטי לקוח
+        const val = (id) => (document.getElementById(id)?.value || "").trim();
+        return {
+            business: businessEl.value.trim(),
+            contact: val("cust-contact"),
+            phone: val("cust-phone"),
+            address: val("cust-address"),
+            notes: val("cust-notes")
+        };
+    }
+
+    function validateCustomerDetails(customer) {
+        if (!customer.business || !customer.phone) {
+            showToast("נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
+            const el = document.getElementById(!customer.business ? "cust-business" : "cust-phone");
+            if (el) {
+                el.focus();
+                el.style.borderColor = "red";
+                setTimeout(() => { el.style.borderColor = ""; }, 2500);
+            }
+            return false;
+        }
+        // שמירת הפרטים במכשיר - ימולאו אוטומטית בהזמנה הבאה
+        try { localStorage.setItem('aroam_customer_details', JSON.stringify(customer)); } catch (e) { }
+        return true;
+    }
+
+    function prefillCustomerDetails() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('aroam_customer_details') || 'null');
+            if (!saved) return;
+            const map = { business: "cust-business", contact: "cust-contact", phone: "cust-phone", address: "cust-address", notes: "cust-notes" };
+            Object.entries(map).forEach(([key, id]) => {
+                const el = document.getElementById(id);
+                if (el && !el.value && saved[key]) el.value = saved[key];
+            });
+        } catch (e) { }
+    }
+
+    // --- Recent Orders (הזמנות אחרונות) ---
+    function getRecentOrders() {
+        try {
+            return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveRecentOrder(items) {
+        try {
+            const orders = getRecentOrders();
+            orders.unshift({
+                date: new Date().toISOString().split('T')[0],
+                items: items.map(i => ({ id: i.id, qty: i.qty }))
+            });
+            localStorage.setItem(RECENT_KEY, JSON.stringify(orders.slice(0, 5)));
+        } catch (e) { /* localStorage unavailable */ }
+    }
+
+    function getRecentProductIds() {
+        const ids = new Set();
+        getRecentOrders().forEach(o => (o.items || []).forEach(i => ids.add(i.id)));
+        return ids;
     }
 
     function fillOrderTable() {
@@ -794,6 +1015,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (orderId) {
             lines.push(`מספר הזמנה: #${orderId}`, "");
         }
+        // פרטי הלקוח (אם קיים טופס בדף)
+        const customer = getCustomerDetails();
+        if (customer && customer.business) {
+            lines.push(`שם העסק: ${customer.business}`);
+            if (customer.contact) lines.push(`איש קשר: ${customer.contact}`);
+            if (customer.phone) lines.push(`טלפון: ${customer.phone}`);
+            if (customer.address) lines.push(`כתובת למשלוח: ${customer.address}`);
+            if (customer.notes) lines.push(`הערות: ${customer.notes}`);
+            lines.push("");
+        }
         lines.push("פירוט הזמנה:", "");
         for (const [id, qty] of Object.entries(cart)) {
             const product = PRODUCTS.find(p => p.id === id);
@@ -850,7 +1081,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 date: orderDate,
                 items: items,
                 totalPrice: totalPrice,
-                totalItems: totalItems
+                totalItems: totalItems,
+                customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
             };
 
             await fetch(GOOGLE_SCRIPT_WEBHOOK_URL, {
@@ -966,6 +1198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Populate Data
         qvImage.src = product.image || "";
+        qvImage.alt = product.name || "";
         qvImage.onerror = () => { qvImage.style.display = 'none'; };
         qvImage.onload = () => { qvImage.style.display = 'block'; };
 

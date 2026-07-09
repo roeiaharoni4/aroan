@@ -1,0 +1,164 @@
+// <catalog-shell> - רכיב משותף שמזריק את ממשק הקטלוג האינטראקטיבי (חיפוש, קטגוריות, מוצרים, עגלה)
+// משמש את דפי הקטגוריה תחת /catalog/<slug>/ כדי לא לשכפל קוד.
+// חשוב: המזהים (IDs) חייבים להישאר זהים למה שקיים ב-catalog/index.html כי js/app.js תלוי בהם.
+class CatalogShell extends HTMLElement {
+    connectedCallback() {
+        this.innerHTML = `
+    <div class="app-container">
+
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content" style="display:none;"></div>
+
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" placeholder="חיפוש מוצר..."
+                    aria-label="חיפוש בקטלוג">
+            </div>
+
+            <nav class="categories-nav" id="categories">
+                <!-- Categories injected by JS -->
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <div class="products-grid" id="products">
+                <!-- Products injected by JS -->
+            </div>
+        </main>
+
+        <!-- Floating Action Button (Cart) -->
+        <div class="fab-container">
+            <button id="open-order-btn" class="fab">
+                <span>הצגת הזמנה</span>
+                <span class="fab-badge" id="fab-count">0</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Order Modal -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">סיכום הזמנה</h2>
+                <button id="close-order-btn" class="btn-close">&times;</button>
+            </div>
+
+            <div class="modal-body">
+
+                <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="order-date"
+                            style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">תאריך
+                            הזמנה:</label>
+                        <input type="date" id="order-date"
+                            style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                    <div id="order-date-display" style="font-weight:600; color:var(--primary-dark); display:none;">
+                    </div>
+                </div>
+
+                <!-- Customer Details - פרטי הלקוח נשמרים במכשיר לביקור הבא -->
+                <div id="customer-details" style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(99,156,125,0.06); border-radius: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.6rem;">
+                    <div>
+                        <label for="cust-business" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">שם העסק <span style="color:red;">*</span></label>
+                        <input type="text" id="cust-business" placeholder="שם העסק / המוסד" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                    <div>
+                        <label for="cust-contact" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">איש קשר</label>
+                        <input type="text" id="cust-contact" placeholder="שם מלא" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                    <div>
+                        <label for="cust-phone" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">טלפון <span style="color:red;">*</span></label>
+                        <input type="tel" id="cust-phone" placeholder="050-1234567" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                    <div>
+                        <label for="cust-address" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">כתובת למשלוח</label>
+                        <input type="text" id="cust-address" placeholder="רחוב, מספר, עיר" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label for="cust-notes" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">הערות להזמנה</label>
+                        <input type="text" id="cust-notes" placeholder="אופציונלי" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="overflow-x: auto;">
+                    <table class="order-table">
+                        <thead>
+                            <tr>
+                                <th>מק״ט</th>
+                                <th>שם מוצר</th>
+                                <th>קטגוריה</th>
+                                <th>כמות</th>
+                                <th>יחידה</th>
+                                <th>מחיר יח׳</th>
+                                <th>סה״כ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="order-table-body">
+                            <!-- Order Lines injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.9rem; color: #666;">סה״כ פריטים: <span id="summary-items">0</span>
+                        </div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">סה״כ לתשלום: <span
+                                id="summary-total">0.00 ₪</span></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
+                    <button id="clear-cart-btn" class="btn btn-danger">נקה הזמנה</button>
+                    <button id="send-email" class="btn btn-outline" style="min-width: 120px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-10 5L2 7"></path></svg>שלח במייל
+                    </button>
+                    <button id="send-whatsapp" class="btn btn-success"
+                        style="background:#25D366; color:white; min-width: 140px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg>שלח ב-WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick View Modal -->
+    <div class="modal-overlay" id="quick-view-modal">
+        <div class="modal-content quick-view-content">
+            <button id="close-quick-view-btn" class="btn-close-absolute">&times;</button>
+            <div class="quick-view-grid">
+                <div class="quick-view-image-container">
+                    <img id="qv-image" src="" alt="">
+                </div>
+                <div class="quick-view-details">
+                    <div class="qv-category" id="qv-category"></div>
+                    <h2 class="qv-title" id="qv-title"></h2>
+                    <div class="qv-sku" id="qv-sku"></div>
+                    <div class="qv-price" id="qv-price"></div>
+                    <div class="qv-description" id="qv-description">
+                        <!-- Description if available -->
+                    </div>
+
+                    <div class="qv-controls">
+                        <div class="qty-control large">
+                            <button class="qty-btn" id="qv-minus">–</button>
+                            <input type="number" class="qty-input" id="qv-input" min="0">
+                            <button class="qty-btn" id="qv-plus">+</button>
+                        </div>
+                        <button id="qv-add-to-cart" class="btn btn-primary btn-block">הוסף להזמנה</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+        `;
+    }
+}
+
+customElements.define('catalog-shell', CatalogShell);

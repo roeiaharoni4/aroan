@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הדף לא נמצא | אהרוני שיווק והפצה</title>
+    <meta name="robots" content="noindex, follow">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/site.css">
+    <style>
+        .notfound {
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .notfound h1 {
+            font-size: 5rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .notfound h2 {
+            font-size: 1.8rem;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+        }
+
+        .notfound p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin-bottom: 30px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .notfound-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-tel-404 {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body>
+    <site-header></site-header>
+
+    <section class="notfound">
+        <div>
+            <h1>404</h1>
+            <h2>אופס, הדף שחיפשתם לא נמצא</h2>
+            <p>יכול להיות שהקישור השתנה או שהדף הוסר. כל המוצרים שלנו מחכים לכם בקטלוג – או שפשוט תדברו איתנו ונעזור לכם למצוא את מה שחיפשתם.</p>
+            <div class="notfound-actions">
+                <a href="/catalog/" class="btn btn-primary">לקטלוג המוצרים</a>
+                <a href="/" class="btn btn-tel-404">לדף הבית</a>
+                <a href="https://wa.me/972526000158" target="_blank" rel="noopener" class="btn btn-primary" style="background:#25D366;">וואטסאפ</a>
+            </div>
+        </div>
+    </section>
+
+    <site-footer></site-footer>
+    <script src="/js/components.js" defer></script>
+</body>
+
+</html>

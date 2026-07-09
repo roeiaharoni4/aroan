@@ -1,4 +1,55 @@
+# סורקים כלליים
 User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+# סורקי AI — היתר מפורש (GEO)
+User-agent: GPTBot
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /admin/
+Disallow: /agent/
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Bytespider
 Allow: /
 
 Sitemap: https://aroam.co.il/sitemap.xml

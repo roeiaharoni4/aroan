@@ -1,35 +1,46 @@
-# Aroam - Aharoni Marketing & Distribution
+# Aroam - Aharoni Marketing & Distribution | אהרוני שיווק והפצה
 
 > B2B & Wholesale Supplier of Professional Cleaning Supplies, Paper Products, Single-Use Food Packaging, and Office Supplies in Central Israel.
+> ספק סיטונאי (B2B) של חומרי ניקיון, מוצרי נייר, כלים חד פעמיים וציוד משרדי לעסקים, מפעלים ומוסדות באזור המרכז.
 
 ## Contact Information
 - **Website**: https://aroam.co.il/
-- **Address**: 16 HaYetzira St., Or Yehuda, Israel
-- **Phone**: +972-526000158, +972-506444290, +972-36346236
+- **Address**: 16 HaYetzira St., Or Yehuda, Israel (היצירה 16, אור יהודה)
+- **Phone / WhatsApp**: +972-52-6000158
+- **Office Phone**: +972-3-6346236, +972-50-6444290
 - **Email**: meiraroam@gmail.com
-- **Area Served**: Or Yehuda, Tel Aviv, Gush Dan, and Central District, Israel.
+- **Area Served**: Or Yehuda, Bik'at Ono, Tel Aviv, Gush Dan, and Central District, Israel (אור יהודה, בקעת אונו, גוש דן והמרכז)
+- **Customers**: Factories, institutions, offices, restaurants, schools and kindergartens. B2B wholesale only.
 
-## Dynamic Products Catalog
-Customers can browse the dynamic product catalog, build their orders, and submit them directly via WhatsApp or Email.
+## Main Pages
 - **Home Page**: https://aroam.co.il/
-- **Product Catalog**: https://aroam.co.il/catalog/
+- **Product Catalog** (browse, build an order, submit via WhatsApp or Email): https://aroam.co.il/catalog/
 - **About Us**: https://aroam.co.il/about/
 - **Contact Us**: https://aroam.co.il/contact/
-- **Offices & Institutions Landing Page**: https://aroam.co.il/offices/
-- **Restaurants & Cafes Landing Page**: https://aroam.co.il/restaurants/
 
-## Core Product Categories
+## Landing Pages by Customer Type
+- **Offices & Institutions** (משרדים ומוסדות): https://aroam.co.il/offices/
+- **Restaurants & Cafes** (מסעדות ובתי קפה): https://aroam.co.il/restaurants/
+- **Factories & Industry** (מפעלים ותעשייה): https://aroam.co.il/factories/
+- **Schools & Kindergartens** (מוסדות חינוך וגנים): https://aroam.co.il/education/
 
-### 1. Cleaning Supplies & Detergents
-- Floor cleaners, bleach, laundry detergents, dishwashing soaps, air fresheners, and pest control.
-- Brands: Sano, Jacobi, and other leading professional brands.
+## Product Categories (דפי קטגוריה)
+- **Cleaning Supplies & Detergents** (חומרי ניקוי לעסקים בסיטונאות): https://aroam.co.il/catalog/cleaning/
+  - Floor cleaners, bleach, laundry detergents, dishwashing soaps, and pest control. Brands: Sano, Jacobi (KH7), Fairy, Finish, Dettol, Zohar Dalia.
+- **Paper Products** (מוצרי נייר מוסדיים ונייר תעשייתי): https://aroam.co.il/catalog/paper/
+  - Industrial paper rolls, paper towels (Z-fold/C-fold), toilet paper packs, hand towels. Brands: Kimberly-Clark and other industrial suppliers.
+- **Single-Use Packaging & Food Service** (כלים חד פעמיים ומוצרי אריזה): https://aroam.co.il/catalog/disposables/
+  - Plastic & paper cups, plates, cutlery, food bags, takeaway containers.
+- **Office Supplies & Stationery** (ציוד משרדי לעסקים): https://aroam.co.il/catalog/office-supplies/
+  - A4/A3 copy paper (colored and white), folders, laminating pouches, markers, pens, binders.
+- **Cleaning Accessories** (אביזרי ניקיון מקצועיים): https://aroam.co.il/catalog/cleaning-accessories/
+  - Mops, squeegees, buckets, cloths, gloves, sponges.
+- **Hygiene & Personal Care** (מוצרי טיפוח והיגיינה): https://aroam.co.il/catalog/hygiene/
+  - Hand soap, sanitizers, dispensers and institutional hygiene products.
+- **Garbage & Plastic Bags** (שקיות אשפה ושקיות ניילון): https://aroam.co.il/catalog/bags/
+- **Air Fresheners** (מבשמי אוויר לעסקים ומוסדות): https://aroam.co.il/catalog/air-fresheners/
+- **Arts & Crafts for Schools** (מוצרי יצירה למוסדות חינוך וגנים): https://aroam.co.il/catalog/crafts/
+- **Complementary Products** (מוצרים משלימים: קפה, גלילי קופה, רדיד ועוד): https://aroam.co.il/catalog/misc/
 
-### 2. Paper Products
-- Industrial paper rolls, paper towels (Z-fold/C-fold), toilet paper packs, and hand towels.
-- Brands: Kimberly-Clark, Perach, and other industrial suppliers.
-
-### 3. Single-Use Packaging & Food Service
-- Plastic & paper cups, plates, cutlery, food bags, and takeaway containers.
-
-### 4. Office Supplies & Stationery
-- A4/A3 copy paper (colored and white), folders, laminating pouches, markers, pens, and binders.
+## How to Order
+Customers browse the catalog at https://aroam.co.il/catalog/, add products to a cart, and submit the order directly via WhatsApp (+972-52-6000158) or Email (meiraroam@gmail.com). Delivery to the business address in the Central Israel service area.

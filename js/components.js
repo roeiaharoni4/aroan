@@ -102,6 +102,10 @@ class SiteFooter extends HTMLElement {
                             <ul class="footer-links">
                                 <li><a href="/">דף הבית</a></li>
                                 <li><a href="/catalog/">קטלוג</a></li>
+                                <li><a href="/offices/">פתרונות למשרדים</a></li>
+                                <li><a href="/restaurants/">פתרונות למסעדות</a></li>
+                                <li><a href="/factories/">פתרונות למפעלים</a></li>
+                                <li><a href="/education/">פתרונות למוסדות חינוך</a></li>
                                 <li><a href="/about/">אודות</a></li>
                                 <li><a href="/contact/">צור קשר</a></li>
                                 <li><a href="/accessibility/">הצהרת נגישות</a></li>
@@ -110,12 +114,24 @@ class SiteFooter extends HTMLElement {
                             </ul>
                         </div>
                         <div class="footer-col">
+                            <h4>קטגוריות פופולריות</h4>
+                            <ul class="footer-links">
+                                <li><a href="/catalog/cleaning/">חומרי ניקוי</a></li>
+                                <li><a href="/catalog/cleaning-accessories/">אביזרי ניקיון</a></li>
+                                <li><a href="/catalog/paper/">מוצרי נייר</a></li>
+                                <li><a href="/catalog/disposables/">חד פעמי ואריזות</a></li>
+                                <li><a href="/catalog/office-supplies/">ציוד משרדי</a></li>
+                                <li><a href="/catalog/bags/">שקיות</a></li>
+                                <li><a href="/catalog/hygiene/">טיפוח והיגיינה</a></li>
+                            </ul>
+                        </div>
+                        <div class="footer-col">
                             <h4>צור קשר</h4>
                             <ul class="footer-links">
-                                <li>📍 היצירה 16, אור יהודה</li>
-                                <li>📞 <a href="tel:0526000158">052-6000158</a></li>
-                                <li>📞 <a href="tel:0506444290">050-6444290</a></li>
-                                <li>📞 <a href="tel:036346236">03-6346236</a></li>
+                                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-left:5px;" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>היצירה 16, אור יהודה</li>
+                                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-left:5px;" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg><a href="tel:0526000158">052-6000158</a></li>
+                                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-left:5px;" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg><a href="tel:0506444290">050-6444290</a></li>
+                                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-left:5px;" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg><a href="tel:036346236">03-6346236</a></li>
                             </ul>
                         </div>
                     </div>
@@ -133,6 +149,18 @@ customElements.define('site-footer', SiteFooter);
 
 // Auto-inject components
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- Conversion Tracking: דיווח לחיצות טלפון/וואטסאפ ל-GTM ---
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('a[href^="tel:"], a[href*="wa.me"]');
+        if (!link) return;
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: link.getAttribute('href').startsWith('tel:') ? 'phone_click' : 'whatsapp_click',
+            link_url: link.getAttribute('href'),
+            page_path: window.location.pathname
+        });
+    });
 
     // Auto-inject Accessibility Widget
     if (!document.getElementById('aroam-a11y-css')) {
@@ -275,6 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     alertBox.style.display = 'block';
                 }
                 form.reset();
+
+                // Conversion Tracking: דיווח שליחת טופס ליד ל-GTM
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({
+                    event: 'form_submit',
+                    form_subject: subject,
+                    page_path: window.location.pathname
+                });
             } catch (error) {
                 console.error('Form submission error:', error);
                 if (alertBox) {
