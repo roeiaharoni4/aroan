@@ -358,7 +358,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const favBtn = document.createElement("button");
         favBtn.type = "button";
         favBtn.className = "cat-btn" + (activeCategory === 'favorites' ? " active" : "");
-        favBtn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Favorites" style="width:16px; height:16px; margin-left:5px; vertical-align:middle;"> המועדפים שלי';
+        favBtn.innerHTML = '<img src="/images/icon_heart_filled.webp" alt="Favorites" style="width:16px; height:16px; margin-left:5px; vertical-align:middle;"> המועדפים שלי';
         favBtn.addEventListener("click", () => {
             if (searchInput) searchInput.value = "";
             resetBrandFilter();
@@ -493,7 +493,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Quick View Trigger
             const qvBtn = document.createElement("button");
             qvBtn.className = "qv-btn-trigger";
-            qvBtn.innerHTML = '<img src="/images/icon_eye.png" alt="Quick View">';
+            qvBtn.innerHTML = '<img src="/images/icon_eye.webp" alt="Quick View">';
             qvBtn.title = "תצוגה מהירה";
             qvBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -511,7 +511,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (CONFIG.allowShare) {
                 const shareBtn = document.createElement("button");
                 shareBtn.className = "share-btn";
-                shareBtn.innerHTML = '<img src="/images/icon_rocket.png" alt="Share">'; // Using rocket as share icon temporarily or generic share svg? Rocket is available.
+                shareBtn.innerHTML = '<img src="/images/icon_rocket.webp" alt="Share">'; // Using rocket as share icon temporarily or generic share svg? Rocket is available.
                 // Or better, use a standard SVG for share to not confuse with "Fast Shipping" rocket feature if any.
                 // Let's use a simple SVG for share.
                 shareBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
@@ -537,8 +537,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const favBtn = document.createElement("button");
             favBtn.className = "fav-btn" + (favorites.has(product.id) ? " active" : "");
             favBtn.innerHTML = favorites.has(product.id) ?
-                '<img src="/images/icon_heart_filled.png" alt="Remove from favorites">' :
-                '<img src="/images/icon_heart_empty.png" alt="Add to favorites">';
+                '<img src="/images/icon_heart_filled.webp" alt="Remove from favorites">' :
+                '<img src="/images/icon_heart_empty.webp" alt="Add to favorites">';
             favBtn.title = "הוסף למועדפים";
             favBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -547,11 +547,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (favorites.has(product.id)) {
                     favorites.delete(product.id);
                     favBtn.classList.remove("active");
-                    favBtn.innerHTML = '<img src="/images/icon_heart_empty.png" alt="Add to favorites">';
+                    favBtn.innerHTML = '<img src="/images/icon_heart_empty.webp" alt="Add to favorites">';
                 } else {
                     favorites.add(product.id);
                     favBtn.classList.add("active");
-                    favBtn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Remove from favorites">';
+                    favBtn.innerHTML = '<img src="/images/icon_heart_filled.webp" alt="Remove from favorites">';
 
                     // Animation
                     const flyer = document.createElement('div');
@@ -1279,11 +1279,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (favorites.has(id)) {
             favorites.delete(id);
             btn.classList.remove("active");
-            btn.innerHTML = '<img src="/images/icon_heart_empty.png" alt="Add to favorites">';
+            btn.innerHTML = '<img src="/images/icon_heart_empty.webp" alt="Add to favorites">';
         } else {
             favorites.add(id);
             btn.classList.add("active");
-            btn.innerHTML = '<img src="/images/icon_heart_filled.png" alt="Remove from favorites">';
+            btn.innerHTML = '<img src="/images/icon_heart_filled.webp" alt="Remove from favorites">';
 
             // Pulse animation
             btn.animate([
