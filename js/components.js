@@ -1,6 +1,16 @@
 class SiteHeader extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
+            <div class="utility-bar">
+                <div class="container">
+                    <div class="ub-group ub-info">
+                        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>אור יהודה · משלוחים בגוש דן והמרכז</span>
+                    </div>
+                    <div class="ub-group">
+                        <a href="tel:036346236">03-6346236</a>
+                    </div>
+                </div>
+            </div>
             <header class="site-header">
                 <div class="container">
                     <a href="/" class="logo">
@@ -233,6 +243,32 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollBtn.addEventListener('click', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+    }
+
+    // --- Catalog: Grid/List view toggle (עיצוב בלבד - לא נוגע בלוגיקת app.js) ---
+    const productsGrid = document.getElementById('products');
+    const catalogSearchContainer = document.querySelector('.main-header .search-container');
+    if (productsGrid && catalogSearchContainer && !document.getElementById('view-toggle')) {
+        const VIEW_KEY = 'aroam_catalog_view';
+        const toggle = document.createElement('div');
+        toggle.id = 'view-toggle';
+        toggle.className = 'view-toggle';
+        toggle.innerHTML = `
+            <button type="button" data-view="grid" title="תצוגת רשת" aria-label="תצוגת רשת"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
+            <button type="button" data-view="list" title="תצוגת רשימה" aria-label="תצוגת רשימה"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></button>`;
+        const applyView = (mode) => {
+            productsGrid.classList.toggle('list-view', mode === 'list');
+            toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.view === mode));
+            try { localStorage.setItem(VIEW_KEY, mode); } catch (e) { }
+        };
+        toggle.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (btn) applyView(btn.dataset.view);
+        });
+        catalogSearchContainer.appendChild(toggle);
+        let savedView = 'grid';
+        try { savedView = localStorage.getItem(VIEW_KEY) || 'grid'; } catch (e) { }
+        applyView(savedView);
     }
 
     // --- 4. AJAX Contact Forms Handler ---

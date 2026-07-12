@@ -4,7 +4,7 @@
 class CatalogShell extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
-    <div class="app-container">
+    <div class="app-container with-sidebar">
 
         <!-- Header -->
         <header class="main-header">
@@ -14,11 +14,15 @@ class CatalogShell extends HTMLElement {
                 <input type="text" id="search-input" class="search-input" placeholder="חיפוש מוצר..."
                     aria-label="חיפוש בקטלוג">
             </div>
+        </header>
 
+        <!-- Categories: side column on desktop, chips row on mobile -->
+        <aside class="catalog-sidebar">
+            <div class="sidebar-title">קטגוריות</div>
             <nav class="categories-nav" id="categories">
                 <!-- Categories injected by JS -->
             </nav>
-        </header>
+        </aside>
 
         <!-- Main Content -->
         <main>
