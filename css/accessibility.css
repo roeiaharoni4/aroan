@@ -29,6 +29,15 @@
     transform: scale(1.1);
 }
 
+/* בעמודי קטלוג יש בר הזמנה תחתון קבוע - מרימים את הכפתור והתפריט מעליו */
+body:has(.fab-container) #a11y-toggle-btn {
+    bottom: 78px;
+}
+
+body:has(.fab-container) #a11y-menu {
+    bottom: 138px;
+}
+
 #a11y-toggle-btn svg {
     width: 30px;
     height: 30px;

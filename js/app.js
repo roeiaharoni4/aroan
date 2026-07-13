@@ -230,35 +230,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     async function determineImageBaseUrl() {
-        const candidates = [
-            '/',               // Absolute root
-            '../',             // Sibling
-            '',                // Relative
-            '/catalog/',       // Common subfolder
-            '/aroam-catalog/'  // Repository name
-        ];
-
-        for (const base of candidates) {
-            const testUrl = base + 'images/logo.png';
-            if (await checkImageExists(testUrl)) {
-                return base;
-            }
-        }
-        return '/'; // Default fallback
-    }
-
-    function checkImageExists(url) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                // Verify it's not a soft 404 (HTML page masquerading as image)
-                // Real logo should be larger than 1x1. typical logo is >50px width
-                if (img.naturalWidth > 10) resolve(true);
-                else resolve(false);
-            };
-            img.onerror = () => resolve(false);
-            img.src = url;
-        });
+        // התמונות תמיד תחת שורש הדומיין (GitHub Pages + דומיין מותאם)
+        return '/';
     }
 
     async function loadProducts() {
@@ -654,6 +627,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // נעילת גלילת הרקע כשמודאל כלשהו פתוח
+    function syncModalScrollLock() {
+        document.body.style.overflow = document.querySelector(".modal-overlay.open") ? "hidden" : "";
+    }
+
+    function openOrderModal() {
+        if (!orderModal) return;
+        fillOrderTable();
+        orderModal.classList.add("open");
+        syncModalScrollLock();
+    }
+
     function setupEventListeners() {
         if (searchInput) {
             searchInput.addEventListener("input", () => {
@@ -671,21 +656,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
         if (openOrderBtn) {
-            openOrderBtn.addEventListener("click", () => {
-                fillOrderTable();
-                orderModal.classList.add("open");
-            });
+            openOrderBtn.addEventListener("click", openOrderModal);
         }
 
         if (closeOrderBtn) {
             closeOrderBtn.addEventListener("click", () => {
                 orderModal.classList.remove("open");
+                syncModalScrollLock();
             });
         }
 
         if (orderModal) {
             orderModal.addEventListener("click", (e) => {
-                if (e.target === orderModal) orderModal.classList.remove("open");
+                if (e.target === orderModal) {
+                    orderModal.classList.remove("open");
+                    syncModalScrollLock();
+                }
             });
         }
 
@@ -853,6 +839,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const close = () => {
             overlay.remove();
             if (orderModal) orderModal.classList.remove("open");
+            syncModalScrollLock();
         };
         box.querySelector("#order-confirm-close").addEventListener("click", close);
         overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
@@ -1157,11 +1144,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!quickViewModal) return;
 
         if (closeQuickViewBtn) {
-            closeQuickViewBtn.onclick = () => quickViewModal.classList.remove("open");
+            closeQuickViewBtn.onclick = () => {
+                quickViewModal.classList.remove("open");
+                syncModalScrollLock();
+            };
         }
 
         quickViewModal.onclick = (e) => {
-            if (e.target === quickViewModal) quickViewModal.classList.remove("open");
+            if (e.target === quickViewModal) {
+                quickViewModal.classList.remove("open");
+                syncModalScrollLock();
+            }
         };
 
         if (qvMinus) qvMinus.onclick = () => {
@@ -1185,6 +1178,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             renderProducts();
 
             quickViewModal.classList.remove("open");
+            syncModalScrollLock();
 
             // Animation
             const btnRect = qvAddToCart.getBoundingClientRect();
@@ -1229,6 +1223,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         qvInput.value = currentQty > 0 ? currentQty : 1; // Default to 1 if not in cart
 
         quickViewModal.classList.add("open");
+        syncModalScrollLock();
     }
 
     function renderSkeleton(count) {
@@ -1388,14 +1383,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Quote History Management (Cloud API) ---
     const API_URL = "https://script.google.com/macros/s/AKfycbyasqqt8uTERc__hWjJTW59M6z2mNN-VEUksh5PUT94h1EAG5xwnyCIYzX0u7jmnNRZ/exec";
-    const API_PASSWORD = "Aroam2026";
+
+    // הסיסמה לא שמורה בקוד: נשאלת פעם אחת ונשמרת ל-session בלבד
+    function getApiPassword() {
+        let pw = sessionStorage.getItem("aroam_qh_key") || "";
+        if (!pw) {
+            pw = prompt("קוד גישה להיסטוריית הצעות בענן:") || "";
+            if (pw) sessionStorage.setItem("aroam_qh_key", pw);
+        }
+        return pw;
+    }
+
+    function clearApiPassword() {
+        sessionStorage.removeItem("aroam_qh_key");
+    }
 
     async function getQuoteHistory() {
+        const pw = getApiPassword();
+        if (!pw) return [];
         try {
-            const res = await fetch(`${API_URL}?action=get&password=${API_PASSWORD}`);
+            const res = await fetch(`${API_URL}?action=get&password=${encodeURIComponent(pw)}`);
             const data = await res.json();
             if (data.error) {
                 console.error("API Error:", data.error);
+                clearApiPassword(); // קוד שגוי - לאפשר הזנה מחדש
+                showToast("קוד גישה שגוי או שגיאת שרת");
                 return [];
             }
             return data;
@@ -1437,10 +1449,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             };
         }
 
+        const pw = getApiPassword();
+        if (!pw) return newQuote;
+
         showToast("שומר הצעה בענן...");
 
         try {
-            const res = await fetch(`${API_URL}?action=save&password=${API_PASSWORD}`, {
+            const res = await fetch(`${API_URL}?action=save&password=${encodeURIComponent(pw)}`, {
                 method: 'POST',
                 body: JSON.stringify(newQuote)
             });
@@ -1462,9 +1477,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function deleteQuote(quoteId) {
         if (!confirm("האם למחוק את ההצעה מהענן לצמיתות?")) return;
 
+        const pw = getApiPassword();
+        if (!pw) return;
+
         showToast("מוחק...");
         try {
-            const res = await fetch(`${API_URL}?action=delete&id=${quoteId}&password=${API_PASSWORD}`);
+            const res = await fetch(`${API_URL}?action=delete&id=${encodeURIComponent(quoteId)}&password=${encodeURIComponent(pw)}`);
             const data = await res.json();
             if (data.success) {
                 showToast("נמחק בהצלחה");
@@ -1559,11 +1577,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!modal) return;
         renderHistoryList();
         modal.classList.add("open");
+        syncModalScrollLock();
     }
 
     function closeHistoryModal() {
         const modal = document.getElementById("history-modal");
         if (modal) modal.classList.remove("open");
+        syncModalScrollLock();
     }
 
     async function renderHistoryList() {

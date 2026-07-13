@@ -30,43 +30,70 @@ var SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID'; // <-- החלף במזהה הגיל�
 var SHEET_NAME = 'הזמנות';
 var NOTIFY_EMAIL = 'meiraroam@gmail.com';   // מייל להתראות על הזמנה חדשה
 
+// ניקוי קלט: טקסט בלבד, בלי תווי בקרה, באורך מוגבל
+function clean_(value, maxLen) {
+  var s = String(value == null ? '' : value);
+  s = s.replace(/[\x00-\x09\x0B-\x1F\x7F]/g, ' ');
+  // מניעת formula injection בגיליון (=, +, -, @ בתחילת תא)
+  if (/^[=+@\t\r-]/.test(s)) s = "'" + s;
+  return s.slice(0, maxLen || 200);
+}
+
+// הגבלת קצב פשוטה: עד 30 הזמנות בשעה (מגן מפני הצפה/ניצול לרעה)
+function rateLimitOk_() {
+  var cache = CacheService.getScriptCache();
+  var count = Number(cache.get('order_count') || 0);
+  if (count >= 30) return false;
+  cache.put('order_count', String(count + 1), 3600);
+  return true;
+}
+
 function doPost(e) {
   try {
+    if (!rateLimitOk_()) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'rate limit' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (!e.postData || !e.postData.contents || e.postData.contents.length > 100000) {
+      throw new Error('bad request');
+    }
     var data = JSON.parse(e.postData.contents);
     var sheet = getOrCreateSheet_();
 
     var customer = data.customer || {};
-    var itemsText = (data.items || []).map(function (item) {
-      return item.name + ' (מק"ט ' + item.id + ') x' + item.qty + ' ' + (item.unit || '');
+    var itemsText = (data.items || []).slice(0, 200).map(function (item) {
+      return clean_(item.name, 120) + ' (מק"ט ' + clean_(item.id, 30) + ') x' +
+        clean_(item.qty, 10) + ' ' + clean_(item.unit, 20);
     }).join('\n');
 
     sheet.appendRow([
-      new Date(),                    // תאריך קבלה
-      data.orderId || '',            // מספר הזמנה
-      data.date || '',               // תאריך אספקה מבוקש
-      customer.business || '',       // שם העסק
-      customer.contact || '',        // איש קשר
-      customer.phone || '',          // טלפון
-      customer.address || '',        // כתובת למשלוח
-      customer.notes || '',          // הערות
-      itemsText,                     // פירוט פריטים
-      data.totalItems || '',         // סה"כ פריטים
-      'חדשה'                         // סטטוס
+      new Date(),                          // תאריך קבלה
+      clean_(data.orderId, 30),            // מספר הזמנה
+      clean_(data.date, 20),               // תאריך אספקה מבוקש
+      clean_(customer.business, 100),      // שם העסק
+      clean_(customer.contact, 100),       // איש קשר
+      clean_(customer.phone, 30),          // טלפון
+      clean_(customer.address, 200),       // כתובת למשלוח
+      clean_(customer.notes, 500),         // הערות
+      itemsText,                           // פירוט פריטים
+      clean_(data.totalItems, 10),         // סה"כ פריטים
+      'חדשה'                               // סטטוס
     ]);
 
     // מייל התראה
     if (NOTIFY_EMAIL) {
-      var subject = 'הזמנה חדשה מהאתר #' + (data.orderId || '') +
-        (customer.business ? ' - ' + customer.business : '');
+      var subject = 'הזמנה חדשה מהאתר #' + clean_(data.orderId, 30) +
+        (customer.business ? ' - ' + clean_(customer.business, 100) : '');
       var body = 'התקבלה הזמנה חדשה:\n\n' +
-        'מספר הזמנה: ' + (data.orderId || '') + '\n' +
-        'שם העסק: ' + (customer.business || 'לא צוין') + '\n' +
-        'איש קשר: ' + (customer.contact || 'לא צוין') + '\n' +
-        'טלפון: ' + (customer.phone || 'לא צוין') + '\n' +
-        'כתובת: ' + (customer.address || 'לא צוינה') + '\n' +
-        'הערות: ' + (customer.notes || 'אין') + '\n\n' +
+        'מספר הזמנה: ' + (clean_(data.orderId, 30) || '') + '\n' +
+        'שם העסק: ' + (clean_(customer.business, 100) || 'לא צוין') + '\n' +
+        'איש קשר: ' + (clean_(customer.contact, 100) || 'לא צוין') + '\n' +
+        'טלפון: ' + (clean_(customer.phone, 30) || 'לא צוין') + '\n' +
+        'כתובת: ' + (clean_(customer.address, 200) || 'לא צוינה') + '\n' +
+        'הערות: ' + (clean_(customer.notes, 500) || 'אין') + '\n\n' +
         'פירוט:\n' + itemsText + '\n\n' +
-        'סה"כ פריטים: ' + (data.totalItems || '') + '\n\n' +
+        'סה"כ פריטים: ' + (clean_(data.totalItems, 10) || '') + '\n\n' +
         'הגיליון המלא: https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID;
       MailApp.sendEmail(NOTIFY_EMAIL, subject, body);
     }

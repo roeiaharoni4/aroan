@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const link = document.createElement('link');
         link.id = 'aroam-a11y-css';
         link.rel = 'stylesheet';
-        link.href = '/css/accessibility.css?v=3';
+        link.href = '/css/accessibility.css?v=4';
         document.head.appendChild(link);
     }
 
@@ -218,7 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
         waBtn.className = 'floating-whatsapp';
         waBtn.href = 'https://wa.me/972526000158'; // User's phone
         waBtn.target = '_blank';
-        waBtn.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" width="35" height="35" loading="lazy" decoding="async">';
+        waBtn.setAttribute('aria-label', 'WhatsApp');
+        waBtn.innerHTML = '<svg width="35" height="35" viewBox="0 0 32 32" fill="#fff" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7zm5.7-7.7c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.6-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1.1-1.1 2.6s1.1 3 1.3 3.2c.2.2 2.2 3.4 5.4 4.8.8.3 1.3.5 1.8.7.8.2 1.5.2 2 .1.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>';
         waBtn.title = "צ'אט בוואטסאפ";
         document.body.appendChild(waBtn);
     }

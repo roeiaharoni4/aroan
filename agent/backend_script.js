@@ -15,7 +15,10 @@
  */
 
 const SHEET_NAME = "AgentQuotes"; // Separate tab for orders
-const API_PASSWORD = "Aroam2026"; // Simple security token
+// חשוב: קבע כאן סיסמה חזקה משלך לפני הפריסה ב-Apps Script.
+// אל תשמור את הסיסמה האמיתית בקובץ הזה - הוא מוגש פומבית באתר.
+// באתר: הסיסמה נשאלת פעם אחת בדף הסוכן ונשמרת ל-session בלבד.
+const API_PASSWORD = "SET_YOUR_OWN_STRONG_PASSWORD"; // Simple security token
 
 function doGet(e) {
     return handleRequest(e);
