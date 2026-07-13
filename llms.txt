@@ -27,6 +27,10 @@
 - [Factories & Industry](https://aroam.co.il/factories/): מפעלים ותעשייה.
 - [Schools & Kindergartens](https://aroam.co.il/education/): מוסדות חינוך וגנים.
 
+## Local Pages (דפי אזור)
+
+- [Supplier in Or Yehuda](https://aroam.co.il/or-yehuda/): ספק חומרי ניקיון וחד פעמי באור יהודה. Local B2B supplier based at 16 HaYetzira St., serving Or Yehuda, Bik'at Ono and Gush Dan.
+
 ## Product Categories (דפי קטגוריה)
 
 - [Cleaning Supplies & Detergents](https://aroam.co.il/catalog/cleaning/): חומרי ניקוי לעסקים בסיטונאות. Floor cleaners, bleach, laundry detergents, dishwashing soaps, and pest control. Brands: Sano, Jacobi (KH7), Fairy, Finish, Dettol, Zohar Dalia.
