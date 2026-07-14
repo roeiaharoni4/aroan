@@ -30,6 +30,12 @@
 ## Local Pages (דפי אזור)
 
 - [Supplier in Or Yehuda](https://aroam.co.il/or-yehuda/): ספק חומרי ניקיון וחד פעמי באור יהודה. Local B2B supplier based at 16 HaYetzira St., serving Or Yehuda, Bik'at Ono and Gush Dan.
+- [Supplier in Yehud](https://aroam.co.il/yehud/): ספק חד פעמי וציוד משרדי ביהוד-מונוסון. Disposables, office supplies and cleaning products for businesses in Yehud-Monosson.
+- [Supplier in Kiryat Ono](https://aroam.co.il/kiryat-ono/): ספק חד פעמי וציוד משרדי בקריית אונו. Disposables, office supplies and institutional hygiene for Kiryat Ono and the Ono Valley.
+- [Supplier in Ramat Gan](https://aroam.co.il/ramat-gan/): ספק חד פעמי וציוד משרדי ברמת גן. Kitchen disposables and office supplies for Ramat Gan offices, restaurants and cafes.
+- [Supplier in Bnei Brak](https://aroam.co.il/bnei-brak/): חד פעמי בסיטונאות וציוד משרדי בבני ברק. Bulk disposables for institutions and events, office supplies for Bnei Brak.
+- [Supplier in Petah Tikva](https://aroam.co.il/petah-tikva/): ספק חד פעמי וציוד משרדי בפתח תקווה. Disposables, office supplies and industrial cleaning for Kiryat Arye and Segula industrial zones.
+- [Supplier in Tel Aviv](https://aroam.co.il/tel-aviv/): ספק חד פעמי וציוד משרדי בתל אביב. Takeaway packaging for restaurants and delivery businesses, office supplies for Tel Aviv offices.
 
 ## Product Categories (דפי קטגוריה)
 
