@@ -47,6 +47,61 @@
     justify-content: center;
 }
 
+/* Search suggestions dropdown (defined in site.css, missing in Agent view) */
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    background: var(--bg-surface);
+    border-radius: 0 0 16px 16px;
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    margin-top: 5px;
+    border: 1px solid var(--border-color);
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background-color: var(--bg-body);
+}
+
+.suggestion-item img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: white;
+    flex-shrink: 0;
+}
+
+.s-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.s-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
 [data-theme="dark"] {
     --bg-body: #121212;
     --bg-surface: #1E1E1E;
