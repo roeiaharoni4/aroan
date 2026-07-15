@@ -161,16 +161,18 @@ customElements.define('site-footer', SiteFooter);
 // Auto-inject components
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Conversion Tracking: דיווח לחיצות טלפון/וואטסאפ ל-GTM ---
+    // --- Conversion Tracking: דיווח לחיצות טלפון/וואטסאפ ל-GTM ול-GA4 ---
     document.addEventListener('click', (e) => {
         const link = e.target.closest('a[href^="tel:"], a[href*="wa.me"]');
         if (!link) return;
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({
-            event: link.getAttribute('href').startsWith('tel:') ? 'phone_click' : 'whatsapp_click',
+        const eventName = link.getAttribute('href').startsWith('tel:') ? 'phone_click' : 'whatsapp_click';
+        const eventParams = {
             link_url: link.getAttribute('href'),
             page_path: window.location.pathname
-        });
+        };
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push(Object.assign({ event: eventName }, eventParams));
+        if (typeof gtag === 'function') gtag('event', eventName, eventParams);
     });
 
     // Auto-inject Accessibility Widget
@@ -342,10 +344,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 form.reset();
 
-                // Conversion Tracking: דיווח שליחת טופס ליד ל-GTM
+                // Conversion Tracking: דיווח שליחת טופס ליד ל-GTM ול-GA4
                 window.dataLayer = window.dataLayer || [];
                 window.dataLayer.push({
                     event: 'form_submit',
+                    form_subject: subject,
+                    page_path: window.location.pathname
+                });
+                if (typeof gtag === 'function') gtag('event', 'form_submit', {
                     form_subject: subject,
                     page_path: window.location.pathname
                 });

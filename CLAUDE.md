@@ -25,7 +25,7 @@
   - `/admin/` — עורך מוצרים מקומי. עובד רק דרך `server.py` (רץ מ-start_catalog.command) עם API‏ `/api/products` ו-`/api/upload`. לא עובד באתר החי.
   - `/agent/` — גרסת סוכן עם מחירים (קוד כניסה 0526), משתמש באותו app.js עם CATALOG_CONFIG שונה (showPrices: true). אין בו טופס פרטי לקוח — הקוד ב-app.js בנוי לדלג כשאין את השדות.
 - **Google Apps Script:** webhook הזמנות (GOOGLE_SCRIPT_WEBHOOK_URL ב-app.js שורה 3) + webhook טפסי לידים (ב-components.js). קוד משודרג לגיליון הזמנות עם סטטוס: `tools/google-apps-script-orders.gs` (ייתכן שעדיין לא הותקן — לבדוק עם רועי).
-- **GTM:** GTM-W8HST8RB בכל הדפים. אירועי dataLayer: whatsapp_click, phone_click, form_submit, order_sent. חיבור ל-GA4 — באחריות רועי (ייתכן שטרם בוצע).
+- **GTM + GA4:** GTM-W8HST8RB בכל הדפים + **gtag.js ישיר עם GA4 מזהה G-W1MRCCC3FS** (נכס properties/545698526, הוטמע 15.7.26). אירועי המרה: whatsapp_click, phone_click, form_submit, order_sent — נשלחים גם ל-dataLayer (GTM) וגם ל-GA4 דרך gtag('event').
 
 ## תהליכי עבודה
 
@@ -33,7 +33,7 @@
 - **בדיקה מקומית:** start_catalog.command (שרת על פורט 8080-8090). סגירת החלון מכבה את השרת.
 - **גרסאות:** יש git בתיקייה. לפני כל סבב שינויים: `git add -A && git commit -m "תיאור"`. שחזור: `git reset --hard HEAD`.
 - **תמונות מוצרים:** `tools/עדכון_תמונות.command` — מאחד רקע לבן/ריבוע/הקטנה, מגבה ל-`images_backup/`.
-- **פריסה:** `git add -A && git commit && git push` — GitHub Pages מתעדכן אוטומטית תוך דקות. אחרי שינויי SEO — לשלוח sitemap מחדש ב-Search Console.
+- **פריסה:** `git add -A && git commit && git push` — GitHub Pages מתעדכן אוטומטית תוך דקות. אחרי שינויי SEO — לשלוח sitemap מחדש ב-Search Console. **הערה (15.7.26):** מסביבת Claude ‏commit עובד, אבל ל-push אין credentials — רועי מריץ `git push` בעצמו.
 
 ## מה בוצע (יולי 2026)
 
@@ -62,9 +62,11 @@
 
 13. **תיקון הצעות חיפוש בדף הסוכן (15.7.26):** ההצעות בחיפוש הוצגו ענקיות וחסמו את המסך — עיצוב `.search-suggestions` היה רק ב-site.css שדף הסוכן לא טוען. הועתק ל-style.css (עם משתני style.css, כולל מצב כהה) ליד תיקון "האייקונים הענקיים" הקיים. גרסאות: style.css?v=14 (12 דפים), sw cache-v5. אומת בדפדפן בסוכן ובקטלוג. commit `3070c02` — ממתין ל-push.
 
+14. **חיבור Google Analytics 4 (15.7.26):** רועי חיבר את חשבון הגוגל ל-Claude דרך Composio (קריאה בלבד — דוחות כן, ניהול לא). נוצר נכס GA4 **aroam.co.il** (רועי יצר ידנית לפי הוראות; property id ‏545698526, חשבון accounts/379713876, מזהה מדידה **G-W1MRCCC3FS**). הוטמע **gtag.js ישירות** בכל 29 הדפים הציבוריים (אחרי קטע ה-GTM; לא דרך GTM כי אין גישה לממשק שלו) — כולל דפי קטלוג, ערים ודף הסוכן. ארבעת אירועי ההמרה מדווחים עכשיו גם ל-GA4 דרך `gtag('event')` בנוסף ל-dataLayer: ‏phone_click/whatsapp_click ו-form_submit ב-components.js, ‏order_sent (whatsapp/email) ב-app.js — עטופים ב-`typeof gtag === 'function'`. גרסאות: app.js?v=19, sw cache-v6. אומת מקצה לקצה: דוח Realtime דרך Composio הראה page_view + phone_click נקלטים בנכס. **דורש רועי:** לתקן את שם הנכס בממשק GA (נרשם בטעות "aroma.co.il") ולסמן את 4 האירועים כ-Key Events (ניהול ← אירועים).
+
 - **להחליף את סיסמת ה-API בסקריפט היסטוריית ההצעות בענן** (Apps Script של AgentQuotes): הסיסמה Aroam2026 נחשפה בעבר בקבצים פומביים ובהיסטוריית git — לקבוע סיסמה חדשה בסקריפט, ובדף הסוכן להזין אותה כשנשאלים (נשמרת ל-session).
 - התקנת `tools/google-apps-script-orders.gs` בחשבון גוגל (הוראות בראש הקובץ) — כולל עכשיו סינון קלט והגבלת קצב.
-- חיבור GTM ל-GA4 (טריגרים לארבעת האירועים) + סימון Key Events.
+- סימון 4 אירועי ההמרה כ-Key Events בממשק GA4 (החיבור עצמו בוצע 15.7 דרך gtag ישיר — GTM כבר לא נדרש לזה).
 - הרצת סקריפט התמונות ובדיקת התוצאה.
 - לוודא שכל השינויים נדחפו ל-GitHub (push) + שליחת sitemap ב-Search Console.
 - רעיונות שאושרו עקרונית אך לא בוצעו: "הוסף הכל לסל" בהזמנות אחרונות, מידע אריזה/קרטון למוצרים, מבצעי החודש, דף שאלות נפוצות (צריך תשובות מרועי), תמונת הירו אמיתית (צריך צילום), Google Business Profile.

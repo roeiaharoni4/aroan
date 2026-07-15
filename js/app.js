@@ -701,9 +701,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // Send backup to Google Script in the background
                     sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
                     
-                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM
+                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
                     window.dataLayer = window.dataLayer || [];
                     window.dataLayer.push({ event: 'order_sent', order_method: 'whatsapp', order_id: orderId, order_items: totalItems });
+                    if (typeof gtag === 'function') gtag('event', 'order_sent', { order_method: 'whatsapp', order_id: orderId, order_items: totalItems });
 
                     const text = encodeURIComponent(buildMessage(orderId));
                     const phone = "972526000158";
@@ -728,9 +729,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // Send backup to Google Script in the background
                     sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
                     
-                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM
+                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
                     window.dataLayer = window.dataLayer || [];
                     window.dataLayer.push({ event: 'order_sent', order_method: 'email', order_id: orderId, order_items: totalItems });
+                    if (typeof gtag === 'function') gtag('event', 'order_sent', { order_method: 'email', order_id: orderId, order_items: totalItems });
 
                     const subject = encodeURIComponent(`הצעת מחיר - מספר הזמנה #${orderId}`);
                     const body = encodeURIComponent(buildMessage(orderId));
