@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const costInput = document.getElementById('prod-cost');
     const priceInput = document.getElementById('prod-price');
     const marginInput = document.getElementById('prod-margin');
+    const salePriceInput = document.getElementById('prod-sale-price');
     const descInput = document.getElementById('prod-description');
 
     const fileInput = document.getElementById('prod-image-file');
@@ -111,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             image: (item.image || '').trim(),
             cost: item.cost !== undefined && item.cost !== '' ? toNum(item.cost) || 0 : '',
             price: toNum(item.price) || 0,
+            sale_price: item.sale_price !== undefined && item.sale_price !== '' ? toNum(item.sale_price) || '' : '',
             description: (item.description || '').trim()
         })).filter(p => p.id && p.name);
 
@@ -143,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${isNaN(cost) ? '—' : cost.toFixed(2)}</td>
                 <td>${isNaN(price) ? '—' : price.toFixed(2)}</td>
                 <td>${isNaN(m) ? '—' : m.toFixed(1) + '%'}</td>
+                <td>${isNaN(toNum(p.sale_price)) ? '—' : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}</td>
                 <td class="action-btns">
                     <button class="edit-btn" title="ערוך" data-id="${esc(p.id)}">✏️</button>
                     <button class="delete-btn" title="מחק" data-id="${esc(p.id)}">🗑️</button>
@@ -247,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         priceInput.value = p.price;
         const m = marginOf(toNum(p.cost), toNum(p.price));
         marginInput.value = isNaN(m) ? '' : m.toFixed(1);
+        salePriceInput.value = isNaN(toNum(p.sale_price)) ? '' : toNum(p.sale_price);
         descInput.value = p.description || '';
         urlInput.value = p.image;
 
@@ -316,6 +320,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const salePrice = salePriceInput.value === '' ? '' : toNum(salePriceInput.value) || 0;
+        const regularPrice = toNum(priceInput.value) || 0;
+        if (salePrice !== '' && salePrice >= regularPrice) {
+            alert('מחיר המבצע חייב להיות נמוך ממחיר המכירה הרגיל.');
+            return;
+        }
+
         const newProduct = {
             id: idInput.value.trim(),
             name: nameInput.value.trim(),
@@ -323,7 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
             unit: unitInput.value.trim() || 'יחידה',
             image: urlInput.value.trim(),
             cost: costInput.value === '' ? '' : toNum(costInput.value) || 0,
-            price: toNum(priceInput.value) || 0,
+            price: regularPrice,
+            sale_price: salePrice,
             description: descInput.value.trim()
         };
 
@@ -365,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         image: ['image', 'img', 'תמונה', 'נתיב תמונה'],
         cost: ['cost', 'עלות', 'מחיר עלות', 'מחיר קניה', 'מחיר קנייה', 'עלות ליחידה'],
         price: ['price', 'מחיר', 'מכירה', 'מחיר מכירה', 'מחיר ללקוח', 'מחיר יחידה'],
+        sale_price: ['sale_price', 'sale', 'מבצע', 'מחיר מבצע', 'מחיר במבצע'],
         margin: ['margin', 'רווח', 'אחוז רווח', 'רווח %', '% רווח', 'אחוז'],
         description: ['description', 'תיאור', 'הערות', 'פירוט']
     };
@@ -451,11 +464,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (target) {
                 const changes = {};
-                ['name', 'category', 'unit', 'image', 'cost', 'price', 'description'].forEach(f => {
+                ['name', 'category', 'unit', 'image', 'cost', 'price', 'sale_price', 'description'].forEach(f => {
                     if (row[f] === undefined) return;
                     const oldVal = String(target[f] ?? '');
                     let newVal = String(row[f]);
-                    if (f === 'cost' || f === 'price') {
+                    if (f === 'cost' || f === 'price' || f === 'sale_price') {
                         if (toNum(oldVal) === toNum(newVal)) return;
                         newVal = String(toNum(newVal));
                     } else if (oldVal === newVal) {
@@ -473,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     image: row.image || '',
                     cost: row.cost !== undefined ? toNum(row.cost) : '',
                     price: row.price !== undefined ? toNum(row.price) || 0 : 0,
+                    sale_price: row.sale_price !== undefined ? toNum(row.sale_price) || '' : '',
                     description: row.description || ''
                 });
             } else {
@@ -487,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pendingImport = { updates, additions };
 
-        const FIELD_NAMES = { name: 'שם', category: 'קטגוריה', unit: 'יחידה', image: 'תמונה', cost: 'עלות', price: 'מכירה', description: 'תיאור' };
+        const FIELD_NAMES = { name: 'שם', category: 'קטגוריה', unit: 'יחידה', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', description: 'תיאור' };
         csvSummary.textContent = `${updates.length} מוצרים יעודכנו, ${additions.length} מוצרים חדשים יתווספו` + (skipped ? `, ${skipped} שורות דולגו` : '');
 
         let html = '';
@@ -513,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pendingImport) return;
         pendingImport.updates.forEach(u => {
             Object.entries(u.changes).forEach(([f, [, n]]) => {
-                u.target[f] = (f === 'cost' || f === 'price') ? toNum(n) : n;
+                u.target[f] = (f === 'cost' || f === 'price' || f === 'sale_price') ? toNum(n) : n;
             });
         });
         pendingImport.additions.forEach(a => products.push(a));

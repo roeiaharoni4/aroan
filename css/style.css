@@ -389,6 +389,27 @@ button {
     color: var(--primary-dark);
 }
 
+/* מבצע (קטלוג הטיפוח הנסתר): מחיר קודם מחוק + תג */
+.price-old {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    font-weight: 400;
+    margin-right: 8px;
+}
+
+.sale-badge {
+    display: inline-block;
+    background: #c0554d;
+    color: #fff;
+    font-size: 0.7em;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-right: 8px;
+    vertical-align: 2px;
+}
+
 .product-sku {
     font-size: 0.8rem;
     color: var(--text-secondary);

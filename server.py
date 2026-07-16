@@ -76,15 +76,35 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             products = json.loads(post_data.decode('utf-8'))
 
-            master_fields = ['id', 'name', 'category', 'unit', 'image', 'cost', 'price', 'description']
-            public_fields = ['id', 'name', 'category', 'unit', 'image', 'price', 'description']
+            master_fields = ['id', 'name', 'category', 'unit', 'image', 'cost', 'price', 'sale_price', 'description']
+            public_fields = ['id', 'name', 'category', 'unit', 'image', 'price', 'original_price', 'description']
 
-            for path, fields in ((PRICELIST_MASTER_FILE, master_fields), (PRICELIST_PUBLIC_FILE, public_fields)):
-                with open(path, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
-                    writer.writeheader()
-                    for p in products:
-                        writer.writerow({k: p.get(k, '') for k in fields})
+            def to_float(v):
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    return None
+
+            with open(PRICELIST_MASTER_FILE, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=master_fields, extrasaction='ignore')
+                writer.writeheader()
+                for p in products:
+                    writer.writerow({k: p.get(k, '') for k in master_fields})
+
+            # בקובץ הציבורי: כשיש מבצע — price = מחיר המבצע, original_price = המחיר הרגיל (לתצוגת "מבצע")
+            with open(PRICELIST_PUBLIC_FILE, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=public_fields, extrasaction='ignore')
+                writer.writeheader()
+                for p in products:
+                    row = {k: p.get(k, '') for k in public_fields}
+                    sale = to_float(p.get('sale_price'))
+                    regular = to_float(p.get('price'))
+                    if sale is not None and regular is not None and 0 < sale < regular:
+                        row['price'] = sale
+                        row['original_price'] = regular
+                    else:
+                        row['original_price'] = ''
+                    writer.writerow(row)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

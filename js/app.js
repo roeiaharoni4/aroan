@@ -267,6 +267,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             unit: item.unit,
                             image: img,
                             price: parseFloat(item.price) || 0,
+                            // מבצע: original_price קיים רק בקובץ המחירון הנסתר — כשהוא גבוה מהמחיר מוצג "מבצע"
+                            original_price: parseFloat(item.original_price) || 0,
                             description: item.description || "", // Optional description
                             brand: (item.brand || "").trim() || detectBrand(item.name) // עמודת brand בקובץ גוברת על זיהוי אוטומטי
                         }
@@ -574,6 +576,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const price = document.createElement("div");
                 price.className = "product-price";
                 price.textContent = product.price.toFixed(2) + " ₪";
+                if (product.original_price > product.price) {
+                    const oldPrice = document.createElement("span");
+                    oldPrice.className = "price-old";
+                    oldPrice.textContent = product.original_price.toFixed(2) + " ₪";
+                    price.appendChild(oldPrice);
+                    const saleBadge = document.createElement("span");
+                    saleBadge.className = "sale-badge";
+                    saleBadge.textContent = "מבצע";
+                    price.appendChild(saleBadge);
+                }
                 body.appendChild(price);
             }
 
@@ -1205,6 +1217,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.showPrices) {
             qvPrice.style.display = 'block';
             qvPrice.textContent = product.price.toFixed(2) + " ₪";
+            if (product.original_price > product.price) {
+                const oldPrice = document.createElement("span");
+                oldPrice.className = "price-old";
+                oldPrice.textContent = product.original_price.toFixed(2) + " ₪";
+                qvPrice.appendChild(oldPrice);
+                const saleBadge = document.createElement("span");
+                saleBadge.className = "sale-badge";
+                saleBadge.textContent = "מבצע";
+                qvPrice.appendChild(saleBadge);
+            }
         } else {
             qvPrice.style.display = 'none';
         }
