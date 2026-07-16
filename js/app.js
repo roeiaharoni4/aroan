@@ -1,5 +1,5 @@
-// Configurable Data Source
-const DATA_SOURCE_URL = '/data/products.csv?v=1';
+// Configurable Data Source (ניתן לעקוף דרך CATALOG_CONFIG.dataSource — משמש את המחירון הנסתר)
+const DATA_SOURCE_URL = (window.CATALOG_CONFIG && window.CATALOG_CONFIG.dataSource) || '/data/products.csv?v=1';
 const GOOGLE_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz_rRjFdy2MqPMXX0cHkAh7zHBV4plQIEVL9H45DqdRRnU19ShwNCfguva7WBa0y-F1PQ/exec'; // הזן כאן את הקישור שקיבלת מגוגל סקריפט לשליחת המייל
 
 

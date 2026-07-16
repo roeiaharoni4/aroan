@@ -23,19 +23,9 @@
     <!-- End Google Analytics 4 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>קטלוג מוצרים לעסקים: חומרי ניקוי, חד פעמי וציוד משרדי | אהרוני</title>
-    <meta name="description"
-        content="קטלוג מוצרים סיטונאי לעסקים: חומרי ניקוי, מוצרי נייר, כלים חד פעמיים בסיטונאות וציוד משרדי. הזמנה קלה ומהירה אונליין ומשלוח עד בית העסק.">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://aroam.co.il/catalog/">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://aroam.co.il/catalog/">
-    <meta property="og:title" content="קטלוג מוצרים לעסקים: חומרי ניקוי, חד פעמי וציוד משרדי | אהרוני">
-    <meta property="og:description"
-        content="הזמינו אונליין חומרי ניקוי, כלים חד-פעמיים וציוד משרדי לעסק. מחירים סיטונאיים ושירות מהיר.">
-    <meta property="og:image" content="https://aroam.co.il/images/og-image.png">
+    <title>מחירון | אהרוני שיווק והפצה</title>
+    <!-- עמוד נסתר: נגיש רק בקישור ישיר, לא לאינדוקס ולא מקושר מהאתר -->
+    <meta name="robots" content="noindex, nofollow">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,26 +61,13 @@
     <!-- Scripts -->
     <script>
         window.CATALOG_CONFIG = {
-            showPrices: false,
+            showPrices: true,
             allowPdf: false,
-            allowShare: true
+            allowShare: false,
+            dataSource: '/data/pricelist.csv?v=1'
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      "name": "קטלוג מוצרים סיטונאי | אהרוני שיווק והפצה",
-      "description": "קטלוג המוצרים המלא של אהרוני שיווק והפצה. חומרי ניקוי לעסקים, נייר תעשייתי, כלים חד פעמיים וציוד משרדי בסיטונאות.",
-      "url": "https://aroam.co.il/catalog/",
-      "publisher": {
-        "@type": "WholesaleStore",
-        "name": "אהרוני שיווק והפצה",
-        "url": "https://aroam.co.il/"
-      }
-    }
-    </script>
     <script src="/js/app.js?v=20" defer></script>
 </head>
 
@@ -109,7 +86,7 @@
 
             <div class="search-container">
                 <input type="text" id="search-input" class="search-input" placeholder="חיפוש מוצר..."
-                    aria-label="חיפוש בקטלוג">
+                    aria-label="חיפוש במחירון">
             </div>
         </header>
 
@@ -207,7 +184,7 @@
 
             <div class="modal-footer">
                 <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
-                    <div style="text-align: right;">
+                    <div style="text-align: right;" id="summary-total-container">
                         <div style="font-size: 0.9rem; color: #666;">סה״כ פריטים: <span id="summary-items">0</span>
                         </div>
                         <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">סה״כ לתשלום: <span

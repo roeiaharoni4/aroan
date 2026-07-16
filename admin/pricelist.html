@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת ניהול - Aroam Catalog</title>
+    <title>עורך המחירון הנסתר - Aroam</title>
+    <meta name="robots" content="noindex, nofollow">
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin.css">
-    <!-- PapaParse for CSV parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="/js/lib/papaparse.min.js"></script>
 </head>
 <body>
     <div class="admin-layout">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <img src="../images/logo.png" alt="Aroam Logo" class="logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5Mb2dvPC90ZXh0Pjwvc3ZnPg=='">
-                <h2>מערכת ניהול</h2>
+                <img src="../images/logo.png" alt="Aroam Logo" class="logo" onerror="this.style.display='none'">
+                <h2>עורך המחירון</h2>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="active"><span class="icon">📦</span> ניהול מוצרים</a>
-                <a href="pricelist.html"><span class="icon">💰</span> עורך המחירון הנסתר</a>
-                <a href="../index.html" target="_blank"><span class="icon">🌐</span> צפייה באתר</a>
+                <a href="#" class="active"><span class="icon">💰</span> ניהול מחירון</a>
+                <a href="index.html"><span class="icon">📦</span> ניהול מוצרים (קטלוג ראשי)</a>
+                <a href="/p-3167edfa/" target="_blank"><span class="icon">🌐</span> צפייה בעמוד המחירון</a>
             </nav>
             <div class="sidebar-footer">
                 <button id="save-all-btn" class="btn btn-primary btn-block">שמור שינויים</button>
@@ -32,6 +32,8 @@
                     <input type="text" id="search-input" placeholder="חיפוש מוצר...">
                 </div>
                 <div class="actions">
+                    <label for="csv-file-input" class="btn btn-outline" style="cursor:pointer;">⬆ העלאת קובץ CSV</label>
+                    <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;">
                     <button id="add-product-btn" class="btn btn-primary"><span class="icon">+</span> הוסף מוצר חדש</button>
                 </div>
             </header>
@@ -46,7 +48,9 @@
                                 <th>שם המוצר</th>
                                 <th>קטגוריה</th>
                                 <th>יחידה</th>
-                                <th>מחיר (₪)</th>
+                                <th>עלות (₪)</th>
+                                <th>מכירה (₪)</th>
+                                <th>רווח %</th>
                                 <th>פעולות</th>
                             </tr>
                         </thead>
@@ -69,10 +73,10 @@
             <div class="modal-body">
                 <form id="product-form">
                     <input type="hidden" id="original-id">
-                    
+
                     <div class="form-group">
                         <label for="prod-id">מק״ט (ID) <span class="required">*</span></label>
-                        <input type="text" id="prod-id" required placeholder="למשל: A123">
+                        <input type="text" id="prod-id" required placeholder="למשל: PL001">
                     </div>
 
                     <div class="form-group">
@@ -94,12 +98,25 @@
                         </div>
                     </div>
 
+                    <!-- שלושת שדות המחיר: הזנת כל שניים מחשבת את השלישי -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="prod-price">מחיר (₪) <span class="required">*</span></label>
-                            <input type="number" id="prod-price" step="0.01" required>
+                            <label for="prod-cost">מחיר עלות (₪)</label>
+                            <input type="number" id="prod-cost" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="prod-price">מחיר מכירה (₪) <span class="required">*</span></label>
+                            <input type="number" id="prod-price" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prod-margin">אחוז רווח (%)</label>
+                            <input type="number" id="prod-margin" step="0.1">
                         </div>
                     </div>
+                    <p style="font-size:0.85rem; color:#888; margin:-8px 0 12px;">
+                        רווח מחושב מהעלות: (מכירה − עלות) ÷ עלות × 100. מזינים שני שדות — השלישי מתעדכן לבד.
+                        המחיר שמוצג ללקוח בעמוד הוא מחיר המכירה בלבד; העלות נשמרת רק במחשב הזה.
+                    </p>
 
                     <div class="form-group">
                         <label for="prod-description">תיאור (אופציונלי)</label>
@@ -127,9 +144,27 @@
         </div>
     </div>
 
+    <!-- CSV Import Preview Modal -->
+    <div id="csv-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>תצוגה מקדימה — ייבוא CSV</h3>
+                <button class="close-btn" id="close-csv-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="csv-summary" style="font-weight:600; margin-bottom:0.8rem;"></div>
+                <div id="csv-changes" style="max-height:45vh; overflow-y:auto; font-size:0.9rem; line-height:1.7;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancel-csv-btn">ביטול</button>
+                <button type="button" class="btn btn-primary" id="apply-csv-btn">אישור מיזוג</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="toast" class="toast"></div>
 
-    <script src="admin.js"></script>
+    <script src="pricelist.js"></script>
 </body>
 </html>

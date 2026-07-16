@@ -9,6 +9,9 @@ from urllib.parse import urlparse, parse_qs
 PORT = int(os.environ.get('PORT', 8081))
 DATA_FILE = 'data/products.csv'
 IMAGES_DIR = 'images'
+# מחירון נסתר: הקובץ המלא (עם עלות) נשאר מקומי בלבד (ב-.gitignore); הציבורי נגזר ממנו בכל שמירה
+PRICELIST_MASTER_FILE = 'data/pricelist-master.csv'
+PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
 
 class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -28,6 +31,8 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         
         if parsed_path.path == '/api/products':
             self.handle_save_products()
+        elif parsed_path.path == '/api/pricelist':
+            self.handle_save_pricelist()
         elif parsed_path.path == '/api/upload':
             self.handle_upload_image()
         else:
@@ -53,6 +58,33 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 else:
                     # Empty file with headers
                     f.write('id,name,category,unit,image,price,description\n')
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+
+    def handle_save_pricelist(self):
+        # כותב את המחירון פעמיים: קובץ מלא מקומי (עם עלות) + קובץ ציבורי לאתר (בלי עלות)
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            products = json.loads(post_data.decode('utf-8'))
+
+            master_fields = ['id', 'name', 'category', 'unit', 'image', 'cost', 'price', 'description']
+            public_fields = ['id', 'name', 'category', 'unit', 'image', 'price', 'description']
+
+            for path, fields in ((PRICELIST_MASTER_FILE, master_fields), (PRICELIST_PUBLIC_FILE, public_fields)):
+                with open(path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
+                    writer.writeheader()
+                    for p in products:
+                        writer.writerow({k: p.get(k, '') for k in fields})
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
