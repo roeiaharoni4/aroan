@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addBtn = document.getElementById('add-product-btn');
     const saveAllBtn = document.getElementById('save-all-btn');
     const csvFileInput = document.getElementById('csv-file-input');
+    const matchImagesBtn = document.getElementById('match-images-btn');
 
     // Modal
     const modal = document.getElementById('product-modal');
@@ -536,6 +537,54 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable(searchInput.value);
         updateCategoryDatalist();
         showToast('המיזוג הוחל. אל תשכח ללחוץ על "שמור שינויים" כדי לעדכן את הקבצים.', 'success');
+    };
+
+    // --- התאמת תמונות אוטומטית: קובץ בתיקיית images ששמו = שם המוצר (או המק"ט) ---
+    function normKey(s) {
+        return String(s || '').toLowerCase().replace(/["'׳״`_\-–]/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    matchImagesBtn.onclick = async () => {
+        matchImagesBtn.disabled = true;
+        try {
+            const res = await fetch('/api/list-images');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error);
+
+            // אינדקס: שם קובץ (בלי סיומת ותיקייה) -> נתיב מלא
+            const index = new Map();
+            data.images.forEach(p => {
+                const base = p.split('/').pop().replace(/\.[^.]+$/, '');
+                const key = normKey(base);
+                if (key && !index.has(key)) index.set(key, p);
+            });
+
+            let matched = 0;
+            const missing = [];
+            products.forEach(p => {
+                if (p.image) return;
+                const hit = index.get(normKey(p.name)) || index.get(normKey(p.id));
+                if (hit) {
+                    p.image = hit;
+                    matched++;
+                } else {
+                    missing.push(p.name);
+                }
+            });
+
+            renderTable(searchInput.value);
+            if (matched > 0) {
+                showToast(`הותאמו תמונות ל-${matched} מוצרים. אל תשכח ללחוץ על "שמור שינויים".`, 'success');
+            } else {
+                showToast('לא נמצאו התאמות חדשות. ודא ששם הקובץ זהה לשם המוצר או למק״ט.', 'error');
+            }
+            if (missing.length > 0) console.log('מוצרים שנשארו בלי תמונה:', missing);
+        } catch (e) {
+            console.error(e);
+            showToast('שגיאה בקריאת רשימת התמונות', 'error');
+        } finally {
+            matchImagesBtn.disabled = false;
+        }
     };
 
     // Save to Server (כותב את הקובץ המקומי המלא + הקובץ הציבורי בלי עלות)

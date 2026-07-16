@@ -23,8 +23,31 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
-        # Allow default behavior for all GET requests (serving static files)
-        super().do_GET()
+        if urlparse(self.path).path == '/api/list-images':
+            self.handle_list_images()
+        else:
+            # Allow default behavior for all GET requests (serving static files)
+            super().do_GET()
+
+    def handle_list_images(self):
+        # רשימת כל קובצי התמונות — משמש את עורך המחירון להתאמת תמונות לפי שם קובץ
+        try:
+            exts = ('.png', '.jpg', '.jpeg', '.webp', '.gif')
+            files = []
+            for root, _dirs, names in os.walk(IMAGES_DIR):
+                for n in names:
+                    if n.lower().endswith(exts):
+                        files.append(os.path.join(root, n).replace('\\', '/'))
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'images': files}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
 
     def do_POST(self):
         parsed_path = urlparse(self.path)
