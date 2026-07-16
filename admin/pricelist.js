@@ -68,8 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function marginOf(cost, price) {
-        // רווח מהעלות: (מכירה - עלות) / עלות
-        if (!(cost > 0) || !(price >= 0)) return NaN;
+        // רווח מהעלות: (מכירה - עלות) / עלות. בלי מחיר מכירה (0) אין רווח להציג
+        if (!(cost > 0) || !(price > 0)) return NaN;
         return (price - cost) / cost * 100;
     }
 
