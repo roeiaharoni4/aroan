@@ -438,7 +438,13 @@ document.addEventListener('DOMContentLoaded', () => {
         sheetBtn.disabled = true;
         try {
             const res = await fetch('/api/fetch-sheet?id=' + m[1] + '&_t=' + Date.now());
-            const data = await res.json();
+            let data;
+            try {
+                data = await res.json();
+            } catch {
+                // השרת החזיר HTML במקום JSON — כנראה רץ עם גרסה ישנה של server.py
+                throw new Error('השרת רץ עם גרסה ישנה — סגור את חלון start_catalog.command, הפעל אותו מחדש ורענן את הדף');
+            }
             if (!data.success) throw new Error(data.error);
             Papa.parse(data.csv, {
                 header: true,
