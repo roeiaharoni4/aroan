@@ -329,6 +329,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         categoriesEl.innerHTML = "";
         console.log("Rendering categories:", categories);
 
+        // קטגוריית "מבצעים" — מוצגת רק כשיש מוצרים במבצע (original_price קיים רק בקובץ המחירון הנסתר)
+        if (PRODUCTS.some(p => p.original_price > p.price)) {
+            const saleBtn = document.createElement("button");
+            saleBtn.type = "button";
+            saleBtn.className = "cat-btn cat-btn-sale" + (activeCategory === 'sales' ? " active" : "");
+            saleBtn.textContent = "מבצעים";
+            saleBtn.addEventListener("click", () => {
+                if (searchInput) searchInput.value = "";
+                resetBrandFilter();
+                activeCategory = 'sales';
+                document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+                saleBtn.classList.add("active");
+                renderProducts();
+            });
+            categoriesEl.appendChild(saleBtn);
+        }
+
         // Add "Favorites" Button
         const favBtn = document.createElement("button");
         favBtn.type = "button";
@@ -395,6 +412,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else if (activeCategory === 'recent') {
             const recentIds = getRecentProductIds();
             filtered = PRODUCTS.filter(p => recentIds.has(p.id));
+        } else if (activeCategory === 'sales') {
+            filtered = PRODUCTS.filter(p => p.original_price > p.price);
         } else if (activeCategory) {
             filtered = PRODUCTS.filter(p => p.category === activeCategory);
         }

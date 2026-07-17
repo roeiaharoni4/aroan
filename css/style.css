@@ -389,6 +389,19 @@ button {
     color: var(--primary-dark);
 }
 
+/* כפתור קטגוריית "מבצעים" — מופיע רק כשיש מוצרים במבצע */
+.cat-btn-sale {
+    color: #c0554d;
+    border-color: #c0554d;
+    font-weight: 700;
+}
+
+.cat-btn-sale.active {
+    background: #c0554d;
+    border-color: #c0554d;
+    color: #fff;
+}
+
 /* מבצע (קטלוג הטיפוח הנסתר): מחיר קודם מחוק + תג */
 .price-old {
     text-decoration: line-through;

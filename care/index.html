@@ -36,7 +36,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=15">
+    <link rel="stylesheet" href="/css/style.css?v=16">
     <style>
         /* Adjust catalog layout for site wrapper */
         body {
@@ -57,15 +57,68 @@
             }
         }
 
-        /* באנר מבצעים — מוצג רק כשמופעל בעורך המחירון */
+        /* באנר מבצעים — נבנה אוטומטית מהמוצרים שבמבצע ומתחלף ביניהם */
         #promo-banner {
             display: none;
+            position: relative;
             background: #c0554d;
             color: #fff;
-            text-align: center;
+            height: 58px;
+            overflow: hidden;
+        }
+
+        .promo-slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 0 16px;
             font-weight: 600;
             font-size: 1.05rem;
-            padding: 10px 16px;
+            opacity: 0;
+            transition: opacity 0.6s;
+        }
+
+        .promo-slide.visible {
+            opacity: 1;
+        }
+
+        .promo-slide img {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            background: #fff;
+            border-radius: 6px;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+
+        .promo-name {
+            max-width: 42vw;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .promo-old {
+            text-decoration: line-through;
+            opacity: 0.75;
+            font-weight: 400;
+        }
+
+        .promo-new {
+            font-size: 1.2em;
+        }
+
+        .promo-tag {
+            background: #fff;
+            color: #c0554d;
+            border-radius: 6px;
+            padding: 1px 8px;
+            font-size: 0.8em;
+            flex-shrink: 0;
         }
     </style>
 
@@ -79,7 +132,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=21" defer></script>
+    <script src="/js/app.js?v=22" defer></script>
 </head>
 
 <body>
@@ -91,17 +144,85 @@
 
     <div id="promo-banner"></div>
     <script>
-        // באנר מבצעים: נטען מ-data/pricelist-banner.json (נכתב מעורך המחירון)
-        fetch('/data/pricelist-banner.json?_t=' + Math.floor(Date.now() / 3600000))
-            .then(r => r.ok ? r.json() : null)
-            .then(b => {
-                if (b && b.enabled && b.text) {
-                    const el = document.getElementById('promo-banner');
-                    el.textContent = b.text;
-                    el.style.display = 'block';
+        // באנר מבצעים: נבנה אוטומטית מהמוצרים שבמבצע (מתחלף ביניהם).
+        // טקסט ידני מהעורך (pricelist-banner.json) מתווסף כשקופית ראשונה אם הופעל.
+        (function () {
+            const el = document.getElementById('promo-banner');
+            let manual = null;
+
+            fetch('/data/pricelist-banner.json?_t=' + Math.floor(Date.now() / 3600000))
+                .then(r => r.ok ? r.json() : null)
+                .then(b => { manual = b; })
+                .catch(() => { });
+
+            // ממתינים ל-app.js שיטען את המוצרים (PRODUCTS הוא global של app.js)
+            let tries = 0;
+            const waiter = setInterval(() => {
+                tries++;
+                const ready = typeof PRODUCTS !== 'undefined' && PRODUCTS.length > 0;
+                if (!ready && tries < 40) return;
+                clearInterval(waiter);
+                if (ready) build();
+            }, 300);
+
+            function goToSales() {
+                const btn = [...document.querySelectorAll('.cat-btn')].find(b => b.textContent.trim() === 'מבצעים');
+                if (btn) btn.click();
+                document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            function build() {
+                const sales = PRODUCTS.filter(p => p.original_price > p.price);
+                const slides = [];
+                if (manual && manual.enabled && manual.text) slides.push({ text: manual.text });
+                sales.forEach(p => slides.push({ product: p }));
+                if (slides.length === 0) return;
+
+                slides.forEach((s, i) => {
+                    const d = document.createElement('div');
+                    d.className = 'promo-slide' + (i === 0 ? ' visible' : '');
+                    if (s.text) {
+                        d.textContent = s.text;
+                    } else {
+                        const p = s.product;
+                        if (p.image) {
+                            const img = document.createElement('img');
+                            img.src = p.image;
+                            img.alt = p.name;
+                            d.appendChild(img);
+                        }
+                        const name = document.createElement('span');
+                        name.className = 'promo-name';
+                        name.textContent = p.name;
+                        const oldPrice = document.createElement('span');
+                        oldPrice.className = 'promo-old';
+                        oldPrice.textContent = p.original_price.toFixed(2) + ' ₪';
+                        const newPrice = document.createElement('span');
+                        newPrice.className = 'promo-new';
+                        newPrice.textContent = p.price.toFixed(2) + ' ₪';
+                        const tag = document.createElement('span');
+                        tag.className = 'promo-tag';
+                        tag.textContent = 'מבצע';
+                        d.append(name, oldPrice, newPrice, tag);
+                        d.style.cursor = 'pointer';
+                        d.addEventListener('click', goToSales);
+                    }
+                    el.appendChild(d);
+                });
+
+                el.style.display = 'block';
+
+                if (slides.length > 1) {
+                    let idx = 0;
+                    setInterval(() => {
+                        const items = el.querySelectorAll('.promo-slide');
+                        items[idx].classList.remove('visible');
+                        idx = (idx + 1) % items.length;
+                        items[idx].classList.add('visible');
+                    }, 4000);
                 }
-            })
-            .catch(() => { });
+            }
+        })();
     </script>
 
     <div class="app-container with-sidebar">

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aroam-cache-v8';
+const CACHE_NAME = 'aroam-cache-v9';
 const urlsToCache = [
     '/',
     '/catalog/',
