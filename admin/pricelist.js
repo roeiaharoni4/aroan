@@ -371,17 +371,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ייבוא CSV: זיהוי כותרות גמיש + מיזוג לפי מזהה/שם עם תצוגה מקדימה ---
     const HEADER_ALIASES = {
-        id: ['id', 'מזהה', 'מק"ט', 'מק״ט', 'מקט', 'sku', 'קוד', 'קוד מוצר', 'קוד פריט'],
-        name: ['name', 'שם', 'שם מוצר', 'שם המוצר', 'מוצר', 'פריט', 'שם פריט', 'תאור פריט'],
+        id: ['id', 'מזהה', 'מק"ט', 'מק״ט', 'מקט', 'sku', 'קוד', 'קוד מוצר', 'קוד פריט', 'פריט', 'מספר פריט'],
+        name: ['name', 'שם', 'שם מוצר', 'שם המוצר', 'מוצר', 'שם פריט', 'תאור פריט', 'תיאור פריט'],
         category: ['category', 'קטגוריה', 'קבוצה', 'מחלקה'],
         unit: ['unit', 'יחידה', 'יחידת מידה', 'יח'],
         image: ['image', 'img', 'תמונה', 'נתיב תמונה'],
-        cost: ['cost', 'עלות', 'מחיר עלות', 'מחיר קניה', 'מחיר קנייה', 'עלות ליחידה'],
-        price: ['price', 'מחיר', 'מכירה', 'מחיר מכירה', 'מחיר ללקוח', 'מחיר יחידה'],
+        // "מחיר" לבד = עלות (כך בגיליון של רועי); מחיר המכירה מגיע מ"מחיר מכירה"/"מכירה"
+        cost: ['cost', 'עלות', 'מחיר עלות', 'מחיר קניה', 'מחיר קנייה', 'עלות ליחידה', 'מחיר'],
+        price: ['price', 'מכירה', 'מחיר מכירה', 'מחיר ללקוח', 'מחיר יחידה'],
         sale_price: ['sale_price', 'sale', 'מבצע', 'מחיר מבצע', 'מחיר במבצע'],
         margin: ['margin', 'רווח', 'אחוז רווח', 'רווח %', '% רווח', 'אחוז'],
         description: ['description', 'תיאור', 'הערות', 'פירוט']
     };
+
+    const FIELD_NAMES = { id: 'מק"ט', name: 'שם', category: 'קטגוריה', unit: 'יחידה', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', margin: 'רווח %', description: 'תיאור' };
 
     function normalizeHeader(h) {
         return String(h || '').trim().toLowerCase().replace(/["'״׳]/g, '"').replace(/\s+/g, ' ');
@@ -389,17 +392,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function mapHeaders(fields) {
         const mapping = {}; // csv header -> canonical field
-        fields.forEach(f => {
-            const norm = normalizeHeader(f).replace(/"/g, '');
-            for (const [canon, aliases] of Object.entries(HEADER_ALIASES)) {
-                if (aliases.some(a => normalizeHeader(a).replace(/"/g, '') === norm)) {
-                    if (!Object.values(mapping).includes(canon)) mapping[f] = canon;
-                    break;
+        const taken = new Set();
+        const normOf = s => normalizeHeader(s).replace(/"/g, '');
+
+        // שני סבבים: קודם כותרות ספציפיות ("מחיר מכירה", "מחיר עלות"), אחר כך גנריות ("מחיר").
+        // ככה בגיליון שיש בו גם "מחיר" וגם "מחיר מכירה" — המכירה נתפסת קודם.
+        [true, false].forEach(specificOnly => {
+            fields.forEach(f => {
+                if (mapping[f] !== undefined) return;
+                const n = normOf(f);
+                for (const [canon, aliases] of Object.entries(HEADER_ALIASES)) {
+                    if (taken.has(canon)) continue;
+                    if (aliases.some(a => (!specificOnly || a.includes(' ')) && normOf(a) === n)) {
+                        mapping[f] = canon;
+                        taken.add(canon);
+                        return;
+                    }
                 }
-            }
+            });
         });
+
         return mapping;
     }
+
+    // --- משיכה מגוגל שיטס: אותו מסלול מיזוג כמו העלאת קובץ, דרך proxy מקומי ב-server.py ---
+    const sheetBtn = document.getElementById('sheet-import-btn');
+    const SHEET_URL_KEY = 'aroam_pricelist_sheet_url';
+    const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Qklkzyyg0REk0MubDNRuI0Idju523et807rxi4MSwac/edit';
+
+    sheetBtn.onclick = async (e) => {
+        let url = localStorage.getItem(SHEET_URL_KEY) || DEFAULT_SHEET_URL;
+        // Shift+לחיצה: החלפת כתובת הגיליון
+        if (e.shiftKey) {
+            const input = prompt('כתובת גיליון הגוגל שיטס (משותף לצפייה לכל מי שיש לו את הקישור):', url);
+            if (input === null) return;
+            url = input.trim();
+        }
+        const m = url.match(/\/d\/([A-Za-z0-9_-]{10,})/);
+        if (!m) {
+            showToast('כתובת גיליון לא תקינה', 'error');
+            return;
+        }
+        localStorage.setItem(SHEET_URL_KEY, url);
+
+        sheetBtn.disabled = true;
+        try {
+            const res = await fetch('/api/fetch-sheet?id=' + m[1] + '&_t=' + Date.now());
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error);
+            Papa.parse(data.csv, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => prepareImport(results)
+            });
+        } catch (err) {
+            console.error(err);
+            showToast('שגיאה במשיכת הגיליון: ' + err.message, 'error');
+        } finally {
+            sheetBtn.disabled = false;
+        }
+    };
 
     csvFileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -445,7 +497,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = {};
             for (const [header, canon] of Object.entries(mapping)) {
                 const val = rawRow[header];
-                if (val !== undefined && String(val).trim() !== '') row[canon] = String(val).trim();
+                // נירמול רווחים כפולים — מגיע ככה מהגיליון של רועי
+                const clean = String(val ?? '').replace(/\s+/g, ' ').trim();
+                if (clean !== '') row[canon] = clean;
             }
             if (Object.keys(row).length === 0) return;
 
@@ -502,8 +556,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pendingImport = { updates, additions };
 
-        const FIELD_NAMES = { name: 'שם', category: 'קטגוריה', unit: 'יחידה', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', description: 'תיאור' };
-        csvSummary.textContent = `${updates.length} מוצרים יעודכנו, ${additions.length} מוצרים חדשים יתווספו` + (skipped ? `, ${skipped} שורות דולגו` : '');
+        const mappingText = Object.entries(mapping).map(([h, c]) => `${h.trim()} ← ${FIELD_NAMES[c]}`).join(' | ');
+        csvSummary.innerHTML = `${updates.length} מוצרים יעודכנו, ${additions.length} מוצרים חדשים יתווספו` + (skipped ? `, ${skipped} שורות דולגו` : '') +
+            `<div style="font-weight:400; font-size:0.85rem; color:#888; margin-top:4px;">זיהוי עמודות: ${esc(mappingText)}</div>`;
 
         let html = '';
         updates.slice(0, 60).forEach(u => {

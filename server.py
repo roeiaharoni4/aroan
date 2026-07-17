@@ -4,6 +4,8 @@ import json
 import os
 import csv
 import base64
+import re
+import subprocess
 from urllib.parse import urlparse, parse_qs
 
 PORT = int(os.environ.get('PORT', 8081))
@@ -23,11 +25,39 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
-        if urlparse(self.path).path == '/api/list-images':
+        parsed = urlparse(self.path)
+        if parsed.path == '/api/list-images':
             self.handle_list_images()
+        elif parsed.path == '/api/fetch-sheet':
+            self.handle_fetch_sheet(parse_qs(parsed.query))
         else:
             # Allow default behavior for all GET requests (serving static files)
             super().do_GET()
+
+    def handle_fetch_sheet(self, params):
+        # מושך גיליון גוגל שיטס כ-CSV עבור עורך המחירון (הדפדפן חסום ב-CORS מול גוגל)
+        try:
+            sheet_id = (params.get('id') or [''])[0]
+            if not re.match(r'^[A-Za-z0-9_-]{10,}$', sheet_id):
+                raise ValueError('מזהה גיליון לא תקין')
+            url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv'
+            # curl של המערכת — ל-python3 של מק אין תעודות SSL כברירת מחדל
+            result = subprocess.run(['curl', '-sL', '--max-time', '20', url], capture_output=True)
+            if result.returncode != 0:
+                raise ValueError('לא הצלחתי לגשת לגוגל — בדוק חיבור אינטרנט')
+            text = result.stdout.decode('utf-8-sig')
+            if text.lstrip().lower().startswith(('<!doctype', '<html')):
+                raise ValueError('הגיליון לא משותף — בגוגל שיטס: שיתוף ← "כל מי שיש לו את הקישור" (צפייה)')
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'csv': text}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
 
     def handle_list_images(self):
         # רשימת כל קובצי התמונות — משמש את עורך המחירון להתאמת תמונות לפי שם קובץ
