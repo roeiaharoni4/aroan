@@ -56,6 +56,17 @@
                 top: 80px;
             }
         }
+
+        /* באנר מבצעים — מוצג רק כשמופעל בעורך המחירון */
+        #promo-banner {
+            display: none;
+            background: #c0554d;
+            color: #fff;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.05rem;
+            padding: 10px 16px;
+        }
     </style>
 
     <!-- Scripts -->
@@ -77,6 +88,21 @@
             style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <site-header></site-header>
+
+    <div id="promo-banner"></div>
+    <script>
+        // באנר מבצעים: נטען מ-data/pricelist-banner.json (נכתב מעורך המחירון)
+        fetch('/data/pricelist-banner.json?_t=' + Math.floor(Date.now() / 3600000))
+            .then(r => r.ok ? r.json() : null)
+            .then(b => {
+                if (b && b.enabled && b.text) {
+                    const el = document.getElementById('promo-banner');
+                    el.textContent = b.text;
+                    el.style.display = 'block';
+                }
+            })
+            .catch(() => { });
+    </script>
 
     <div class="app-container with-sidebar">
 

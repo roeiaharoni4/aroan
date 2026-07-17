@@ -14,6 +14,7 @@ IMAGES_DIR = 'images'
 # מחירון נסתר: הקובץ המלא (עם עלות) נשאר מקומי בלבד (ב-.gitignore); הציבורי נגזר ממנו בכל שמירה
 PRICELIST_MASTER_FILE = 'data/pricelist-master.csv'
 PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
+PRICELIST_BANNER_FILE = 'data/pricelist-banner.json'
 
 class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -88,8 +89,28 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_save_pricelist()
         elif parsed_path.path == '/api/upload':
             self.handle_upload_image()
+        elif parsed_path.path == '/api/banner':
+            self.handle_save_banner()
         else:
             self.send_error(404, "API endpoint not found")
+
+    def handle_save_banner(self):
+        # באנר המבצעים של קטלוג הטיפוח הנסתר
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            banner = {'enabled': bool(data.get('enabled')), 'text': str(data.get('text', ''))[:200]}
+            with open(PRICELIST_BANNER_FILE, 'w', encoding='utf-8') as f:
+                json.dump(banner, f, ensure_ascii=False)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
 
     def handle_save_products(self):
         try:

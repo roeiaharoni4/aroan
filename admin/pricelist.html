@@ -36,15 +36,31 @@
                     <label for="csv-file-input" class="btn btn-outline" style="cursor:pointer;">⬆ העלאת קובץ CSV</label>
                     <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;">
                     <button id="match-images-btn" class="btn btn-outline" title="ממלא תמונות למוצרים בלי תמונה: מחפש בתיקיית images קובץ ששמו זהה לשם המוצר או למק&quot;ט">🖼 התאמת תמונות אוטומטית</button>
+                    <button id="bulk-sale-btn" class="btn btn-outline" title="החלת מבצע על כל המוצרים המסומנים בטבלה">🏷 מבצע לנבחרים (<span id="selected-count">0</span>)</button>
                     <button id="add-product-btn" class="btn btn-primary"><span class="icon">+</span> הוסף מוצר חדש</button>
                 </div>
             </header>
 
             <div class="content-body">
+                <!-- באנר מבצעים בעמוד ללקוח -->
+                <div class="table-card" style="margin-bottom:16px; padding:14px 16px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <strong>באנר מבצעים בעמוד:</strong>
+                        <input type="text" id="banner-text" maxlength="200"
+                            placeholder='למשל: מבצעי החודש — כל מוצרי השיער ב-20% הנחה!'
+                            style="flex:1; min-width:220px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="banner-enabled"> מוצג בעמוד
+                        </label>
+                        <button id="save-banner-btn" class="btn btn-outline">שמור באנר</button>
+                    </div>
+                </div>
+
                 <div class="table-card">
                     <table class="products-table">
                         <thead>
                             <tr>
+                                <th><input type="checkbox" id="select-all" title="בחר את כל המוצרים המוצגים"></th>
                                 <th>תמונה</th>
                                 <th>מק״ט (ID)</th>
                                 <th>שם המוצר</th>
@@ -154,6 +170,31 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" id="cancel-modal-btn">ביטול</button>
                 <button type="button" class="btn btn-primary" id="save-modal-btn">שמור מוצר</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Sale Modal -->
+    <div id="bulk-modal" class="modal">
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header">
+                <h3>מבצע ל<span id="bulk-count">0</span> מוצרים נבחרים</h3>
+                <button class="close-btn" id="close-bulk-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="bulk-percent">אחוז הנחה ממחיר המכירה (%)</label>
+                    <input type="number" id="bulk-percent" min="1" max="90" step="1" placeholder="למשל: 15">
+                </div>
+                <p style="font-size:0.85rem; color:#888;">
+                    לדוגמה: הנחה של 10% על מוצר שנמכר ב-20 ₪ תציג מחיר מבצע 18 ₪ עם המחיר המקורי מחוק.
+                    מוצרים בלי מחיר מכירה ידולגו.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancel-bulk-btn">ביטול</button>
+                <button type="button" class="btn btn-outline" id="clear-bulk-sale-btn" style="color:#c0554d; border-color:#c0554d;">בטל מבצע לנבחרים</button>
+                <button type="button" class="btn btn-primary" id="apply-bulk-sale-btn">החל מבצע</button>
             </div>
         </div>
     </div>

@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveAllBtn = document.getElementById('save-all-btn');
     const csvFileInput = document.getElementById('csv-file-input');
     const matchImagesBtn = document.getElementById('match-images-btn');
+    const bulkSaleBtn = document.getElementById('bulk-sale-btn');
+    const selectAllCb = document.getElementById('select-all');
+    const selectedCountEl = document.getElementById('selected-count');
+    const selectedIds = new Set(); // מוצרים מסומנים למבצע קבוצתי
 
     // Modal
     const modal = document.getElementById('product-modal');
@@ -138,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = marginOf(cost, price);
 
             tr.innerHTML = `
+                <td><input type="checkbox" class="row-select" data-id="${esc(p.id)}" ${selectedIds.has(p.id) ? 'checked' : ''}></td>
                 <td class="td-img"><img src="${esc(imgSrc)}" onerror="this.src='../images/logo.png'"></td>
                 <td>${esc(p.id)}</td>
                 <td>${esc(p.name)}</td>
@@ -161,7 +166,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.onclick = () => deleteProduct(btn.dataset.id);
         });
+        document.querySelectorAll('.row-select').forEach(cb => {
+            cb.onchange = () => {
+                if (cb.checked) selectedIds.add(cb.dataset.id);
+                else selectedIds.delete(cb.dataset.id);
+                updateSelectedCount();
+            };
+        });
+        updateSelectedCount();
     }
+
+    function updateSelectedCount() {
+        // מנקים מזהים של מוצרים שנמחקו
+        const existing = new Set(products.map(p => p.id));
+        [...selectedIds].forEach(id => { if (!existing.has(id)) selectedIds.delete(id); });
+        selectedCountEl.textContent = selectedIds.size;
+    }
+
+    // בחר/נקה את כל המוצרים המוצגים כרגע בטבלה (מכבד סינון חיפוש)
+    selectAllCb.onchange = () => {
+        document.querySelectorAll('.row-select').forEach(cb => {
+            cb.checked = selectAllCb.checked;
+            if (cb.checked) selectedIds.add(cb.dataset.id);
+            else selectedIds.delete(cb.dataset.id);
+        });
+        updateSelectedCount();
+    };
 
     function updateCategoryDatalist() {
         const categories = [...new Set(products.map(p => p.category))].filter(c => c);
@@ -598,6 +628,91 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable(searchInput.value);
         updateCategoryDatalist();
         showToast('המיזוג הוחל. אל תשכח ללחוץ על "שמור שינויים" כדי לעדכן את הקבצים.', 'success');
+    };
+
+    // --- מבצע קבוצתי: הנחה באחוזים על כל המוצרים המסומנים ---
+    const bulkModal = document.getElementById('bulk-modal');
+    const bulkPercentInput = document.getElementById('bulk-percent');
+
+    bulkSaleBtn.onclick = () => {
+        if (selectedIds.size === 0) {
+            showToast('סמן קודם מוצרים בטבלה (העמודה הראשונה)', 'error');
+            return;
+        }
+        document.getElementById('bulk-count').textContent = selectedIds.size;
+        bulkPercentInput.value = '';
+        bulkModal.classList.add('active');
+    };
+
+    document.getElementById('close-bulk-modal-btn').onclick = () => bulkModal.classList.remove('active');
+    document.getElementById('cancel-bulk-btn').onclick = () => bulkModal.classList.remove('active');
+
+    document.getElementById('apply-bulk-sale-btn').onclick = () => {
+        const pct = toNum(bulkPercentInput.value);
+        if (isNaN(pct) || pct <= 0 || pct >= 100) {
+            alert('הזן אחוז הנחה בין 1 ל-90');
+            return;
+        }
+        let applied = 0, skipped = 0;
+        products.forEach(p => {
+            if (!selectedIds.has(p.id)) return;
+            const price = toNum(p.price);
+            if (!(price > 0)) { skipped++; return; }
+            // עיגול לעשירית שקל
+            p.sale_price = Math.round(price * (1 - pct / 100) * 10) / 10;
+            applied++;
+        });
+        bulkModal.classList.remove('active');
+        renderTable(searchInput.value);
+        showToast(`הוחל מבצע ${pct}% על ${applied} מוצרים` + (skipped ? ` (${skipped} דולגו — בלי מחיר מכירה)` : '') + '. אל תשכח ללחוץ על "שמור שינויים".', 'success');
+    };
+
+    document.getElementById('clear-bulk-sale-btn').onclick = () => {
+        let cleared = 0;
+        products.forEach(p => {
+            if (selectedIds.has(p.id) && p.sale_price !== '') { p.sale_price = ''; cleared++; }
+        });
+        bulkModal.classList.remove('active');
+        renderTable(searchInput.value);
+        showToast(`המבצע בוטל ל-${cleared} מוצרים. אל תשכח ללחוץ על "שמור שינויים".`, 'success');
+    };
+
+    // --- באנר מבצעים בעמוד ללקוח ---
+    const bannerText = document.getElementById('banner-text');
+    const bannerEnabled = document.getElementById('banner-enabled');
+    const saveBannerBtn = document.getElementById('save-banner-btn');
+
+    fetch('/data/pricelist-banner.json?_t=' + Date.now())
+        .then(r => r.ok ? r.json() : null)
+        .then(b => {
+            if (b) {
+                bannerText.value = b.text || '';
+                bannerEnabled.checked = !!b.enabled;
+            }
+        })
+        .catch(() => { });
+
+    saveBannerBtn.onclick = async () => {
+        if (bannerEnabled.checked && !bannerText.value.trim()) {
+            alert('כתוב טקסט לבאנר או בטל את הסימון "מוצג בעמוד"');
+            return;
+        }
+        saveBannerBtn.disabled = true;
+        try {
+            const res = await fetch('/api/banner', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: bannerText.value.trim(), enabled: bannerEnabled.checked })
+            });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
+            showToast('הבאנר נשמר. (פרסום לאתר דורש git push)', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('שגיאה בשמירת הבאנר', 'error');
+        } finally {
+            saveBannerBtn.disabled = false;
+        }
     };
 
     // --- התאמת תמונות אוטומטית: קובץ בתיקיית images ששמו = שם המוצר (או המק"ט) ---
