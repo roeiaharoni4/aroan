@@ -195,6 +195,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'cart_discount': {
                     'enabled': bool(cart.get('enabled')),
                     'min_total': to_num(cart.get('min_total')),
+                    'min_items': int(to_num(cart.get('min_items'))),
                     'percent': min(90.0, to_num(cart.get('percent'))),
                 },
                 'category_discounts': [

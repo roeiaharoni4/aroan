@@ -319,18 +319,33 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
 
             const cd = promo.cart_discount;
-            if (cd && cd.enabled && parseFloat(cd.percent) > 0 && parseFloat(cd.min_total) > 0) {
-                CART_PROMO = { min_total: parseFloat(cd.min_total), percent: parseFloat(cd.percent) };
+            const minTotal = cd ? parseFloat(cd.min_total) || 0 : 0;
+            const minItems = cd ? parseInt(cd.min_items, 10) || 0 : 0;
+            if (cd && cd.enabled && parseFloat(cd.percent) > 0 && (minTotal > 0 || minItems > 0)) {
+                CART_PROMO = { min_total: minTotal, min_items: minItems, percent: parseFloat(cd.percent) };
             }
         } catch (e) {
             console.warn('Promotions load failed', e);
         }
     }
 
-    // הנחת הסל על סכום נתון (0 אם לא הופעלה או שלא הגיעו לרף). עיגול ל-10 אגורות
-    function cartDiscountFor(total) {
-        if (!CART_PROMO || total < CART_PROMO.min_total) return 0;
+    // הנחת הסל (0 אם לא הופעלה או שלא הגיעו לרף הסכום/הכמות). עיגול ל-10 אגורות
+    function cartDiscountFor(total, itemCount) {
+        if (!CART_PROMO) return 0;
+        const byTotal = CART_PROMO.min_total > 0 && total >= CART_PROMO.min_total;
+        const byItems = CART_PROMO.min_items > 0 && itemCount >= CART_PROMO.min_items;
+        if (!byTotal && !byItems) return 0;
         return Math.round(total * CART_PROMO.percent / 100 * 10) / 10;
+    }
+
+    // ניסוח מבצע הסל לתצוגה (באנר / קטגוריית מבצעים)
+    function cartPromoText() {
+        if (!CART_PROMO) return '';
+        const conditions = [];
+        if (CART_PROMO.min_total > 0) conditions.push(`מעל ${CART_PROMO.min_total} ₪`);
+        if (CART_PROMO.min_items > 0) conditions.push(`${CART_PROMO.min_items} פריטים ומעלה`);
+        const pct = Number.isInteger(CART_PROMO.percent) ? CART_PROMO.percent : CART_PROMO.percent.toFixed(1);
+        return `בקנייה של ${conditions.join(' או ')} — ${pct}% הנחה על כל ההזמנה!`;
     }
 
     function setupBrandFilter() {
@@ -375,8 +390,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         categoriesEl.innerHTML = "";
         console.log("Rendering categories:", categories);
 
-        // קטגוריית "מבצעים" — מוצגת רק כשיש מוצרים במבצע (original_price קיים רק בקובץ המחירון הנסתר)
-        if (PRODUCTS.some(p => p.original_price > p.price)) {
+        // קטגוריית "מבצעים" — מוצגת כשיש מוצרים במבצע או מבצע סל פעיל (רק בקטלוג הטיפוח)
+        if (PRODUCTS.some(p => p.original_price > p.price) || CART_PROMO) {
             const saleBtn = document.createElement("button");
             saleBtn.type = "button";
             saleBtn.className = "cat-btn cat-btn-sale" + (activeCategory === 'sales' ? " active" : "");
@@ -460,6 +475,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             filtered = PRODUCTS.filter(p => recentIds.has(p.id));
         } else if (activeCategory === 'sales') {
             filtered = PRODUCTS.filter(p => p.original_price > p.price);
+            // מבצע סל פעיל בלי מבצעים פרטניים — המבצע חל על הכול, מציגים את כל המוצרים
+            if (filtered.length === 0 && CART_PROMO) filtered = PRODUCTS;
         } else if (activeCategory) {
             filtered = PRODUCTS.filter(p => p.category === activeCategory);
         }
@@ -467,6 +484,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (filtered.length === 0) {
             productsEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;">לא נמצאו מוצרים.</div>';
             return;
+        }
+
+        // בקטגוריית המבצעים: שורת הסבר על מבצע הסל (קנייה מעל סכום/כמות)
+        if (activeCategory === 'sales' && CART_PROMO && searchQuery === "" && !activeBrand) {
+            const note = document.createElement('div');
+            note.style.cssText = 'grid-column: 1/-1; background: #fdeeee; color: #c0554d; border: 1px solid #c0554d; border-radius: 10px; padding: 10px 14px; text-align: center; font-weight: 600;';
+            note.textContent = cartPromoText();
+            productsEl.appendChild(note);
         }
 
         filtered.forEach((product, index) => {
@@ -873,7 +898,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (summaryItemsEl) summaryItemsEl.textContent = totalItems;
 
         // הנחת סל (מבצע "קנייה מעל X") — מוצגת כשורה נפרדת לפני הסה"כ
-        const cartDiscount = cartDiscountFor(totalPrice);
+        const cartDiscount = cartDiscountFor(totalPrice, totalItems);
         const finalTotal = totalPrice - cartDiscount;
         if (summaryTotalEl) {
             let discountEl = document.getElementById('summary-discount');
@@ -1133,8 +1158,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         // סיכום מחירים והנחת סל (רק בקטלוגים שמציגים מחירים)
         if (CONFIG.showPrices) {
-            const { totalPrice } = getCartItemsData();
-            const discount = cartDiscountFor(totalPrice);
+            const { totalPrice, totalItems } = getCartItemsData();
+            const discount = cartDiscountFor(totalPrice, totalItems);
             lines.push("");
             if (discount > 0) {
                 lines.push(`סה״כ ביניים: ${totalPrice.toFixed(2)} ₪`);

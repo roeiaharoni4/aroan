@@ -731,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bannerEnabled = document.getElementById('banner-enabled');
     const cartDiscountEnabled = document.getElementById('cart-discount-enabled');
     const cartDiscountMin = document.getElementById('cart-discount-min');
+    const cartDiscountItems = document.getElementById('cart-discount-items');
     const cartDiscountPct = document.getElementById('cart-discount-pct');
     const catDiscountPct = document.getElementById('cat-discount-pct');
     const catDiscountsListEl = document.getElementById('cat-discounts-list');
@@ -762,6 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cd = p.cart_discount || {};
             cartDiscountEnabled.checked = !!cd.enabled;
             if (cd.min_total > 0) cartDiscountMin.value = cd.min_total;
+            if (cd.min_items > 0) cartDiscountItems.value = cd.min_items;
             if (cd.percent > 0) cartDiscountPct.value = cd.percent;
             categoryDiscounts = (p.category_discounts || []).filter(r => r.category && r.percent > 0);
             renderCatDiscounts();
@@ -787,8 +789,9 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('כתוב טקסט לבאנר או בטל את הסימון "מוצג"');
             return;
         }
-        if (cartDiscountEnabled.checked && (!(toNum(cartDiscountMin.value) > 0) || !(toNum(cartDiscountPct.value) > 0))) {
-            alert('להנחת סל פעילה צריך למלא גם סכום מינימום וגם אחוז הנחה');
+        if (cartDiscountEnabled.checked &&
+            (!(toNum(cartDiscountPct.value) > 0) || (!(toNum(cartDiscountMin.value) > 0) && !(toNum(cartDiscountItems.value) > 0)))) {
+            alert('להנחת סל פעילה צריך אחוז הנחה + סכום מינימום או כמות פריטים (לפחות אחד מהם)');
             return;
         }
         savePromoBtn.disabled = true;
@@ -801,6 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cart_discount: {
                         enabled: cartDiscountEnabled.checked,
                         min_total: toNum(cartDiscountMin.value) || 0,
+                        min_items: toNum(cartDiscountItems.value) || 0,
                         percent: toNum(cartDiscountPct.value) || 0
                     },
                     category_discounts: categoryDiscounts

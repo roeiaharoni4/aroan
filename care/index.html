@@ -1289,7 +1289,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=23" defer></script>
+    <script src="/js/app.js?v=24" defer></script>
 </head>
 
 <body>
@@ -1333,8 +1333,13 @@
                 const slides = [];
                 if (promo.banner && promo.banner.enabled && promo.banner.text) slides.push({ text: promo.banner.text });
                 const cd = promo.cart_discount;
-                if (cd && cd.enabled && parseFloat(cd.percent) > 0 && parseFloat(cd.min_total) > 0) {
-                    slides.push({ text: `בקנייה מעל ${parseFloat(cd.min_total)} ₪ — ${fmtPct(cd.percent)}% הנחה על כל ההזמנה!` });
+                if (cd && cd.enabled && parseFloat(cd.percent) > 0) {
+                    const conditions = [];
+                    if (parseFloat(cd.min_total) > 0) conditions.push(`מעל ${parseFloat(cd.min_total)} ₪`);
+                    if (parseInt(cd.min_items, 10) > 0) conditions.push(`${parseInt(cd.min_items, 10)} פריטים ומעלה`);
+                    if (conditions.length > 0) {
+                        slides.push({ text: `בקנייה של ${conditions.join(' או ')} — ${fmtPct(cd.percent)}% הנחה על כל ההזמנה!`, sales: true });
+                    }
                 }
                 (promo.category_discounts || []).forEach(rule => {
                     if (rule.category && parseFloat(rule.percent) > 0) {
