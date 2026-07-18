@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const tbody = document.getElementById('products-tbody');
     const searchInput = document.getElementById('search-input');
+    const categoryFilter = document.getElementById('category-filter');
     const addBtn = document.getElementById('add-product-btn');
     const saveAllBtn = document.getElementById('save-all-btn');
     const csvFileInput = document.getElementById('csv-file-input');
@@ -128,8 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTable(filter = '') {
         tbody.innerHTML = '';
         const q = filter.toLowerCase();
+        const catSel = categoryFilter ? categoryFilter.value : '';
 
         products.forEach(p => {
+            if (catSel && p.category !== catSel) return;
             if (filter && !p.name.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return;
 
             const tr = document.createElement('tr');
@@ -201,10 +204,24 @@ document.addEventListener('DOMContentLoaded', () => {
             opt.value = c;
             categoryList.appendChild(opt);
         });
+
+        // עדכון תפריט הסינון לפי קטגוריה (שומר על הבחירה הנוכחית)
+        if (categoryFilter) {
+            const current = categoryFilter.value;
+            categoryFilter.innerHTML = '<option value="">כל הקטגוריות</option>';
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                categoryFilter.appendChild(opt);
+            });
+            categoryFilter.value = categories.includes(current) ? current : '';
+        }
     }
 
-    // Search
+    // Search + Category filter
     searchInput.addEventListener('input', (e) => renderTable(e.target.value));
+    if (categoryFilter) categoryFilter.addEventListener('change', () => renderTable(searchInput.value));
 
     // --- חישוב תלת-כיווני: עלות / מכירה / אחוז רווח ---
     // הזנת כל שניים מחשבת את השלישי. רווח מהעלות: מכירה = עלות × (1 + רווח/100)
