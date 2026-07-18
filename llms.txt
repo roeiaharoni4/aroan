@@ -50,6 +50,10 @@
 - [Arts & Crafts for Schools](https://aroam.co.il/catalog/crafts/): מוצרי יצירה למוסדות חינוך וגנים.
 - [Complementary Products](https://aroam.co.il/catalog/misc/): מוצרים משלימים: קפה, גלילי קופה, רדיד ועוד.
 
+## Consumer (B2C) Catalog
+
+- [Personal Care & Hygiene Catalog](https://aroam.co.il/care/): קטלוג טיפוח והיגיינה במחירים לצרכן — מוצרי שיער, היגיינה אישית, היגיינת פה וכביסה ללקוחות פרטיים, עם מחירים והזמנה בוואטסאפ.
+
 ## How to Order
 
 Customers browse the [product catalog](https://aroam.co.il/catalog/), add products to a cart, and submit the order directly via WhatsApp (+972-52-6000158) or Email (meiraroam@gmail.com). Delivery to the business address in the Central Israel service area.

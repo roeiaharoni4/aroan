@@ -15,6 +15,71 @@ IMAGES_DIR = 'images'
 PRICELIST_MASTER_FILE = 'data/pricelist-master.csv'
 PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
 PRICELIST_BANNER_FILE = 'data/pricelist-banner.json'
+CARE_PAGE_FILE = 'care/index.html'
+SITE_BASE_URL = 'https://aroam.co.il'
+
+
+def update_care_schema():
+    """בונה JSON-LD (ItemList של Product עם מחירים) מ-pricelist.csv ומשתיל ב-care/index.html.
+
+    רץ בכל שמירה של המחירון כדי שגוגל יקבל שמות, תמונות ומחירים מעודכנים.
+    """
+    from urllib.parse import quote
+
+    with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
+        rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
+
+    items = []
+    for i, r in enumerate(rows, start=1):
+        try:
+            price = float(r.get('price') or 0)
+        except ValueError:
+            price = 0
+        if price <= 0:
+            continue
+        product = {
+            '@type': 'Product',
+            'name': r['name'],
+            'sku': r['id'],
+            'offers': {
+                '@type': 'Offer',
+                'price': price,
+                'priceCurrency': 'ILS',
+                'availability': 'https://schema.org/InStock',
+                'url': f'{SITE_BASE_URL}/care/',
+            },
+        }
+        if r.get('image'):
+            product['image'] = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/'))
+        if r.get('description'):
+            product['description'] = r['description']
+        items.append({'@type': 'ListItem', 'position': i, 'item': product})
+
+    schema = {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        'name': 'קטלוג טיפוח והיגיינה במחירים לצרכן | אהרוני שיווק והפצה',
+        'url': f'{SITE_BASE_URL}/care/',
+        'publisher': {
+            '@type': 'WholesaleStore',
+            'name': 'אהרוני שיווק והפצה',
+            'url': f'{SITE_BASE_URL}/',
+        },
+        'mainEntity': {'@type': 'ItemList', 'numberOfItems': len(items), 'itemListElement': items},
+    }
+
+    with open(CARE_PAGE_FILE, encoding='utf-8') as f:
+        html = f.read()
+    start_marker, end_marker = '<!-- CARE_SCHEMA_START -->', '<!-- CARE_SCHEMA_END -->'
+    start = html.find(start_marker)
+    end = html.find(end_marker)
+    if start == -1 or end == -1:
+        return  # אין סימוני שתילה — לא נוגעים בעמוד
+    block = (start_marker + '\n    <script type="application/ld+json">\n'
+             + json.dumps(schema, ensure_ascii=False, indent=2)
+             + '\n    </script>\n    ')
+    with open(CARE_PAGE_FILE, 'w', encoding='utf-8') as f:
+        f.write(html[:start] + block + html[end:])
 
 class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -179,6 +244,12 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     else:
                         row['original_price'] = ''
                     writer.writerow(row)
+
+            # עדכון סכמת המוצרים בעמוד הציבורי (SEO ללקוחות פרטיים)
+            try:
+                update_care_schema()
+            except Exception as schema_err:
+                print(f'אזהרה: עדכון סכמת care נכשל: {schema_err}')
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
