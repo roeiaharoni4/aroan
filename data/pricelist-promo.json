@@ -1,0 +1,12 @@
+{
+ "banner": {
+  "enabled": false,
+  "text": ""
+ },
+ "cart_discount": {
+  "enabled": false,
+  "min_total": 0,
+  "percent": 0
+ },
+ "category_discounts": []
+}

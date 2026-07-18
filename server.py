@@ -14,7 +14,7 @@ IMAGES_DIR = 'images'
 # מחירון נסתר: הקובץ המלא (עם עלות) נשאר מקומי בלבד (ב-.gitignore); הציבורי נגזר ממנו בכל שמירה
 PRICELIST_MASTER_FILE = 'data/pricelist-master.csv'
 PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
-PRICELIST_BANNER_FILE = 'data/pricelist-banner.json'
+PRICELIST_PROMO_FILE = 'data/pricelist-promo.json'
 CARE_PAGE_FILE = 'care/index.html'
 SITE_BASE_URL = 'https://aroam.co.il'
 
@@ -29,6 +29,18 @@ def update_care_schema():
     with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
+    # הנחות קטגוריה מקובץ המבצעים — כדי שהמחיר בסכמה יהיה המחיר שמוצג בפועל
+    category_discounts = {}
+    try:
+        with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
+            promo = json.load(f)
+        for rule in promo.get('category_discounts', []):
+            pct = float(rule.get('percent') or 0)
+            if rule.get('category') and pct > 0:
+                category_discounts[rule['category']] = pct
+    except (FileNotFoundError, ValueError):
+        pass
+
     items = []
     for i, r in enumerate(rows, start=1):
         try:
@@ -37,6 +49,9 @@ def update_care_schema():
             price = 0
         if price <= 0:
             continue
+        # הנחת קטגוריה חלה רק כשאין מבצע פרטני (original_price ריק); עיגול ל-10 אגורות
+        if not (r.get('original_price') or '').strip() and r.get('category') in category_discounts:
+            price = round(price * (1 - category_discounts[r['category']] / 100) * 10) / 10
         product = {
             '@type': 'Product',
             'name': r['name'],
@@ -53,6 +68,8 @@ def update_care_schema():
             product['image'] = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/'))
         if r.get('description'):
             product['description'] = r['description']
+        if r.get('brand'):
+            product['brand'] = {'@type': 'Brand', 'name': r['brand']}
         items.append({'@type': 'ListItem', 'position': i, 'item': product})
 
     schema = {
@@ -154,19 +171,47 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_save_pricelist()
         elif parsed_path.path == '/api/upload':
             self.handle_upload_image()
-        elif parsed_path.path == '/api/banner':
-            self.handle_save_banner()
+        elif parsed_path.path == '/api/promo':
+            self.handle_save_promo()
         else:
             self.send_error(404, "API endpoint not found")
 
-    def handle_save_banner(self):
-        # באנר המבצעים של קטלוג הטיפוח הנסתר
+    def handle_save_promo(self):
+        # מבצעי קטלוג הטיפוח: באנר ידני, הנחת סל והנחות קטגוריה
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             data = json.loads(self.rfile.read(content_length).decode('utf-8'))
-            banner = {'enabled': bool(data.get('enabled')), 'text': str(data.get('text', ''))[:200]}
-            with open(PRICELIST_BANNER_FILE, 'w', encoding='utf-8') as f:
-                json.dump(banner, f, ensure_ascii=False)
+
+            def to_num(v):
+                try:
+                    return max(0.0, float(v))
+                except (TypeError, ValueError):
+                    return 0.0
+
+            banner = data.get('banner') or {}
+            cart = data.get('cart_discount') or {}
+            promo = {
+                'banner': {'enabled': bool(banner.get('enabled')), 'text': str(banner.get('text', ''))[:200]},
+                'cart_discount': {
+                    'enabled': bool(cart.get('enabled')),
+                    'min_total': to_num(cart.get('min_total')),
+                    'percent': min(90.0, to_num(cart.get('percent'))),
+                },
+                'category_discounts': [
+                    {'category': str(r.get('category', ''))[:60], 'percent': min(90.0, to_num(r.get('percent')))}
+                    for r in (data.get('category_discounts') or [])
+                    if r.get('category') and to_num(r.get('percent')) > 0
+                ][:20],
+            }
+            with open(PRICELIST_PROMO_FILE, 'w', encoding='utf-8') as f:
+                json.dump(promo, f, ensure_ascii=False, indent=1)
+
+            # הסכמה בעמוד הציבורי משקפת גם הנחות קטגוריה — מעדכנים
+            try:
+                update_care_schema()
+            except Exception as schema_err:
+                print(f'אזהרה: עדכון סכמת care נכשל: {schema_err}')
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -215,8 +260,8 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             products = json.loads(post_data.decode('utf-8'))
 
-            master_fields = ['id', 'name', 'category', 'unit', 'image', 'cost', 'price', 'sale_price', 'description']
-            public_fields = ['id', 'name', 'category', 'unit', 'image', 'price', 'original_price', 'description']
+            master_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'cost', 'price', 'sale_price', 'description']
+            public_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'price', 'original_price', 'description']
 
             def to_float(v):
                 try:

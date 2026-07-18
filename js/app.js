@@ -13,6 +13,9 @@ const DEFAULT_CONFIG = {
 };
 let CONFIG = {};
 
+// מבצע ברמת הסל (נטען מ-CONFIG.promoSource — קטלוג הטיפוח): {min_total, percent}
+let CART_PROMO = null;
+
 let IMAGE_BASE_URL = '';
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -116,6 +119,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Load Data
         await loadProducts();
+
+        // Load Promotions (הנחות קטגוריה והנחת סל — רק כשמוגדר promoSource)
+        await applyPromotions();
 
         // Load Favorites
         const storedFavs = localStorage.getItem('catalog_favorites');
@@ -287,6 +293,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // --- Brand Filter UI (תפריט סינון מותגים ליד החיפוש) ---
+    // --- מבצעים כלליים (קטלוג הטיפוח): הנחות קטגוריה + הנחת סל ---
+    async function applyPromotions() {
+        if (!CONFIG.promoSource) return;
+        try {
+            const res = await fetch(CONFIG.promoSource + '?_t=' + Math.floor(Date.now() / 3600000));
+            if (!res.ok) return;
+            const promo = await res.json();
+            window.CATALOG_PROMO = promo; // נגיש גם לסקריפט הבאנר בעמוד
+
+            // הנחת קטגוריה: חלה על מוצרים בלי מבצע פרטני, עיגול ל-10 אגורות
+            (promo.category_discounts || []).forEach(rule => {
+                const pct = parseFloat(rule.percent);
+                if (!(pct > 0) || !rule.category) return;
+                PRODUCTS.forEach(p => {
+                    if (p.category !== rule.category) return;
+                    if (p.original_price > p.price) return; // מבצע פרטני גובר
+                    if (!(p.price > 0)) return;
+                    const discounted = Math.round(p.price * (1 - pct / 100) * 10) / 10;
+                    if (discounted < p.price) {
+                        p.original_price = p.price;
+                        p.price = discounted;
+                    }
+                });
+            });
+
+            const cd = promo.cart_discount;
+            if (cd && cd.enabled && parseFloat(cd.percent) > 0 && parseFloat(cd.min_total) > 0) {
+                CART_PROMO = { min_total: parseFloat(cd.min_total), percent: parseFloat(cd.percent) };
+            }
+        } catch (e) {
+            console.warn('Promotions load failed', e);
+        }
+    }
+
+    // הנחת הסל על סכום נתון (0 אם לא הופעלה או שלא הגיעו לרף). עיגול ל-10 אגורות
+    function cartDiscountFor(total) {
+        if (!CART_PROMO || total < CART_PROMO.min_total) return 0;
+        return Math.round(total * CART_PROMO.percent / 100 * 10) / 10;
+    }
+
     function setupBrandFilter() {
         const container = document.querySelector(".search-container");
         if (!container || document.getElementById("brand-filter")) return;
@@ -826,10 +872,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (summaryItemsEl) summaryItemsEl.textContent = totalItems;
 
+        // הנחת סל (מבצע "קנייה מעל X") — מוצגת כשורה נפרדת לפני הסה"כ
+        const cartDiscount = cartDiscountFor(totalPrice);
+        const finalTotal = totalPrice - cartDiscount;
+        if (summaryTotalEl) {
+            let discountEl = document.getElementById('summary-discount');
+            if (cartDiscount > 0 && CONFIG.showPrices) {
+                if (!discountEl) {
+                    discountEl = document.createElement('div');
+                    discountEl.id = 'summary-discount';
+                    discountEl.style.cssText = 'font-size:0.9rem; color:#c0554d; font-weight:600;';
+                    summaryTotalEl.parentNode.parentNode.insertBefore(discountEl, summaryTotalEl.parentNode);
+                }
+                discountEl.textContent = `הנחת מבצע (${CART_PROMO.percent}%): ‎-₪${cartDiscount.toFixed(2)}`;
+            } else if (discountEl) {
+                discountEl.remove();
+            }
+        }
+
         // Conditional Total Price
         if (summaryTotalEl) {
             if (CONFIG.showPrices) {
-                summaryTotalEl.textContent = "₪" + totalPrice.toFixed(2);
+                summaryTotalEl.textContent = "₪" + finalTotal.toFixed(2);
                 summaryTotalEl.parentNode.style.display = ''; // Ensure visible
             } else {
                 summaryTotalEl.textContent = "";
@@ -842,6 +906,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (fabCountEl) fabCountEl.textContent = totalItems;
+
+        // סה"כ מחיר על כפתור ההזמנה הצף — הלקוח רואה את עלות העגלה בכל רגע
+        if (CONFIG.showPrices && openOrderBtn) {
+            let fabTotalEl = document.getElementById('fab-total');
+            if (!fabTotalEl) {
+                fabTotalEl = document.createElement('span');
+                fabTotalEl.id = 'fab-total';
+                fabTotalEl.style.cssText = 'font-weight:700; margin-right:6px;';
+                openOrderBtn.appendChild(fabTotalEl);
+            }
+            fabTotalEl.textContent = finalTotal > 0 ? `· ₪${finalTotal.toFixed(2)}` : '';
+        }
 
         // Update Mobile Nav Badge
         const mobileNavCountEl = document.getElementById("mobile-nav-count");
@@ -1049,7 +1125,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         for (const [id, qty] of Object.entries(cart)) {
             const product = PRODUCTS.find(p => p.id === id);
             if (!product || qty <= 0) continue;
-            lines.push(`• ${product.name} | מק״ט: ${product.id} | כמות: ${qty} ${product.unit}`);
+            let line = `• ${product.name} | מק״ט: ${product.id} | כמות: ${qty} ${product.unit}`;
+            if (CONFIG.showPrices && product.price > 0) {
+                line += ` | ${(product.price * qty).toFixed(2)} ₪`;
+            }
+            lines.push(line);
+        }
+        // סיכום מחירים והנחת סל (רק בקטלוגים שמציגים מחירים)
+        if (CONFIG.showPrices) {
+            const { totalPrice } = getCartItemsData();
+            const discount = cartDiscountFor(totalPrice);
+            lines.push("");
+            if (discount > 0) {
+                lines.push(`סה״כ ביניים: ${totalPrice.toFixed(2)} ₪`);
+                lines.push(`הנחת מבצע (${CART_PROMO.percent}%): -${discount.toFixed(2)} ₪`);
+                lines.push(`סה״כ לתשלום: ${(totalPrice - discount).toFixed(2)} ₪`);
+            } else {
+                lines.push(`סה״כ לתשלום: ${totalPrice.toFixed(2)} ₪`);
+            }
         }
         lines.push("", "תודה");
         return lines.join("\n");

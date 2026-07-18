@@ -95,13 +95,22 @@ body {
 }
 
 .topbar {
-    height: 72px;
+    min-height: 72px;
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 32px;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 32px;
+}
+
+.topbar .actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .search-box input {

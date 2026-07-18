@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('prod-name');
     const catInput = document.getElementById('prod-category');
     const unitInput = document.getElementById('prod-unit');
+    const brandInput = document.getElementById('prod-brand');
+    const brandList = document.getElementById('brand-list');
     const costInput = document.getElementById('prod-cost');
     const priceInput = document.getElementById('prod-price');
     const marginInput = document.getElementById('prod-margin');
@@ -115,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: (item.name || '').trim(),
             category: (item.category || '').trim(),
             unit: (item.unit || 'יחידה').trim(),
+            brand: (item.brand || '').trim(),
             image: (item.image || '').trim(),
             cost: item.cost !== undefined && item.cost !== '' ? toNum(item.cost) || 0 : '',
             price: toNum(item.price) || 0,
@@ -217,6 +220,31 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             categoryFilter.value = categories.includes(current) ? current : '';
         }
+
+        // הצעות מותגים במודאל העריכה
+        if (brandList) {
+            const brands = [...new Set(products.map(p => p.brand))].filter(b => b).sort();
+            brandList.innerHTML = '';
+            brands.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                brandList.appendChild(opt);
+            });
+        }
+
+        // תפריט הקטגוריות בהנחת קטגוריה (מבצעים כלליים)
+        const catDiscountSelect = document.getElementById('cat-discount-select');
+        if (catDiscountSelect) {
+            const current = catDiscountSelect.value;
+            catDiscountSelect.innerHTML = '';
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                catDiscountSelect.appendChild(opt);
+            });
+            if (categories.includes(current)) catDiscountSelect.value = current;
+        }
     }
 
     // Search + Category filter
@@ -294,6 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nameInput.value = p.name;
         catInput.value = p.category;
         unitInput.value = p.unit;
+        brandInput.value = p.brand || '';
         costInput.value = p.cost === '' || isNaN(toNum(p.cost)) ? '' : toNum(p.cost);
         priceInput.value = p.price;
         const m = marginOf(toNum(p.cost), toNum(p.price));
@@ -380,6 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: nameInput.value.trim(),
             category: catInput.value.trim(),
             unit: unitInput.value.trim() || 'יחידה',
+            brand: brandInput.value.trim(),
             image: urlInput.value.trim(),
             cost: costInput.value === '' ? '' : toNum(costInput.value) || 0,
             price: regularPrice,
@@ -422,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         name: ['name', 'שם', 'שם מוצר', 'שם המוצר', 'מוצר', 'שם פריט', 'תאור פריט', 'תיאור פריט'],
         category: ['category', 'קטגוריה', 'קבוצה', 'מחלקה'],
         unit: ['unit', 'יחידה', 'יחידת מידה', 'יח'],
+        brand: ['brand', 'מותג', 'יצרן'],
         image: ['image', 'img', 'תמונה', 'נתיב תמונה'],
         // "מחיר" לבד = עלות (כך בגיליון של רועי); מחיר המכירה מגיע מ"מחיר מכירה"/"מכירה"
         cost: ['cost', 'עלות', 'מחיר עלות', 'מחיר קניה', 'מחיר קנייה', 'עלות ליחידה', 'מחיר'],
@@ -431,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         description: ['description', 'תיאור', 'הערות', 'פירוט']
     };
 
-    const FIELD_NAMES = { id: 'מק"ט', name: 'שם', category: 'קטגוריה', unit: 'יחידה', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', margin: 'רווח %', description: 'תיאור' };
+    const FIELD_NAMES = { id: 'מק"ט', name: 'שם', category: 'קטגוריה', unit: 'יחידה', brand: 'מותג', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', margin: 'רווח %', description: 'תיאור' };
 
     function normalizeHeader(h) {
         return String(h || '').trim().toLowerCase().replace(/["'״׳]/g, '"').replace(/\s+/g, ' ');
@@ -572,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (target) {
                 const changes = {};
-                ['name', 'category', 'unit', 'image', 'cost', 'price', 'sale_price', 'description'].forEach(f => {
+                ['name', 'category', 'unit', 'brand', 'image', 'cost', 'price', 'sale_price', 'description'].forEach(f => {
                     if (row[f] === undefined) return;
                     const oldVal = String(target[f] ?? '');
                     let newVal = String(row[f]);
@@ -591,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     name: row.name,
                     category: row.category || 'כללי',
                     unit: row.unit || 'יחידה',
+                    brand: row.brand || '',
                     image: row.image || '',
                     cost: row.cost !== undefined ? toNum(row.cost) : '',
                     price: row.price !== undefined ? toNum(row.price) || 0 : 0,
@@ -694,41 +726,94 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(`המבצע בוטל ל-${cleared} מוצרים. אל תשכח ללחוץ על "שמור שינויים".`, 'success');
     };
 
-    // --- באנר מבצעים בעמוד ללקוח ---
+    // --- מבצעים כלליים: באנר, הנחת סל והנחות קטגוריה (pricelist-promo.json) ---
     const bannerText = document.getElementById('banner-text');
     const bannerEnabled = document.getElementById('banner-enabled');
-    const saveBannerBtn = document.getElementById('save-banner-btn');
+    const cartDiscountEnabled = document.getElementById('cart-discount-enabled');
+    const cartDiscountMin = document.getElementById('cart-discount-min');
+    const cartDiscountPct = document.getElementById('cart-discount-pct');
+    const catDiscountPct = document.getElementById('cat-discount-pct');
+    const catDiscountsListEl = document.getElementById('cat-discounts-list');
+    const savePromoBtn = document.getElementById('save-promo-btn');
+    let categoryDiscounts = []; // [{category, percent}]
 
-    fetch('/data/pricelist-banner.json?_t=' + Date.now())
+    function renderCatDiscounts() {
+        catDiscountsListEl.innerHTML = '';
+        categoryDiscounts.forEach((rule, idx) => {
+            const chip = document.createElement('span');
+            chip.style.cssText = 'background:#fdeeee; color:#c0554d; border:1px solid #c0554d; border-radius:14px; padding:3px 10px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;';
+            chip.textContent = `${rule.category} — ${rule.percent}%`;
+            const x = document.createElement('button');
+            x.textContent = '✕';
+            x.title = 'הסר הנחה';
+            x.style.cssText = 'border:none; background:none; color:#c0554d; cursor:pointer; font-size:0.85rem; padding:0;';
+            x.onclick = () => { categoryDiscounts.splice(idx, 1); renderCatDiscounts(); };
+            chip.appendChild(x);
+            catDiscountsListEl.appendChild(chip);
+        });
+    }
+
+    fetch('/data/pricelist-promo.json?_t=' + Date.now())
         .then(r => r.ok ? r.json() : null)
-        .then(b => {
-            if (b) {
-                bannerText.value = b.text || '';
-                bannerEnabled.checked = !!b.enabled;
-            }
+        .then(p => {
+            if (!p) return;
+            bannerText.value = (p.banner && p.banner.text) || '';
+            bannerEnabled.checked = !!(p.banner && p.banner.enabled);
+            const cd = p.cart_discount || {};
+            cartDiscountEnabled.checked = !!cd.enabled;
+            if (cd.min_total > 0) cartDiscountMin.value = cd.min_total;
+            if (cd.percent > 0) cartDiscountPct.value = cd.percent;
+            categoryDiscounts = (p.category_discounts || []).filter(r => r.category && r.percent > 0);
+            renderCatDiscounts();
         })
         .catch(() => { });
 
-    saveBannerBtn.onclick = async () => {
-        if (bannerEnabled.checked && !bannerText.value.trim()) {
-            alert('כתוב טקסט לבאנר או בטל את הסימון "מוצג בעמוד"');
+    document.getElementById('add-cat-discount-btn').onclick = () => {
+        const category = document.getElementById('cat-discount-select').value;
+        const pct = toNum(catDiscountPct.value);
+        if (!category || isNaN(pct) || pct <= 0 || pct >= 100) {
+            showToast('בחר קטגוריה והזן אחוז הנחה בין 1 ל-90', 'error');
             return;
         }
-        saveBannerBtn.disabled = true;
+        categoryDiscounts = categoryDiscounts.filter(r => r.category !== category);
+        categoryDiscounts.push({ category, percent: pct });
+        catDiscountPct.value = '';
+        renderCatDiscounts();
+        showToast('ההנחה נוספה לרשימה — לחץ "שמור מבצעים" כדי להחיל', 'success');
+    };
+
+    savePromoBtn.onclick = async () => {
+        if (bannerEnabled.checked && !bannerText.value.trim()) {
+            alert('כתוב טקסט לבאנר או בטל את הסימון "מוצג"');
+            return;
+        }
+        if (cartDiscountEnabled.checked && (!(toNum(cartDiscountMin.value) > 0) || !(toNum(cartDiscountPct.value) > 0))) {
+            alert('להנחת סל פעילה צריך למלא גם סכום מינימום וגם אחוז הנחה');
+            return;
+        }
+        savePromoBtn.disabled = true;
         try {
-            const res = await fetch('/api/banner', {
+            const res = await fetch('/api/promo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: bannerText.value.trim(), enabled: bannerEnabled.checked })
+                body: JSON.stringify({
+                    banner: { enabled: bannerEnabled.checked, text: bannerText.value.trim() },
+                    cart_discount: {
+                        enabled: cartDiscountEnabled.checked,
+                        min_total: toNum(cartDiscountMin.value) || 0,
+                        percent: toNum(cartDiscountPct.value) || 0
+                    },
+                    category_discounts: categoryDiscounts
+                })
             });
             const result = await res.json();
             if (!result.success) throw new Error(result.error);
-            showToast('הבאנר נשמר. (פרסום לאתר דורש git push)', 'success');
+            showToast('המבצעים נשמרו. (פרסום לאתר דורש git push)', 'success');
         } catch (e) {
             console.error(e);
-            showToast('שגיאה בשמירת הבאנר', 'error');
+            showToast('שגיאה בשמירת המבצעים: ' + e.message, 'error');
         } finally {
-            saveBannerBtn.disabled = false;
+            savePromoBtn.disabled = false;
         }
     };
 

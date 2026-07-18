@@ -46,17 +46,39 @@
             </header>
 
             <div class="content-body">
-                <!-- באנר מבצעים בעמוד ללקוח -->
-                <div class="table-card" style="margin-bottom:16px; padding:14px 16px;">
+                <!-- מבצעים כלליים: באנר, הנחת סל והנחות קטגוריה (נשמר ל-pricelist-promo.json) -->
+                <div class="table-card" style="margin-bottom:16px; padding:14px 16px; display:flex; flex-direction:column; gap:12px;">
                     <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                        <strong title="הבאנר בעמוד ללקוח מציג אוטומטית את המוצרים שבמבצע ומתחלף ביניהם. הטקסט כאן (אופציונלי) יתווסף כשקופית ראשונה.">באנר מבצעים — טקסט פתיחה (אופציונלי):</strong>
+                        <strong style="font-size:1.05rem;">מבצעים כלליים</strong>
+                        <span style="font-size:0.82rem; color:#888;">הבאנר בעמוד מציג אוטומטית את המוצרים שבמבצע ואת המבצעים שמוגדרים כאן</span>
+                        <button id="save-promo-btn" class="btn btn-primary" style="margin-right:auto;">שמור מבצעים</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <strong>טקסט פתיחה בבאנר:</strong>
                         <input type="text" id="banner-text" maxlength="200"
-                            placeholder='למשל: מבצעי החודש — כל מוצרי השיער ב-20% הנחה!'
-                            style="flex:1; min-width:220px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
+                            placeholder='אופציונלי, למשל: מבצעי החודש בקטלוג הטיפוח!'
+                            style="flex:1; min-width:200px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                            <input type="checkbox" id="banner-enabled"> מוצג בעמוד
+                            <input type="checkbox" id="banner-enabled"> מוצג
                         </label>
-                        <button id="save-banner-btn" class="btn btn-outline">שמור באנר</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <strong>הנחת סל:</strong>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="cart-discount-enabled"> פעילה
+                        </label>
+                        <span>בקנייה מעל</span>
+                        <input type="number" id="cart-discount-min" min="1" step="1" style="width:90px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                        <span>₪ — הנחה של</span>
+                        <input type="number" id="cart-discount-pct" min="1" max="90" step="0.5" style="width:70px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                        <span>% על כל ההזמנה (ההנחה מחושבת אוטומטית בעגלה)</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <strong>הנחת קטגוריה:</strong>
+                        <select id="cat-discount-select" style="padding:7px 8px; border:1px solid #ddd; border-radius:6px; background:#fff;"></select>
+                        <input type="number" id="cat-discount-pct" min="1" max="90" step="0.5" placeholder="%" style="width:70px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                        <button id="add-cat-discount-btn" class="btn btn-outline">הוסף</button>
+                        <span id="cat-discounts-list" style="display:flex; gap:6px; flex-wrap:wrap;"></span>
                     </div>
                 </div>
 
@@ -118,6 +140,11 @@
                         <div class="form-group">
                             <label for="prod-unit">יחידת מידה</label>
                             <input type="text" id="prod-unit" placeholder="למשל: יחידה, ק״ג" value="יחידה">
+                        </div>
+                        <div class="form-group">
+                            <label for="prod-brand">מותג</label>
+                            <input type="text" id="prod-brand" list="brand-list" placeholder="למשל: ARGANIA">
+                            <datalist id="brand-list"></datalist>
                         </div>
                     </div>
 
