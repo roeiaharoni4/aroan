@@ -49,6 +49,10 @@ def update_care_schema():
             price = 0
         if price <= 0:
             continue
+        # גוגל דורש תמונה לכל מוצר בסכמה — מוצר בלי תמונה גורם לשגיאה קריטית בבדיקת העשירות.
+        # מדלגים עליו; הוא יתווסף אוטומטית בשמירה הבאה אחרי שתהיה לו תמונה
+        if not (r.get('image') or '').strip():
+            continue
         # הנחת קטגוריה חלה רק כשאין מבצע פרטני (original_price ריק); עיגול ל-10 אגורות
         if not (r.get('original_price') or '').strip() and r.get('category') in category_discounts:
             price = round(price * (1 - category_discounts[r['category']] / 100) * 10) / 10
