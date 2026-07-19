@@ -99,8 +99,26 @@ def update_care_schema():
     block = (start_marker + '\n    <script type="application/ld+json">\n'
              + json.dumps(schema, ensure_ascii=False, indent=2)
              + '\n    </script>\n    ')
+    html = html[:start] + block + html[end:]
+
+    # מניעת קפיצת פריסה (CLS): כשידוע כבר בזמן השמירה שיהיה באנר מבצעים,
+    # שומרים לו את המקום מהרגע הראשון במקום לדחוף את הדף אחרי טעינת ה-JS
+    has_sales = any((r.get('original_price') or '').strip() for r in rows)
+    has_promo = has_sales or bool(category_discounts)
+    try:
+        with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
+            promo_cfg = json.load(f)
+        banner_cfg = promo_cfg.get('banner') or {}
+        cart_cfg = promo_cfg.get('cart_discount') or {}
+        has_promo = has_promo or (banner_cfg.get('enabled') and banner_cfg.get('text')) or (
+            cart_cfg.get('enabled') and float(cart_cfg.get('percent') or 0) > 0)
+    except (FileNotFoundError, ValueError):
+        pass
+    banner_tag = '<div id="promo-banner" style="display:block"></div>' if has_promo else '<div id="promo-banner"></div>'
+    html = re.sub(r'<div id="promo-banner"[^>]*></div>', banner_tag, html)
+
     with open(CARE_PAGE_FILE, 'w', encoding='utf-8') as f:
-        f.write(html[:start] + block + html[end:])
+        f.write(html)
 
 class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):

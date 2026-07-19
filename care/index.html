@@ -1389,7 +1389,7 @@
     <!-- End Google Tag Manager (noscript) -->
     <site-header></site-header>
 
-    <div id="promo-banner"></div>
+    <div id="promo-banner" style="display:block"></div>
     <script>
         // באנר מבצעים: נבנה אוטומטית מהמוצרים שבמבצע ומכללי המבצעים (מתחלף ביניהם).
         // ההגדרות מגיעות מ-pricelist-promo.json (נכתב מעורך המחירון).
@@ -1404,6 +1404,7 @@
                 if (!ready && tries < 40) return;
                 clearInterval(waiter);
                 if (ready) build();
+                else el.style.display = 'none'; // המוצרים לא נטענו — אין מה להציג בבאנר
             }, 300);
 
             function goToSales() {
@@ -1437,7 +1438,11 @@
                     }
                 });
                 sales.forEach(p => slides.push({ product: p }));
-                if (slides.length === 0) return;
+                if (slides.length === 0) {
+                    // אין מבצעים — מסתירים גם אם השרת שמר מקום מראש
+                    el.style.display = 'none';
+                    return;
+                }
 
                 slides.forEach((s, i) => {
                     const d = document.createElement('div');
