@@ -16,7 +16,99 @@ PRICELIST_MASTER_FILE = 'data/pricelist-master.csv'
 PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
 PRICELIST_PROMO_FILE = 'data/pricelist-promo.json'
 CARE_PAGE_FILE = 'care/index.html'
+MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
 SITE_BASE_URL = 'https://aroam.co.il'
+
+
+def _load_category_discounts():
+    """מחזיר {קטגוריה: אחוז} מקובץ המבצעים — כדי שהמחיר בפיד/סכמה יהיה המחיר שמוצג בפועל."""
+    discounts = {}
+    try:
+        with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
+            promo = json.load(f)
+        for rule in promo.get('category_discounts', []):
+            pct = float(rule.get('percent') or 0)
+            if rule.get('category') and pct > 0:
+                discounts[rule['category']] = pct
+    except (FileNotFoundError, ValueError):
+        pass
+    return discounts
+
+
+def _effective_price(row, category_discounts):
+    """המחיר שהלקוח רואה בפועל: מחיר מבצע פרטני אם יש, אחרת הנחת קטגוריה, עיגול ל-10 אג'."""
+    try:
+        price = float(row.get('price') or 0)
+    except ValueError:
+        return 0
+    if price <= 0:
+        return 0
+    if not (row.get('original_price') or '').strip() and row.get('category') in category_discounts:
+        price = round(price * (1 - category_discounts[row['category']] / 100) * 10) / 10
+    return price
+
+
+def update_merchant_feed():
+    """בונה פיד XML ל-Google Merchant Center מ-pricelist.csv (מוצרי B2C עם תמונה ומחיר).
+
+    נכתב ל-data/merchant-feed.xml בכל שמירה מהעורך. הכתובת שיש להזין ב-Merchant Center:
+    https://aroam.co.il/data/merchant-feed.xml
+    """
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
+        rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
+
+    category_discounts = _load_category_discounts()
+    items_xml = []
+    for r in rows:
+        price = _effective_price(r, category_discounts)
+        if price <= 0 or not (r.get('image') or '').strip():
+            continue  # Merchant דורש מחיר ותמונה לכל מוצר
+
+        image_link = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/'))
+        link = f"{SITE_BASE_URL}/care/?product={quote(r['id'])}"
+        desc = r.get('description') or r['name']
+
+        # מבצע פרטני: g:price = המחיר הרגיל, g:sale_price = מחיר המבצע (Merchant מציג מחוק)
+        try:
+            regular = float(r.get('original_price') or 0)
+        except ValueError:
+            regular = 0
+        on_sale = regular > price
+
+        parts = [
+            f"<g:id>{escape(r['id'])}</g:id>",
+            f"<g:title>{escape(r['name'])}</g:title>",
+            f"<g:description>{escape(desc)}</g:description>",
+            f"<g:link>{escape(link)}</g:link>",
+            f"<g:image_link>{escape(image_link)}</g:image_link>",
+            "<g:availability>in_stock</g:availability>",
+            "<g:condition>new</g:condition>",
+            f"<g:price>{(regular if on_sale else price):.2f} ILS</g:price>",
+        ]
+        if on_sale:
+            parts.append(f"<g:sale_price>{price:.2f} ILS</g:sale_price>")
+        if r.get('brand'):
+            parts.append(f"<g:brand>{escape(r['brand'])}</g:brand>")
+        # אין ברקוד (GTIN) — מצהירים על כך כדי ש-Merchant לא ידחה
+        parts.append("<g:identifier_exists>no</g:identifier_exists>")
+        items_xml.append("    <item>\n      " + "\n      ".join(parts) + "\n    </item>")
+
+    feed = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">\n'
+        '  <channel>\n'
+        '    <title>אהרוני שיווק והפצה — קטלוג טיפוח והיגיינה</title>\n'
+        f'    <link>{SITE_BASE_URL}/care/</link>\n'
+        '    <description>מוצרי טיפוח, היגיינה וכביסה במחירים לצרכן</description>\n'
+        + "\n".join(items_xml) + "\n"
+        '  </channel>\n'
+        '</rss>\n'
+    )
+    with open(MERCHANT_FEED_FILE, 'w', encoding='utf-8') as f:
+        f.write(feed)
 
 
 def update_care_schema():
@@ -29,33 +121,15 @@ def update_care_schema():
     with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
-    # הנחות קטגוריה מקובץ המבצעים — כדי שהמחיר בסכמה יהיה המחיר שמוצג בפועל
-    category_discounts = {}
-    try:
-        with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
-            promo = json.load(f)
-        for rule in promo.get('category_discounts', []):
-            pct = float(rule.get('percent') or 0)
-            if rule.get('category') and pct > 0:
-                category_discounts[rule['category']] = pct
-    except (FileNotFoundError, ValueError):
-        pass
+    category_discounts = _load_category_discounts()
 
     items = []
     for i, r in enumerate(rows, start=1):
-        try:
-            price = float(r.get('price') or 0)
-        except ValueError:
-            price = 0
-        if price <= 0:
+        price = _effective_price(r, category_discounts)
+        # גוגל דורש מחיר ותמונה לכל מוצר בסכמה — מוצר בלי גורם לשגיאה קריטית בבדיקת העשירות.
+        # מדלגים עליו; הוא יתווסף אוטומטית בשמירה הבאה אחרי שתהיה לו תמונה/מחיר
+        if price <= 0 or not (r.get('image') or '').strip():
             continue
-        # גוגל דורש תמונה לכל מוצר בסכמה — מוצר בלי תמונה גורם לשגיאה קריטית בבדיקת העשירות.
-        # מדלגים עליו; הוא יתווסף אוטומטית בשמירה הבאה אחרי שתהיה לו תמונה
-        if not (r.get('image') or '').strip():
-            continue
-        # הנחת קטגוריה חלה רק כשאין מבצע פרטני (original_price ריק); עיגול ל-10 אגורות
-        if not (r.get('original_price') or '').strip() and r.get('category') in category_discounts:
-            price = round(price * (1 - category_discounts[r['category']] / 100) * 10) / 10
         product = {
             '@type': 'Product',
             'name': r['name'],
@@ -229,11 +303,12 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             with open(PRICELIST_PROMO_FILE, 'w', encoding='utf-8') as f:
                 json.dump(promo, f, ensure_ascii=False, indent=1)
 
-            # הסכמה בעמוד הציבורי משקפת גם הנחות קטגוריה — מעדכנים
+            # הסכמה והפיד ל-Merchant משקפים גם הנחות קטגוריה — מעדכנים
             try:
                 update_care_schema()
+                update_merchant_feed()
             except Exception as schema_err:
-                print(f'אזהרה: עדכון סכמת care נכשל: {schema_err}')
+                print(f'אזהרה: עדכון סכמת care/פיד נכשל: {schema_err}')
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -313,11 +388,12 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         row['original_price'] = ''
                     writer.writerow(row)
 
-            # עדכון סכמת המוצרים בעמוד הציבורי (SEO ללקוחות פרטיים)
+            # עדכון סכמת המוצרים והפיד ל-Merchant (SEO + שופינג ללקוחות פרטיים)
             try:
                 update_care_schema()
+                update_merchant_feed()
             except Exception as schema_err:
-                print(f'אזהרה: עדכון סכמת care נכשל: {schema_err}')
+                print(f'אזהרה: עדכון סכמת care/פיד נכשל: {schema_err}')
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
