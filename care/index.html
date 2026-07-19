@@ -1235,6 +1235,87 @@
             flex-shrink: 0;
         }
 
+        /* כותרת עצמאית — בלי ניווט לאתר המלא */
+        .care-header {
+            background: var(--bg-surface, #fff);
+            border-bottom: 1px solid var(--border-color, #e0e0e0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .care-header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .care-phone {
+            color: var(--primary-dark, #1A4231);
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 1.05rem;
+            white-space: nowrap;
+        }
+
+        .care-phone:hover {
+            color: var(--primary, #639C7D);
+        }
+
+        /* פוטר מינימלי */
+        .care-footer {
+            background: var(--primary-dark, #1A4231);
+            color: #fff;
+            margin-top: 2rem;
+            padding: 1.5rem 1rem;
+        }
+
+        .care-footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .care-footer-brand {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .care-footer a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .care-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .care-footer-contact {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .care-footer-area {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+
+        .care-footer-legal {
+            font-size: 0.85rem;
+            opacity: 0.75;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         /* פתיח קצר לעמוד (SEO ללקוחות פרטיים) */
         .care-intro {
             max-width: 1200px;
@@ -1388,7 +1469,21 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W8HST8RB" height="0" width="0"
             style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
-    <site-header></site-header>
+    <!-- כותרת עצמאית לקטלוג ה-B2C: לוגו + טלפון בלבד, בלי ניווט לאתר המלא (לקוחות פרטיים נשארים בקטלוג) -->
+    <header class="care-header">
+        <div class="care-header-inner">
+            <a href="/care/" class="care-logo" aria-label="קטלוג טיפוח והיגיינה אהרוני">
+                <img src="/images/logo.png" alt="אהרוני שיווק והפצה" width="100" height="54"
+                    style="height:54px; width:auto;" fetchpriority="high">
+            </a>
+            <a href="tel:036346236" class="care-phone">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px; margin-left:5px;">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>03-6346236
+            </a>
+        </div>
+    </header>
 
     <div id="promo-banner" style="display:block"></div>
     <script>
@@ -1667,7 +1762,25 @@
         </div>
     </div>
 
-    <site-footer></site-footer>
+    <!-- פוטר מינימלי לקטלוג ה-B2C: פרטי קשר בלבד, בלי ניווט לאתר המלא -->
+    <footer class="care-footer">
+        <div class="care-footer-inner">
+            <div class="care-footer-brand">אהרוני שיווק והפצה</div>
+            <div class="care-footer-contact">
+                <a href="tel:0526000158">052-6000158</a>
+                <span>·</span>
+                <a href="tel:036346236">03-6346236</a>
+                <span>·</span>
+                <a href="https://wa.me/972526000158" target="_blank" rel="noopener">WhatsApp</a>
+            </div>
+            <div class="care-footer-area">משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
+            <div class="care-footer-legal">
+                <a href="/accessibility/">הצהרת נגישות</a>
+                <span>·</span>
+                <a href="/privacy/">מדיניות פרטיות</a>
+            </div>
+        </div>
+    </footer>
     <script src="/js/components.js" defer></script>
 </body>
 
