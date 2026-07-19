@@ -90,6 +90,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Recent orders key - היסטוריית הזמנות אחרונות (נשמר בנפרד לקטלוג לקוחות ולגרסת הסוכן)
     const RECENT_KEY = 'aroam_recent_orders_' + (window.location.pathname.split('/')[1] || 'root');
+    // עגלה שמורה במכשיר — הלקוח ממשיך מאיפה שהפסיק (מפתח נפרד לכל קטלוג)
+    const CART_KEY = 'aroam_cart_' + (window.location.pathname.split('/')[1] || 'root');
 
     // Initialize App
     init();
@@ -122,6 +124,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Load Promotions (הנחות קטגוריה והנחת סל — רק כשמוגדר promoSource)
         await applyPromotions();
+
+        // שחזור עגלה שמורה מהמכשיר (פרמטר cart ב-URL גובר עליה בהמשך)
+        try {
+            const savedCart = JSON.parse(localStorage.getItem(CART_KEY) || 'null');
+            if (savedCart) {
+                Object.entries(savedCart).forEach(([id, q]) => {
+                    if (q > 0 && PRODUCTS.some(p => p.id === id)) cart[id] = q;
+                });
+            }
+        } catch (e) { /* localStorage unavailable */ }
 
         // Load Favorites
         const storedFavs = localStorage.getItem('catalog_favorites');
@@ -336,6 +348,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         const byItems = CART_PROMO.min_items > 0 && itemCount >= CART_PROMO.min_items;
         if (!byTotal && !byItems) return 0;
         return Math.round(total * CART_PROMO.percent / 100 * 10) / 10;
+    }
+
+    // נאדג': "עוד X ₪ / Y פריטים ותקבל הנחה" — מוצג כשמבצע סל פעיל והלקוח מתחת לרף.
+    // מופיע בבר התחתון (מתחת לכפתור ההזמנה) ובראש מודאל ההזמנה.
+    function updatePromoNudge(totalPrice, totalItems, cartDiscount) {
+        const barNudge = document.getElementById('promo-nudge-bar');
+        const modalNudge = document.getElementById('promo-nudge-modal');
+
+        let msg = '';
+        if (CART_PROMO && cartDiscount === 0 && totalItems > 0) {
+            const parts = [];
+            if (CART_PROMO.min_total > 0 && totalPrice < CART_PROMO.min_total) {
+                const gap = CART_PROMO.min_total - totalPrice;
+                parts.push(`עוד ${gap.toFixed(2)} ₪`);
+            }
+            if (CART_PROMO.min_items > 0 && totalItems < CART_PROMO.min_items) {
+                const gap = CART_PROMO.min_items - totalItems;
+                parts.push(`עוד ${gap} פריטים`);
+            }
+            const pct = Number.isInteger(CART_PROMO.percent) ? CART_PROMO.percent : CART_PROMO.percent.toFixed(1);
+            if (parts.length) msg = `🎁 ${parts.join(' או ')} ותקבלו ${pct}% הנחה על כל ההזמנה!`;
+        } else if (CART_PROMO && cartDiscount > 0) {
+            const pct = Number.isInteger(CART_PROMO.percent) ? CART_PROMO.percent : CART_PROMO.percent.toFixed(1);
+            msg = `✅ מזל טוב! קיבלתם ${pct}% הנחה על ההזמנה`;
+        }
+
+        [barNudge, modalNudge].forEach(el => {
+            if (!el) return;
+            el.textContent = msg;
+            el.style.display = msg ? 'block' : 'none';
+        });
     }
 
     // ניסוח מבצע הסל לתצוגה (באנר / קטגוריית מבצעים)
@@ -711,10 +754,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             plus.className = "qty-btn";
             plus.textContent = "+";
 
-            minus.onclick = () => changeQty(product.id, -1, input);
-            plus.onclick = (e) => changeQty(product.id, 1, input, e);
-            input.onchange = () => setQtyFromInput(product.id, input);
-
             qtyControl.appendChild(minus);
             qtyControl.appendChild(input);
             qtyControl.appendChild(plus);
@@ -725,6 +764,31 @@ document.addEventListener("DOMContentLoaded", async () => {
             card.appendChild(imgContainer);
             card.appendChild(body);
             card.appendChild(footer);
+
+            // כפתור "הוסף לסל" בולט (קטלוג הטיפוח בלבד, דרך CONFIG.showAddButton).
+            // כשהכמות 0 — מוצג הכפתור; כשיש כמות — מוצג בקר הכמות +/-.
+            let addBtn = null;
+            if (CONFIG.showAddButton) {
+                addBtn = document.createElement("button");
+                addBtn.className = "add-to-cart-btn";
+                addBtn.type = "button";
+                addBtn.textContent = "הוסף לסל";
+                addBtn.onclick = (e) => { changeQty(product.id, 1, input, e); syncAddState(); };
+                card.appendChild(addBtn);
+            }
+
+            // מסנכרן את התצוגה בין כפתור ההוספה לבקר הכמות
+            const syncAddState = () => {
+                if (!CONFIG.showAddButton) return;
+                const has = (cart[product.id] || 0) > 0;
+                qtyControl.style.display = has ? "" : "none";
+                if (addBtn) addBtn.style.display = has ? "none" : "";
+            };
+            syncAddState();
+
+            minus.onclick = () => { changeQty(product.id, -1, input); syncAddState(); };
+            plus.onclick = (e) => { changeQty(product.id, 1, input, e); syncAddState(); };
+            input.onchange = () => { setQtyFromInput(product.id, input); syncAddState(); };
 
             productsEl.appendChild(card);
         });
@@ -932,6 +996,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (fabCountEl) fabCountEl.textContent = totalItems;
+
+        // שמירת העגלה במכשיר בכל שינוי
+        try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { }
+
+        // נאדג': כמה חסר כדי לזכות בהנחת הסל
+        updatePromoNudge(totalPrice, totalItems, cartDiscount);
 
         // סה"כ מחיר על כפתור ההזמנה הצף — הלקוח רואה את עלות העגלה בכל רגע
         if (CONFIG.showPrices && openOrderBtn) {

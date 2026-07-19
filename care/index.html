@@ -1374,6 +1374,7 @@
             showPrices: true,
             allowPdf: false,
             allowShare: true,
+            showAddButton: true,
             dataSource: '/data/pricelist.csv?v=1',
             promoSource: '/data/pricelist-promo.json'
         };
@@ -1530,6 +1531,9 @@
 
         <!-- Floating Action Button (Cart) -->
         <div class="fab-container">
+            <div id="promo-nudge-bar"
+                style="display:none; background:#fff4e5; color:#7a4a00; text-align:center; font-weight:600; font-size:0.9rem; padding:6px 12px; border-top:1px solid #ffe0b2;">
+            </div>
             <button id="open-order-btn" class="fab">
                 <span>הצגת הזמנה</span>
                 <span class="fab-badge" id="fab-count">0</span>
@@ -1547,6 +1551,10 @@
             </div>
 
             <div class="modal-body">
+
+                <div id="promo-nudge-modal"
+                    style="display:none; background:#fff4e5; color:#7a4a00; text-align:center; font-weight:600; border-radius:10px; padding:10px 12px; margin-bottom:1rem;">
+                </div>
 
                 <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
                     <div style="flex: 1; min-width: 200px;">

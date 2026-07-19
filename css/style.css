@@ -402,6 +402,28 @@ button {
     color: #fff;
 }
 
+/* כפתור "הוסף לסל" בולט בכרטיס (קטלוג הטיפוח) */
+.add-to-cart-btn {
+    margin: 0 1rem 1rem;
+    padding: 0.65rem 1rem;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.add-to-cart-btn:hover {
+    background: var(--primary-dark);
+}
+
+.add-to-cart-btn:active {
+    transform: scale(0.98);
+}
+
 /* מבצע (קטלוג הטיפוח הנסתר): מחיר קודם מחוק + תג */
 .price-old {
     text-decoration: line-through;
