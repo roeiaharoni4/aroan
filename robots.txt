@@ -53,4 +53,4 @@ User-agent: Bytespider
 Allow: /
 
 Sitemap: https://aroam.co.il/sitemap.xml
-llms: https://aroam.co.il/llms.txt
+# llms.txt (מפת האתר לסורקי AI): https://aroam.co.il/llms.txt
