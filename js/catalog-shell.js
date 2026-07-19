@@ -11,7 +11,7 @@ class CatalogShell extends HTMLElement {
             <div class="header-content" style="display:none;"></div>
 
             <div class="search-container">
-                <input type="text" id="search-input" class="search-input" placeholder="חיפוש מוצר..."
+                <input type="text" id="search-input" aria-label="חיפוש מוצר" class="search-input" placeholder="חיפוש מוצר..."
                     aria-label="חיפוש בקטלוג">
             </div>
         </header>

@@ -4,15 +4,31 @@
     {
       "name": "aroam-site",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8085"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8085"
+      ],
       "port": 8085
     },
     {
       "name": "aroam-admin",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["server.py"],
+      "runtimeArgs": [
+        "server.py"
+      ],
       "port": 8081,
       "autoPort": true
+    },
+    {
+      "name": "aroam-site-8087",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8087"
+      ],
+      "port": 8087
     }
   ]
 }

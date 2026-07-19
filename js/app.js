@@ -703,6 +703,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             input.type = "number";
             input.className = "qty-input";
             input.min = "0";
+            input.setAttribute("aria-label", "כמות - " + product.name);
             const currentQty = cart[product.id] || 0;
             input.value = currentQty > 0 ? currentQty : "";
 
@@ -1095,6 +1096,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             qtyInp.className = "order-input";
             qtyInp.type = "number";
             qtyInp.min = "0";
+            qtyInp.setAttribute("aria-label", "כמות - " + product.name);
             qtyInp.value = qty;
             tdQty.appendChild(qtyInp);
             row.appendChild(tdQty);

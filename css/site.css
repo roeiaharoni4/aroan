@@ -258,9 +258,12 @@ ul {
     position: relative;
 }
 
-.main-nav a:hover,
-.main-nav a.active {
+.main-nav a:hover {
     color: var(--accent-color);
+}
+
+.main-nav a.active {
+    color: var(--secondary-color);
 }
 
 .main-nav a::after {
