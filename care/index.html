@@ -1255,6 +1255,117 @@
             max-width: 640px;
             margin: 0 auto;
         }
+
+        /* מובייל: טבלת ההזמנה הופכת לכרטיסים אנכיים — בלי גלילה אופקית (עמוד זה בלבד) */
+        @media (max-width: 768px) {
+            #order-modal .modal-body {
+                padding: 1rem;
+            }
+
+            #order-modal .table-responsive {
+                overflow-x: visible !important;
+            }
+
+            #order-modal .order-table,
+            #order-modal .order-table tbody {
+                display: block;
+                width: 100%;
+            }
+
+            #order-modal .order-table thead {
+                display: none;
+            }
+
+            #order-modal .order-table tr {
+                display: grid;
+                grid-template-columns: 52px 1fr auto;
+                grid-template-areas:
+                    "img name name"
+                    "img qty total";
+                gap: 6px 10px;
+                align-items: center;
+                border: 1px solid #e8e8e8;
+                border-radius: 10px;
+                padding: 10px 12px;
+                margin-bottom: 10px;
+                background: #fff;
+            }
+
+            #order-modal .order-table td {
+                display: block;
+                border: none !important;
+                padding: 0;
+                text-align: right;
+            }
+
+            /* תמונה */
+            #order-modal .order-table td:nth-child(1) {
+                grid-area: img;
+            }
+
+            #order-modal .order-table td:nth-child(1) img {
+                width: 52px !important;
+                height: 52px !important;
+            }
+
+            /* שם המוצר */
+            #order-modal .order-table td:nth-child(3) {
+                grid-area: name;
+                font-weight: 600;
+                line-height: 1.35;
+            }
+
+            /* מק"ט, קטגוריה, יחידה ומחיר-יחידה מוסתרים במובייל — נשאר מה שחשוב ללקוח */
+            #order-modal .order-table td:nth-child(2),
+            #order-modal .order-table td:nth-child(4),
+            #order-modal .order-table td:nth-child(6),
+            #order-modal .order-table td:nth-child(7) {
+                display: none;
+            }
+
+            /* כמות */
+            #order-modal .order-table td:nth-child(5) {
+                grid-area: qty;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            #order-modal .order-table td:nth-child(5)::before {
+                content: 'כמות:';
+                font-size: 0.85rem;
+                color: var(--text-secondary, #666);
+            }
+
+            #order-modal .order-table td:nth-child(5) .order-input {
+                width: 64px;
+                min-height: 40px;
+                text-align: center;
+            }
+
+            /* סה"כ לשורה */
+            #order-modal .order-table td:nth-child(8) {
+                grid-area: total;
+                font-weight: 700;
+                color: var(--primary-dark, #1A4231);
+                white-space: nowrap;
+            }
+
+            #order-modal .order-table td:nth-child(8)::after {
+                content: ' ₪';
+            }
+
+            /* מניעת זום אוטומטי של iOS בכניסה לשדות + כפתורי שליחה נוחים */
+            #order-modal input,
+            #order-modal textarea {
+                font-size: 16px;
+            }
+
+            #order-modal .modal-footer button {
+                flex: 1 1 45%;
+                min-height: 46px;
+            }
+        }
     </style>
 
     <!-- Scripts -->
