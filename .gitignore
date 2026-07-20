@@ -5,3 +5,7 @@ data/pricelist-master.csv
 images_backup/מחירון/
 
 .DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
