@@ -48,6 +48,53 @@ def _effective_price(row, category_discounts):
     return price
 
 
+def bake_care_products():
+    """מזריק את רשימת המוצרים כטקסט קריא לגוגל ל-#products בעמוד /care/ הראשי.
+
+    ה-HTML הראשוני של /care/ ריק ממוצרים (הם נטענים ב-JS), מה שמקשה על אינדוקס.
+    כאן נכתבים כרטיסי מוצר אמיתיים בין CARE_PRODUCTS_START/END; app.js מנקה את
+    #products ומרנדר מחדש בטעינה, כך שלגולשים אין כפילות ולסורקים יש תוכן מלא.
+    """
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
+        rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
+    category_discounts = _load_category_discounts()
+
+    cards = []
+    for r in rows:
+        price = _effective_price(r, category_discounts)
+        if price <= 0:
+            continue
+        img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
+        link = f'/care/?product={quote(r["id"])}'
+        price_html = f'<span class="product-price">{price:.2f} ₪</span>'
+        try:
+            regular = float(r.get('original_price') or 0)
+        except ValueError:
+            regular = 0
+        if regular > price:
+            price_html = f'<span class="product-price">{price:.2f} ₪ <span class="price-old">{regular:.2f} ₪</span></span>'
+        cards.append(
+            f'<div class="product-card"><a href="{escape(link)}">'
+            + (f'<img src="{escape(img)}" alt="{escape(r["name"])}" loading="lazy" width="200" height="200">' if img else '')
+            + f'<h2 class="product-title">{escape(r["name"])}</h2></a>'
+            + (f'<div class="product-brand">{escape(r["brand"])}</div>' if r.get('brand') else '')
+            + f'{price_html}</div>'
+        )
+
+    block = ('<!-- CARE_PRODUCTS_START -->\n                '
+             + '\n                '.join(cards)
+             + '\n                <!-- CARE_PRODUCTS_END -->')
+
+    with open(CARE_PAGE_FILE, encoding='utf-8') as f:
+        html = f.read()
+    html = re.sub(r'<!-- CARE_PRODUCTS_START -->.*?<!-- CARE_PRODUCTS_END -->', block, html, flags=re.S)
+    with open(CARE_PAGE_FILE, 'w', encoding='utf-8') as f:
+        f.write(html)
+
+
 def update_merchant_feed():
     """בונה פיד XML ל-Google Merchant Center מ-pricelist.csv (מוצרי B2C עם תמונה ומחיר).
 
@@ -526,6 +573,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # הסכמה, הפיד ודפי הקטגוריה משקפים גם הנחות קטגוריה — מעדכנים
             try:
                 update_care_schema()
+                bake_care_products()
                 update_merchant_feed()
                 generate_care_category_pages()
             except Exception as schema_err:
@@ -612,6 +660,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # עדכון סכמה, פיד ודפי קטגוריה (SEO + שופינג ללקוחות פרטיים)
             try:
                 update_care_schema()
+                bake_care_products()
                 update_merchant_feed()
                 generate_care_category_pages()
             except Exception as schema_err:
