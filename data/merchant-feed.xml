@@ -256,7 +256,7 @@
       <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/%D7%AA%D7%97%D7%91%D7%95%D7%A9%D7%95%D7%AA%20%D7%90%D7%95%D7%9C%D7%95%D7%95%D7%99%D7%96%20%D7%90%D7%95%D7%9C%D7%98%D7%A8%D7%94%20%D7%9C%D7%99%D7%9C%D7%94%20%D7%91%D7%98%D7%95%D7%97%20%D7%90%D7%A7%D7%A1%D7%98%D7%A8%D7%90%20%D7%9E%D7%99%D7%93%D7%94%205.jpg</g:image_link>
       <g:availability>in_stock</g:availability>
       <g:condition>new</g:condition>
-      <g:price>16.90 ILS</g:price>
+      <g:price>24.90 ILS</g:price>
       <g:brand>אולוויז</g:brand>
       <g:identifier_exists>no</g:identifier_exists>
     </item>
@@ -618,6 +618,127 @@
       <g:condition>new</g:condition>
       <g:price>13.90 ILS</g:price>
       <g:brand>ג'ילט</g:brand>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020007</g:id>
+      <g:title>LA BEAUTE מבשם שיער אינטנסיב קרטין טהור וארגן מתאים לכל סוגי השיער 50 מ"ל</g:title>
+      <g:description>LA BEAUTE מבשם שיער אינטנסיב קרטין טהור וארגן מתאים לכל סוגי השיער 50 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020007</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%9E%D7%91%D7%A9%D7%9D%20%D7%A9%D7%99%D7%A2%D7%A8%20%D7%90%D7%99%D7%A0%D7%98%D7%A0%D7%A1%D7%99%D7%91%20%D7%A7%D7%A8%D7%98%D7%99%D7%9F%20%D7%98%D7%94%D7%95%D7%A8%20%D7%95%D7%90%D7%A8%D7%92%D7%9F%20%D7%9E%D7%AA%D7%90%D7%99%D7%9D%20%D7%9C%D7%9B%D7%9C%20%D7%A1%D7%95%D7%92%D7%99%20%D7%94%D7%A9%D7%99%D7%A2%D7%A8%2050%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>64.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020016</g:id>
+      <g:title>LA BEAUTE מבשם שיער הוט קוטור מתאים לכל סוגי השיער 50 מ"ל</g:title>
+      <g:description>LA BEAUTE מבשם שיער הוט קוטור מתאים לכל סוגי השיער 50 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020016</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%9E%D7%91%D7%A9%D7%9D%20%D7%A9%D7%99%D7%A2%D7%A8%20%D7%94%D7%95%D7%98%20%D7%A7%D7%95%D7%98%D7%95%D7%A8%20%D7%9E%D7%AA%D7%90%D7%99%D7%9D%20%D7%9C%D7%9B%D7%9C%20%D7%A1%D7%95%D7%92%D7%99%20%D7%94%D7%A9%D7%99%D7%A2%D7%A8%2050%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>64.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020080</g:id>
+      <g:title>LA BEAUTE מסכה אינטנסיב קרטין טהור וארגן לשיער עבה, יבש, צבוע ולאחר החלקה 500 מ"ל (12 יחידות)</g:title>
+      <g:description>LA BEAUTE מסכה אינטנסיב קרטין טהור וארגן לשיער עבה, יבש, צבוע ולאחר החלקה 500 מ"ל (12 יחידות)</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020080</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%9E%D7%A1%D7%9B%D7%94%20%D7%90%D7%99%D7%A0%D7%98%D7%A0%D7%A1%D7%99%D7%91%20%D7%A7%D7%A8%D7%98%D7%99%D7%9F%20%D7%98%D7%94%D7%95%D7%A8%20%D7%95%D7%90%D7%A8%D7%92%D7%9F%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%A2%D7%91%D7%94%2C%20%D7%99%D7%91%D7%A9%2C%20%D7%A6%D7%91%D7%95%D7%A2%20%D7%95%D7%9C%D7%90%D7%97%D7%A8%20%D7%94%D7%97%D7%9C%D7%A7%D7%94%20500%20%D7%9E%22%D7%9C%20%2812%20%D7%99%D7%97%D7%99%D7%93%D7%95%D7%AA%29.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>69.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020072</g:id>
+      <g:title>LA BEAUTE מסכה אליקסיר קרטין טהור ושמן ארגן לשיער דק וקרקפת שומנית 500 מ"ל (12 יחידות)</g:title>
+      <g:description>LA BEAUTE מסכה אליקסיר קרטין טהור ושמן ארגן לשיער דק וקרקפת שומנית 500 מ"ל (12 יחידות)</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020072</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%9E%D7%A1%D7%9B%D7%94%20%D7%90%D7%9C%D7%99%D7%A7%D7%A1%D7%99%D7%A8%20%D7%A7%D7%A8%D7%98%D7%99%D7%9F%20%D7%98%D7%94%D7%95%D7%A8%20%D7%95%D7%A9%D7%9E%D7%9F%20%D7%90%D7%A8%D7%92%D7%9F%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%93%D7%A7%20%D7%95%D7%A7%D7%A8%D7%A7%D7%A4%D7%AA%20%D7%A9%D7%95%D7%9E%D7%A0%D7%99%D7%AA%20500%20%D7%9E%22%D7%9C%20%2812%20%D7%99%D7%97%D7%99%D7%93%D7%95%D7%AA%29.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>69.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020015</g:id>
+      <g:title>LA BEAUTE מסכה הוט קוטור לשיער רגיל עד יבש מאוד 500 מ"ל</g:title>
+      <g:description>LA BEAUTE מסכה הוט קוטור לשיער רגיל עד יבש מאוד 500 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020015</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%9E%D7%A1%D7%9B%D7%94%20%D7%94%D7%95%D7%98%20%D7%A7%D7%95%D7%98%D7%95%D7%A8%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%A8%D7%92%D7%99%D7%9C%20%D7%A2%D7%93%20%D7%99%D7%91%D7%A9%20%D7%9E%D7%90%D7%95%D7%93%20500%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>69.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020030</g:id>
+      <g:title>LA BEAUTE מסכה רד פייבר לשיער יבש, צבוע ופגום 500 מ"ל</g:title>
+      <g:description>LA BEAUTE מסכה רד פייבר לשיער יבש, צבוע ופגום 500 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020030</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%9E%D7%A1%D7%9B%D7%94%20%D7%A8%D7%93%20%D7%A4%D7%99%D7%99%D7%91%D7%A8%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%99%D7%91%D7%A9%2C%20%D7%A6%D7%91%D7%95%D7%A2%20%D7%95%D7%A4%D7%92%D7%95%D7%9D%20500%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>69.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020073</g:id>
+      <g:title>LA BEAUTE קרם לחות אינטנסיב לכל סוגי השיער בייחוד לשיער מתולתל 750 מ"ל</g:title>
+      <g:description>LA BEAUTE קרם לחות אינטנסיב לכל סוגי השיער בייחוד לשיער מתולתל 750 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020073</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%A7%D7%A8%D7%9D%20%D7%9C%D7%97%D7%95%D7%AA%20%D7%90%D7%99%D7%A0%D7%98%D7%A0%D7%A1%D7%99%D7%91%20%D7%9C%D7%9B%D7%9C%20%D7%A1%D7%95%D7%92%D7%99%20%D7%94%D7%A9%D7%99%D7%A2%D7%A8%20%D7%91%D7%99%D7%99%D7%97%D7%95%D7%93%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%9E%D7%AA%D7%95%D7%9C%D7%AA%D7%9C%20750%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>69.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020002</g:id>
+      <g:title>LA BEAUTE שמפו אינטנסיב קרטין טהור ושמן ארגן לשיער עבה, יבש, צבוע ולאחר החלקה 750 מ"ל</g:title>
+      <g:description>LA BEAUTE שמפו אינטנסיב קרטין טהור ושמן ארגן לשיער עבה, יבש, צבוע ולאחר החלקה 750 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020002</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%A9%D7%9E%D7%A4%D7%95%20%D7%90%D7%99%D7%A0%D7%98%D7%A0%D7%A1%D7%99%D7%91%20%D7%A7%D7%A8%D7%98%D7%99%D7%9F%20%D7%98%D7%94%D7%95%D7%A8%20%D7%95%D7%A9%D7%9E%D7%9F%20%D7%90%D7%A8%D7%92%D7%9F%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%A2%D7%91%D7%94%2C%20%D7%99%D7%91%D7%A9%2C%20%D7%A6%D7%91%D7%95%D7%A2%20%D7%95%D7%9C%D7%90%D7%97%D7%A8%20%D7%94%D7%97%D7%9C%D7%A7%D7%94%20750%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>54.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020019</g:id>
+      <g:title>LA BEAUTE שמפו אליקסיר ויטמין פרוטאין לשיער דק וקרקפת שומנית 750 מ"ל</g:title>
+      <g:description>LA BEAUTE שמפו אליקסיר ויטמין פרוטאין לשיער דק וקרקפת שומנית 750 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020019</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%A9%D7%9E%D7%A4%D7%95%20%D7%90%D7%9C%D7%99%D7%A7%D7%A1%D7%99%D7%A8%20%D7%95%D7%99%D7%98%D7%9E%D7%99%D7%9F%20%D7%A4%D7%A8%D7%95%D7%98%D7%90%D7%99%D7%9F%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%93%D7%A7%20%D7%95%D7%A7%D7%A8%D7%A7%D7%A4%D7%AA%20%D7%A9%D7%95%D7%9E%D7%A0%D7%99%D7%AA%20750%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>54.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020011</g:id>
+      <g:title>LA BEAUTE שמפו הוט קוטור חומצה היאלרונית לשיער רגיל עד יבש מאוד 750 מ"ל</g:title>
+      <g:description>LA BEAUTE שמפו הוט קוטור חומצה היאלרונית לשיער רגיל עד יבש מאוד 750 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020011</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%A9%D7%9E%D7%A4%D7%95%20%D7%94%D7%95%D7%98%20%D7%A7%D7%95%D7%98%D7%95%D7%A8%20%D7%97%D7%95%D7%9E%D7%A6%D7%94%20%D7%94%D7%99%D7%90%D7%9C%D7%A8%D7%95%D7%A0%D7%99%D7%AA%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%A8%D7%92%D7%99%D7%9C%20%D7%A2%D7%93%20%D7%99%D7%91%D7%A9%20%D7%9E%D7%90%D7%95%D7%93%20750%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>54.90 ILS</g:price>
+      <g:identifier_exists>no</g:identifier_exists>
+    </item>
+    <item>
+      <g:id>1020026</g:id>
+      <g:title>LA BEAUTE שמפו רד פייבר לשיער יבש, צבוע ופגום 750 מ"ל</g:title>
+      <g:description>LA BEAUTE שמפו רד פייבר לשיער יבש, צבוע ופגום 750 מ"ל</g:description>
+      <g:link>https://aroam.co.il/care/?product=1020026</g:link>
+      <g:image_link>https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/LA%20BEAUTE%20%D7%A9%D7%9E%D7%A4%D7%95%20%D7%A8%D7%93%20%D7%A4%D7%99%D7%99%D7%91%D7%A8%20%D7%9C%D7%A9%D7%99%D7%A2%D7%A8%20%D7%99%D7%91%D7%A9%2C%20%D7%A6%D7%91%D7%95%D7%A2%20%D7%95%D7%A4%D7%92%D7%95%D7%9D%20750%20%D7%9E%22%D7%9C.png</g:image_link>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:price>54.90 ILS</g:price>
       <g:identifier_exists>no</g:identifier_exists>
     </item>
   </channel>
