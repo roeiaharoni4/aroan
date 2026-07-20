@@ -1337,6 +1337,29 @@
             margin: 0 auto;
         }
 
+        .care-cat-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .care-cat-links a {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-dark, #1A4231);
+            text-decoration: none;
+            border: 1px solid var(--primary, #639C7D);
+            border-radius: 20px;
+            padding: 5px 14px;
+        }
+
+        .care-cat-links a:hover {
+            background: var(--primary, #639C7D);
+            color: #fff;
+        }
+
         /* מובייל: טבלת ההזמנה הופכת לכרטיסים אנכיים — בלי גלילה אופקית (עמוד זה בלבד) */
         @media (max-width: 768px) {
             #order-modal .modal-body {
@@ -1595,6 +1618,14 @@
         <h1>קטלוג טיפוח והיגיינה במחירים לצרכן</h1>
         <p>מוצרי שיער, היגיינה אישית, היגיינת פה וכביסה של המותגים המובילים — במחירים משתלמים ללקוחות פרטיים.
             מוסיפים לסל, שולחים הזמנה בוואטסאפ, ומקבלים משלוח באזור אור יהודה, בקעת אונו וגוש דן.</p>
+        <nav class="care-cat-links" aria-label="קטגוריות הקטלוג">
+            <a href="/care/hair/">מוצרי שיער</a>
+            <a href="/care/laundry/">מוצרי כביסה</a>
+            <a href="/care/oral-care/">היגיינת פה</a>
+            <a href="/care/feminine/">היגיינה נשית</a>
+            <a href="/care/men/">טיפוח לגבר</a>
+            <a href="/care/general/">טיפוח כללי</a>
+        </nav>
     </section>
 
     <div class="app-container with-sidebar">

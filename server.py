@@ -111,6 +111,226 @@ def update_merchant_feed():
         f.write(feed)
 
 
+# דפי קטגוריה סטטיים ל-SEO: כתובת ייעודית + טקסט מוצרים קריא לגוגל + קישור לקטלוג האינטראקטיבי.
+# כל דף מכוון לחיפושים של הקטגוריה שלו, ומכיל את שמות המוצרים והמחירים כטקסט אמיתי ב-HTML.
+CARE_CATEGORY_PAGES = {
+    'שיער': {
+        'slug': 'hair',
+        'title': 'מוצרי שיער במחירים לצרכן — שמפו, מרכך, מסכות וסרום | אהרוני',
+        'desc': 'מוצרי טיפוח לשיער במחירים משתלמים: שמפו, מרכך, מסכות טיפוליות וסרום ARGANIA ללא מלחים. הזמנה אונליין ומשלוח באזור אור יהודה, בקעת אונו וגוש דן.',
+        'h1': 'מוצרי שיער במחירים לצרכן',
+        'intro': 'מבחר מוצרי טיפוח לשיער — שמפו, מרכך, מסכות טיפוליות, סרום ושמן ARGANIA ללא מלחים, לכל סוגי השיער: יבש, פגום, מתולתל ומסולסל. מחירים משתלמים ללקוחות פרטיים והזמנה מהירה בוואטסאפ.',
+    },
+    'כביסה': {
+        'slug': 'laundry',
+        'title': 'קפסולות ואבקות כביסה במחירים לצרכן — אריאל, פרסיל, לנור | אהרוני',
+        'desc': 'קפסולות ג\'ל לכביסה אריאל ופרסיל, כדוריות ריח לנור במחירים משתלמים. הזמנה אונליין ומשלוח באזור אור יהודה, בקעת אונו וגוש דן.',
+        'h1': 'מוצרי כביסה במחירים לצרכן',
+        'intro': 'קפסולות ג\'ל לכביסה של אריאל ופרסיל, כדוריות בישום לנור ועוד — לכביסה לבנה, צבעונית והסרת כתמים קשים. מחירים משתלמים ללקוחות פרטיים והזמנה מהירה בוואטסאפ.',
+    },
+    'היגיינת פה': {
+        'slug': 'oral-care',
+        'title': 'מוצרי היגיינת פה — משחות שיניים, מברשות ושטיפת פה | אהרוני',
+        'desc': 'משחות שיניים קולגייט וסנסודיין, מברשות שיניים אורל בי וקולגייט, שטיפת פה ליסטרין וקיסמי שיניים — במחירים משתלמים. משלוח בגוש דן והמרכז.',
+        'h1': 'מוצרי היגיינת פה במחירים לצרכן',
+        'intro': 'משחות שיניים קולגייט, סנסודיין וטום וגרי, מברשות שיניים אורל בי וקולגייט, שטיפת פה ליסטרין וקיסמי שיניים PHARMA DENT — במחירים משתלמים ללקוחות פרטיים.',
+    },
+    'נשים': {
+        'slug': 'feminine',
+        'title': 'מוצרי היגיינה נשית — תחבושות, מגני תחתון וגילוח | אהרוני',
+        'desc': 'תחבושות ומגני תחתון אולוויז בכל המידות, סכיני גילוח VENUS — במחירים משתלמים. הזמנה אונליין ומשלוח בגוש דן והמרכז.',
+        'h1': 'מוצרי היגיינה נשית במחירים לצרכן',
+        'intro': 'תחבושות אולוויז אולטרה בכל המידות (1-5), מגני תחתון וסכיני גילוח VENUS — מבחר מוצרי היגיינה נשית במחירים משתלמים ללקוחות פרטיים.',
+    },
+    'גבר': {
+        'slug': 'men',
+        'title': 'מוצרי גילוח וטיפוח לגבר — ג\'ילט, ניוואה | אהרוני',
+        'desc': 'סכיני גילוח, ג\'ל וקצף גילוח ג\'ילט, דאודורנט ניוואה לגבר — במחירים משתלמים. הזמנה אונליין ומשלוח בגוש דן והמרכז.',
+        'h1': 'מוצרי גילוח וטיפוח לגבר',
+        'intro': 'סכיני גילוח ג\'ילט פיוז\'ן וטו, ג\'ל וקצף גילוח לעור רגיש, דאודורנט ניוואה — מבחר מוצרי טיפוח וגילוח לגבר במחירים משתלמים ללקוחות פרטיים.',
+    },
+    'כללי': {
+        'slug': 'general',
+        'title': 'מוצרי טיפוח והיגיינה — סבונים, קרמים, וזלין | אהרוני',
+        'desc': 'סבוני רחצה פלמוליב ו-DOVE, קרם ניוואה, וזלין, שפתון לחות וקיסמי שיניים — במחירים משתלמים. משלוח בגוש דן והמרכז.',
+        'h1': 'מוצרי טיפוח והיגיינה כלליים',
+        'intro': 'סבוני רחצה פלמוליב ו-DOVE, קרם רב-שימושי ניוואה, וזלין טהור, שפתון לחות וקיסמי שיניים — מוצרי טיפוח והיגיינה כלליים במחירים משתלמים ללקוחות פרטיים.',
+    },
+}
+
+
+def generate_care_category_pages():
+    """יוצר/מעדכן דף SEO סטטי לכל קטגוריה תחת /care/<slug>/index.html.
+
+    כל דף קליל (בלי app.js): כותרת ותיאור ממוקדים, טקסט מוצרים קריא לגוגל (שם+מותג+מחיר),
+    סכמת ItemList, קישורים הדדיים וכפתור לקטלוג האינטראקטיבי המסונן לקטגוריה.
+    """
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
+        rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
+
+    category_discounts = _load_category_discounts()
+    by_cat = {}
+    for r in rows:
+        by_cat.setdefault(r.get('category', ''), []).append(r)
+
+    # ניווט הדדי בין דפי הקטגוריות
+    nav_links = ' · '.join(
+        f'<a href="/care/{c["slug"]}/">{escape(cat)}</a>'
+        for cat, c in CARE_CATEGORY_PAGES.items() if by_cat.get(cat)
+    )
+
+    for cat, cfg in CARE_CATEGORY_PAGES.items():
+        products = by_cat.get(cat)
+        if not products:
+            continue
+        page_url = f'{SITE_BASE_URL}/care/{cfg["slug"]}/'
+        catalog_url = f'/care/?category={quote(cat)}'
+
+        cards, schema_items = [], []
+        for i, r in enumerate(products, start=1):
+            price = _effective_price(r, category_discounts)
+            if price <= 0:
+                continue
+            img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
+            prod_link = f'/care/?category={quote(cat)}&product={quote(r["id"])}'
+            desc = r.get('description') or ''
+            brand = r.get('brand') or ''
+
+            price_html = f'<span class="cp-price">{price:.2f} ₪</span>'
+            try:
+                regular = float(r.get('original_price') or 0)
+            except ValueError:
+                regular = 0
+            if regular > price:
+                price_html = f'<span class="cp-old">{regular:.2f} ₪</span> ' + price_html
+
+            cards.append(
+                '<li class="cp-item">'
+                + (f'<a href="{escape(prod_link)}"><img src="{escape(img)}" alt="{escape(r["name"])}" loading="lazy" width="90" height="90"></a>' if img else '')
+                + f'<div class="cp-info"><h2 class="cp-name"><a href="{escape(prod_link)}">{escape(r["name"])}</a></h2>'
+                + (f'<div class="cp-brand">{escape(brand)}</div>' if brand else '')
+                + (f'<div class="cp-desc">{escape(desc)}</div>' if desc else '')
+                + f'<div>{price_html}</div></div></li>'
+            )
+
+            offer = {'@type': 'Offer', 'price': price, 'priceCurrency': 'ILS',
+                     'availability': 'https://schema.org/InStock', 'url': page_url}
+            product = {'@type': 'Product', 'name': r['name'], 'sku': r['id'], 'offers': offer}
+            if img:
+                product['image'] = img
+            if brand:
+                product['brand'] = {'@type': 'Brand', 'name': brand}
+            if desc:
+                product['description'] = desc
+            schema_items.append({'@type': 'ListItem', 'position': i, 'item': product})
+
+        schema = {
+            '@context': 'https://schema.org', '@type': 'CollectionPage',
+            'name': cfg['title'], 'url': page_url,
+            'breadcrumb': {
+                '@type': 'BreadcrumbList',
+                'itemListElement': [
+                    {'@type': 'ListItem', 'position': 1, 'name': 'קטלוג טיפוח והיגיינה', 'item': f'{SITE_BASE_URL}/care/'},
+                    {'@type': 'ListItem', 'position': 2, 'name': cfg['h1'], 'item': page_url},
+                ],
+            },
+            'mainEntity': {'@type': 'ItemList', 'numberOfItems': len(schema_items), 'itemListElement': schema_items},
+        }
+
+        html = _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, '\n'.join(cards), schema)
+        out_dir = os.path.join('care', cfg['slug'])
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
+            f.write(html)
+
+
+def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards_html, schema):
+    from xml.sax.saxutils import escape
+    return f'''<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{escape(cfg['title'])}</title>
+    <meta name="description" content="{escape(cfg['desc'])}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{page_url}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{page_url}">
+    <meta property="og:title" content="{escape(cfg['title'])}">
+    <meta property="og:description" content="{escape(cfg['desc'])}">
+    <meta property="og:image" content="{SITE_BASE_URL}/images/og-image.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap"></noscript>
+    <script type="application/ld+json">
+{json.dumps(schema, ensure_ascii=False, indent=2)}
+    </script>
+    <style>
+        :root {{ --primary: #639C7D; --primary-dark: #1A4231; }}
+        * {{ box-sizing: border-box; }}
+        body {{ margin: 0; font-family: 'Assistant','Heebo',system-ui,sans-serif; color: #212121; background: #f8f9fa; line-height: 1.6; }}
+        a {{ color: inherit; }}
+        .cc-header {{ background: #fff; border-bottom: 1px solid #e0e0e0; }}
+        .cc-header-inner {{ max-width: 1000px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; }}
+        .cc-header img {{ height: 50px; width: auto; }}
+        .cc-phone {{ color: var(--primary-dark); font-weight: 700; text-decoration: none; }}
+        .cc-wrap {{ max-width: 1000px; margin: 0 auto; padding: 20px 16px 40px; }}
+        .cc-breadcrumb {{ font-size: 0.85rem; color: #6B6B6B; margin-bottom: 12px; }}
+        .cc-breadcrumb a {{ text-decoration: none; }}
+        h1 {{ font-size: 1.7rem; color: var(--primary-dark); margin: 0 0 10px; }}
+        .cc-intro {{ color: #555; max-width: 720px; margin-bottom: 18px; }}
+        .cc-cta {{ display: inline-block; background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; padding: 12px 22px; border-radius: 10px; margin-bottom: 26px; }}
+        .cc-cta:hover {{ background: var(--primary-dark); }}
+        .cc-nav {{ font-size: 0.95rem; margin-bottom: 22px; }}
+        .cc-nav a {{ text-decoration: none; color: var(--primary-dark); font-weight: 600; }}
+        .cp-list {{ list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }}
+        .cp-item {{ display: flex; gap: 12px; background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 12px; }}
+        .cp-item img {{ width: 90px; height: 90px; object-fit: contain; background: #fff; flex-shrink: 0; }}
+        .cp-name {{ font-size: 1rem; margin: 0 0 4px; line-height: 1.3; }}
+        .cp-name a {{ text-decoration: none; }}
+        .cp-brand {{ font-size: 0.82rem; color: #6B6B6B; margin-bottom: 4px; }}
+        .cp-desc {{ font-size: 0.85rem; color: #757575; margin-bottom: 6px; }}
+        .cp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.05rem; }}
+        .cp-old {{ text-decoration: line-through; color: #999; font-weight: 400; font-size: 0.9rem; }}
+        .cc-footer {{ background: var(--primary-dark); color: #fff; text-align: center; padding: 20px 16px; margin-top: 30px; }}
+        .cc-footer a {{ color: #fff; }}
+    </style>
+</head>
+<body>
+    <header class="cc-header">
+        <div class="cc-header-inner">
+            <a href="/care/" aria-label="קטלוג טיפוח והיגיינה אהרוני"><img src="/images/logo.png" alt="אהרוני שיווק והפצה"></a>
+            <a href="tel:036346236" class="cc-phone">03-6346236</a>
+        </div>
+    </header>
+    <main class="cc-wrap">
+        <nav class="cc-breadcrumb"><a href="/care/">קטלוג טיפוח והיגיינה</a> ← {escape(cfg['h1'])}</nav>
+        <h1>{escape(cfg['h1'])}</h1>
+        <p class="cc-intro">{escape(cfg['intro'])}</p>
+        <a class="cc-cta" href="{escape(catalog_url)}">לצפייה, מחירים והזמנה בקטלוג →</a>
+        <nav class="cc-nav">קטגוריות נוספות: {nav_links}</nav>
+        <ul class="cp-list">
+{cards_html}
+        </ul>
+    </main>
+    <footer class="cc-footer">
+        <div><strong>אהרוני שיווק והפצה</strong></div>
+        <div><a href="tel:0526000158">052-6000158</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
+        <div>משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
+        <div style="margin-top:8px;"><a href="{escape(catalog_url)}">חזרה לקטלוג המלא</a></div>
+    </footer>
+</body>
+</html>
+'''
+
+
 def update_care_schema():
     """בונה JSON-LD (ItemList של Product עם מחירים) מ-pricelist.csv ומשתיל ב-care/index.html.
 
@@ -303,12 +523,13 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             with open(PRICELIST_PROMO_FILE, 'w', encoding='utf-8') as f:
                 json.dump(promo, f, ensure_ascii=False, indent=1)
 
-            # הסכמה והפיד ל-Merchant משקפים גם הנחות קטגוריה — מעדכנים
+            # הסכמה, הפיד ודפי הקטגוריה משקפים גם הנחות קטגוריה — מעדכנים
             try:
                 update_care_schema()
                 update_merchant_feed()
+                generate_care_category_pages()
             except Exception as schema_err:
-                print(f'אזהרה: עדכון סכמת care/פיד נכשל: {schema_err}')
+                print(f'אזהרה: עדכון סכמת care/פיד/דפי קטגוריה נכשל: {schema_err}')
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -388,12 +609,13 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         row['original_price'] = ''
                     writer.writerow(row)
 
-            # עדכון סכמת המוצרים והפיד ל-Merchant (SEO + שופינג ללקוחות פרטיים)
+            # עדכון סכמה, פיד ודפי קטגוריה (SEO + שופינג ללקוחות פרטיים)
             try:
                 update_care_schema()
                 update_merchant_feed()
+                generate_care_category_pages()
             except Exception as schema_err:
-                print(f'אזהרה: עדכון סכמת care/פיד נכשל: {schema_err}')
+                print(f'אזהרה: עדכון סכמת care/פיד/דפי קטגוריה נכשל: {schema_err}')
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
