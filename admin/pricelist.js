@@ -122,6 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cost: item.cost !== undefined && item.cost !== '' ? toNum(item.cost) || 0 : '',
             price: toNum(item.price) || 0,
             sale_price: item.sale_price !== undefined && item.sale_price !== '' ? toNum(item.sale_price) || '' : '',
+            // ברירת מחדל: מוצג. רק '0' מפורש = מוסתר (לא עולה לאתר)
+            active: String(item.active).trim() === '0' ? '0' : '1',
             description: (item.description || '').trim()
         })).filter(p => p.id && p.name);
 
@@ -139,6 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filter && !p.name.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return;
 
             const tr = document.createElement('tr');
+            const hidden = p.active === '0';
+            if (hidden) tr.style.opacity = '0.45';
 
             let imgSrc = imgPath(p.image);
             if (!imgSrc) imgSrc = '../images/logo.png';
@@ -150,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.innerHTML = `
                 <td><input type="checkbox" class="row-select" data-id="${esc(p.id)}" ${selectedIds.has(p.id) ? 'checked' : ''}></td>
                 <td class="td-img"><img src="${esc(imgSrc)}" onerror="this.src='../images/logo.png'"></td>
-                <td>${esc(p.id)}</td>
+                <td>${esc(p.id)}${hidden ? ' <span style="background:#eee;color:#888;border-radius:4px;padding:1px 6px;font-size:0.75rem;">מוסתר</span>' : ''}</td>
                 <td>${esc(p.name)}</td>
                 <td>${esc(p.category)}</td>
                 <td>${esc(p.unit)}</td>
@@ -159,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${isNaN(m) ? '—' : m.toFixed(1) + '%'}</td>
                 <td>${isNaN(toNum(p.sale_price)) ? '—' : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}</td>
                 <td class="action-btns">
+                    <button class="toggle-btn" title="${hidden ? 'הצג באתר' : 'הסתר מהאתר (נגמר במלאי)'}" data-id="${esc(p.id)}">${hidden ? '🚫' : '👁️'}</button>
                     <button class="edit-btn" title="ערוך" data-id="${esc(p.id)}">✏️</button>
                     <button class="delete-btn" title="מחק" data-id="${esc(p.id)}">🗑️</button>
                 </td>
@@ -166,6 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.appendChild(tr);
         });
 
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.onclick = () => toggleActive(btn.dataset.id);
+        });
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.onclick = () => openEditModal(btn.dataset.id);
         });
@@ -414,6 +422,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cost: costInput.value === '' ? '' : toNum(costInput.value) || 0,
             price: regularPrice,
             sale_price: salePrice,
+            // שומר על מצב ההסתרה הקיים בעריכה; מוצר חדש מוצג כברירת מחדל
+            active: (products.find(p => p.id === originalIdInput.value) || {}).active === '0' ? '0' : '1',
             description: descInput.value.trim()
         };
 
@@ -444,6 +454,18 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTable(searchInput.value);
             showToast('המוצר נמחק. אל תשכח ללחוץ על "שמור שינויים".', 'success');
         }
+    }
+
+    // הסתרה/הצגה של מוצר: מוסתר לא עולה לאתר (נגמר במלאי), אך נשמר לשחזור עתידי
+    function toggleActive(id) {
+        const p = products.find(prod => prod.id === id);
+        if (!p) return;
+        p.active = p.active === '0' ? '1' : '0';
+        renderTable(searchInput.value);
+        const msg = p.active === '0'
+            ? 'המוצר הוסתר — לא יופיע באתר. אל תשכח ללחוץ על "שמור שינויים".'
+            : 'המוצר הוצג שוב. אל תשכח ללחוץ על "שמור שינויים".';
+        showToast(msg, 'success');
     }
 
     // --- ייבוא CSV: זיהוי כותרות גמיש + מיזוג לפי מזהה/שם עם תצוגה מקדימה ---
@@ -627,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cost: row.cost !== undefined ? toNum(row.cost) : '',
                     price: row.price !== undefined ? toNum(row.price) || 0 : 0,
                     sale_price: row.sale_price !== undefined ? toNum(row.sale_price) || '' : '',
+                    active: '1',
                     description: row.description || ''
                 });
             } else {

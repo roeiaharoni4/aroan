@@ -627,7 +627,9 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             products = json.loads(post_data.decode('utf-8'))
 
-            master_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'cost', 'price', 'sale_price', 'description']
+            # 'active' נשמר רק במאסטר; מוצר מוסתר (active=0) לא נכתב לקובץ הציבורי
+            # ולכן נעלם אוטומטית מהקטלוג, מהסכמה, מהפיד ומדפי הקטגוריה
+            master_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'cost', 'price', 'sale_price', 'active', 'description']
             public_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'price', 'original_price', 'description']
 
             def to_float(v):
@@ -636,17 +638,25 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 except (TypeError, ValueError):
                     return None
 
+            def is_hidden(p):
+                return str(p.get('active', '')).strip() == '0'
+
             with open(PRICELIST_MASTER_FILE, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=master_fields, extrasaction='ignore')
                 writer.writeheader()
                 for p in products:
-                    writer.writerow({k: p.get(k, '') for k in master_fields})
+                    row = {k: p.get(k, '') for k in master_fields}
+                    # ברירת מחדל: מוצג (1) אלא אם סומן במפורש כמוסתר
+                    row['active'] = '0' if is_hidden(p) else '1'
+                    writer.writerow(row)
 
             # בקובץ הציבורי: כשיש מבצע — price = מחיר המבצע, original_price = המחיר הרגיל (לתצוגת "מבצע")
             with open(PRICELIST_PUBLIC_FILE, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=public_fields, extrasaction='ignore')
                 writer.writeheader()
                 for p in products:
+                    if is_hidden(p):
+                        continue  # מוצר מוסתר — לא עולה לאתר
                     row = {k: p.get(k, '') for k in public_fields}
                     sale = to_float(p.get('sale_price'))
                     regular = to_float(p.get('price'))
