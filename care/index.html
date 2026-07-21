@@ -1547,6 +1547,12 @@
             color: #fff;
         }
 
+        /* נגישות: כפתור קטגוריה פעיל בירוק כהה (ניגודיות AA מול לבן; נשאר בפלטת המותג) */
+        .cat-btn.active {
+            background: var(--primary-dark, #1A4231);
+            border-color: var(--primary-dark, #1A4231);
+        }
+
         /* מובייל: טבלת ההזמנה הופכת לכרטיסים אנכיים — בלי גלילה אופקית (עמוד זה בלבד) */
         @media (max-width: 768px) {
             #order-modal .modal-body {
@@ -2034,7 +2040,7 @@
                     <div class="qv-controls">
                         <div class="qty-control large">
                             <button class="qty-btn" id="qv-minus">–</button>
-                            <input type="number" class="qty-input" id="qv-input" min="0">
+                            <input type="number" class="qty-input" id="qv-input" min="0" aria-label="כמות להזמנה">
                             <button class="qty-btn" id="qv-plus">+</button>
                         </div>
                         <button id="qv-add-to-cart" class="btn btn-primary btn-block">הוסף להזמנה</button>
