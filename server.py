@@ -48,6 +48,33 @@ def _effective_price(row, category_discounts):
     return price
 
 
+def _slugify_he(name):
+    """slug עברי לכתובת/שם-תיקייה: מסיר תווים בעייתיים, רווחים→מקף, כיווץ מקפים."""
+    s = (name or '').strip()
+    s = re.sub(r'["\'/\\:*?<>|()\[\]{}״׳]', '', s)  # מרכאות/סלאשים/סוגריים/גרש עברי
+    s = re.sub(r'[\s.,]+', '-', s)                             # רווחים ופיסוק → מקף
+    s = re.sub(r'-{2,}', '-', s).strip('-')
+    return s
+
+
+def _care_product_slugs(rows):
+    """מפה דטרמיניסטית {id: slug} — כל הגנרטורים משתמשים בה כדי שכל הקישורים לדף המוצר
+    יכוונו לאותה כתובת. הסדר קבוע (סדר ה-CSV), כך שהמפה זהה בכל פונקציה."""
+    slugs, taken = {}, set()
+    for r in rows:
+        pid = r.get('id')
+        if not pid:
+            continue
+        base = _slugify_he(r.get('name')) or str(pid)
+        slug = base if base not in taken else f'{base}-{pid}'
+        n, uniq = 2, slug
+        while uniq in taken:                                   # התנגשות נדירה נוספת
+            uniq, n = f'{slug}-{n}', n + 1
+        taken.add(uniq)
+        slugs[pid] = uniq
+    return slugs
+
+
 def bake_care_products():
     """מזריק את רשימת המוצרים כטקסט קריא לגוגל ל-#products בעמוד /care/ הראשי.
 
@@ -61,6 +88,7 @@ def bake_care_products():
     with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
     category_discounts = _load_category_discounts()
+    slugs = _care_product_slugs(rows)
 
     cards = []
     for r in rows:
@@ -68,7 +96,7 @@ def bake_care_products():
         if price <= 0:
             continue
         img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
-        link = f'/care/?product={quote(r["id"])}'
+        link = f'/care/product/{quote(slugs[r["id"]])}/'
         price_html = f'<span class="product-price">{price:.2f} ₪</span>'
         try:
             regular = float(r.get('original_price') or 0)
@@ -108,6 +136,7 @@ def update_merchant_feed():
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
     category_discounts = _load_category_discounts()
+    slugs = _care_product_slugs(rows)
     items_xml = []
     for r in rows:
         price = _effective_price(r, category_discounts)
@@ -115,7 +144,7 @@ def update_merchant_feed():
             continue  # Merchant דורש מחיר ותמונה לכל מוצר
 
         image_link = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/'))
-        link = f"{SITE_BASE_URL}/care/?product={quote(r['id'])}"
+        link = f"{SITE_BASE_URL}/care/product/{quote(slugs[r['id']])}/"
         desc = r.get('description') or r['name']
 
         # מבצע פרטני: g:price = המחיר הרגיל, g:sale_price = מחיר המבצע (Merchant מציג מחוק)
@@ -219,6 +248,7 @@ def generate_care_category_pages():
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
     category_discounts = _load_category_discounts()
+    slugs = _care_product_slugs(rows)
     by_cat = {}
     for r in rows:
         by_cat.setdefault(r.get('category', ''), []).append(r)
@@ -242,7 +272,7 @@ def generate_care_category_pages():
             if price <= 0:
                 continue
             img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
-            prod_link = f'/care/?category={quote(cat)}&product={quote(r["id"])}'
+            prod_link = f'/care/product/{quote(slugs[r["id"]])}/'
             desc = r.get('description') or ''
             brand = r.get('brand') or ''
 
@@ -372,6 +402,244 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         <div><a href="tel:0526000158">052-6000158</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
         <div>משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
         <div style="margin-top:8px;"><a href="{escape(catalog_url)}">חזרה לקטלוג המלא</a></div>
+    </footer>
+</body>
+</html>
+'''
+
+
+def generate_care_product_pages():
+    """יוצר/מעדכן דף SEO סטטי לכל מוצר תחת /care/product/<slug>/index.html.
+
+    דף אינדקסבּילי (בלי app.js) עם סכמת Product מלאה, מחיר/מבצע, CTA לקטלוג האינטראקטיבי
+    ומוצרים קשורים. בנוסף מנקה דפי מוצר מיושנים ומזריק את הכתובות ל-sitemap.xml.
+    מוצר נכתב אם יש לו מחיר אפקטיבי > 0 (תמונה אופציונלית — כדי שכל קישור בדפי הקטגוריה יפתר).
+    """
+    from urllib.parse import quote
+
+    with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
+        rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
+
+    category_discounts = _load_category_discounts()
+    slugs = _care_product_slugs(rows)
+    cat_slug = {cat: cfg['slug'] for cat, cfg in CARE_CATEGORY_PAGES.items()}
+
+    by_cat = {}
+    for r in rows:
+        by_cat.setdefault(r.get('category', ''), []).append(r)
+
+    generated, sitemap_urls = set(), []
+    for r in rows:
+        price = _effective_price(r, category_discounts)
+        if price <= 0:
+            continue
+        slug = slugs[r['id']]
+        page_url = f'{SITE_BASE_URL}/care/product/{quote(slug)}/'
+        cat = r.get('category', '')
+        img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
+        try:
+            regular = float(r.get('original_price') or 0)
+        except ValueError:
+            regular = 0
+        on_sale = regular > price
+
+        related = []
+        for other in by_cat.get(cat, []):
+            if other['id'] == r['id'] or _effective_price(other, category_discounts) <= 0:
+                continue
+            related.append(other)
+            if len(related) >= 6:
+                break
+
+        html = _render_care_product_html(r, price, regular, on_sale, img, cat,
+                                         cat_slug.get(cat), page_url, slugs, related)
+        out_dir = os.path.join('care', 'product', slug)
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
+            f.write(html)
+        generated.add(slug)
+        sitemap_urls.append(page_url)
+
+    _cleanup_stale_product_pages(generated)
+    _update_sitemap_care_products(sitemap_urls)
+
+
+def _cleanup_stale_product_pages(valid_slugs):
+    """מוחק תיקיות תחת care/product/ שאין להן מוצר קיים (הוסתר/שונה שמו/נמחק)."""
+    import shutil
+    base = os.path.join('care', 'product')
+    if not os.path.isdir(base):
+        return
+    for name in os.listdir(base):
+        path = os.path.join(base, name)
+        if os.path.isdir(path) and name not in valid_slugs:
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def _update_sitemap_care_products(urls):
+    """מזריק את כתובות דפי המוצר ל-sitemap.xml בין הסימונים (או לפני </urlset> בפעם הראשונה)."""
+    import datetime
+    from xml.sax.saxutils import escape
+    sitemap_file = 'sitemap.xml'
+    start, end = '  <!-- CARE_PRODUCTS_SITEMAP_START -->', '  <!-- CARE_PRODUCTS_SITEMAP_END -->'
+    today = datetime.date.today().isoformat()
+    entries = '\n'.join(
+        f'  <url>\n    <loc>{escape(u)}</loc>\n    <lastmod>{today}</lastmod>\n'
+        f'    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>'
+        for u in urls
+    )
+    block = f'{start}\n{entries}\n{end}'
+    try:
+        with open(sitemap_file, encoding='utf-8') as f:
+            xml = f.read()
+    except FileNotFoundError:
+        return
+    if start in xml and end in xml:
+        xml = re.sub(re.escape(start) + r'.*?' + re.escape(end), lambda m: block, xml, flags=re.S)
+    else:
+        xml = xml.replace('</urlset>', block + '\n</urlset>')
+    with open(sitemap_file, 'w', encoding='utf-8') as f:
+        f.write(xml)
+
+
+def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, page_url, slugs, related):
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    name, pid = r['name'], r['id']
+    brand = r.get('brand') or ''
+    desc = r.get('description') or ''
+    unit = r.get('unit') or ''
+
+    title = f'{name} — {brand} במחיר לצרכן | אהרוני' if brand else f'{name} במחיר לצרכן | אהרוני'
+    meta_desc = (desc or name) + ' — במחיר לצרכן. הזמנה אונליין ומשלוח באזור אור יהודה, בקעת אונו וגוש דן.'
+    # כולל קטגוריה כדי שהכרטיס בוודאי מרונדר (app.js גולל ומדגיש את product-<id>)
+    catalog_deep = f'/care/?category={quote(cat)}&product={quote(pid)}' if cat else f'/care/?product={quote(pid)}'
+    cat_link = f'/care/{cat_slug}/' if cat_slug else '/care/'
+
+    if on_sale:
+        price_html = (f'<span class="pp-old">{regular:.2f} ₪</span> '
+                      f'<span class="pp-price">{price:.2f} ₪</span> <span class="pp-sale">מבצע</span>')
+    else:
+        price_html = f'<span class="pp-price">{price:.2f} ₪</span>'
+
+    related_html = ''
+    if related:
+        items = ''.join(
+            f'<li><a href="/care/product/{quote(slugs[o["id"]])}/">{escape(o["name"])}</a></li>'
+            for o in related
+        )
+        related_html = (f'<section class="pp-related"><h2>מוצרים נוספים בקטגוריית {escape(cat)}</h2>'
+                        f'<ul>{items}</ul></section>')
+
+    offer = {'@type': 'Offer', 'price': round(price, 2), 'priceCurrency': 'ILS',
+             'availability': 'https://schema.org/InStock', 'url': page_url}
+    product_schema = {'@context': 'https://schema.org', '@type': 'Product',
+                      'name': name, 'sku': pid, 'offers': offer}
+    if img:
+        product_schema['image'] = img
+    if brand:
+        product_schema['brand'] = {'@type': 'Brand', 'name': brand}
+    if desc:
+        product_schema['description'] = desc
+    breadcrumb = {'@context': 'https://schema.org', '@type': 'BreadcrumbList',
+                  'itemListElement': [
+                      {'@type': 'ListItem', 'position': 1, 'name': 'קטלוג טיפוח והיגיינה', 'item': f'{SITE_BASE_URL}/care/'},
+                      {'@type': 'ListItem', 'position': 2, 'name': cat or 'מוצרים', 'item': SITE_BASE_URL + cat_link},
+                      {'@type': 'ListItem', 'position': 3, 'name': name, 'item': page_url},
+                  ]}
+
+    img_html = (f'<img src="{escape(img)}" alt="{escape(name)}" width="360" height="360">'
+                if img else '<div class="pp-noimg">אין תמונה</div>')
+
+    return f'''<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{escape(title)}</title>
+    <meta name="description" content="{escape(meta_desc)}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{page_url}">
+    <meta property="og:type" content="product">
+    <meta property="og:url" content="{page_url}">
+    <meta property="og:title" content="{escape(title)}">
+    <meta property="og:description" content="{escape(meta_desc)}">
+    <meta property="og:image" content="{escape(img) if img else SITE_BASE_URL + '/images/og-image.png'}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap"></noscript>
+    <script type="application/ld+json">
+{json.dumps(product_schema, ensure_ascii=False, indent=2)}
+    </script>
+    <script type="application/ld+json">
+{json.dumps(breadcrumb, ensure_ascii=False, indent=2)}
+    </script>
+    <style>
+        :root {{ --primary: #639C7D; --primary-dark: #1A4231; }}
+        * {{ box-sizing: border-box; }}
+        body {{ margin: 0; font-family: 'Assistant','Heebo',system-ui,sans-serif; color: #212121; background: #f8f9fa; line-height: 1.6; }}
+        a {{ color: inherit; }}
+        .cc-header {{ background: #fff; border-bottom: 1px solid #e0e0e0; }}
+        .cc-header-inner {{ max-width: 1000px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; }}
+        .cc-header img {{ height: 50px; width: auto; }}
+        .cc-phone {{ color: var(--primary-dark); font-weight: 700; text-decoration: none; }}
+        .cc-wrap {{ max-width: 1000px; margin: 0 auto; padding: 20px 16px 40px; }}
+        .cc-breadcrumb {{ font-size: 0.85rem; color: #6B6B6B; margin-bottom: 16px; }}
+        .cc-breadcrumb a {{ text-decoration: none; }}
+        .pp-main {{ display: grid; grid-template-columns: 360px 1fr; gap: 28px; align-items: start; }}
+        @media (max-width: 720px) {{ .pp-main {{ grid-template-columns: 1fr; }} }}
+        .pp-img {{ background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 16px; text-align: center; }}
+        .pp-img img {{ max-width: 100%; height: auto; object-fit: contain; }}
+        .pp-noimg {{ color: #9e9e9e; padding: 60px 0; }}
+        h1 {{ font-size: 1.6rem; color: var(--primary-dark); margin: 0 0 8px; }}
+        .pp-brand {{ font-size: 0.95rem; color: #6B6B6B; margin-bottom: 12px; }}
+        .pp-priceline {{ margin: 14px 0; }}
+        .pp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.5rem; }}
+        .pp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 1.05rem; }}
+        .pp-sale {{ background: #d32f2f; color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
+        .pp-unit {{ font-size: 0.9rem; color: #616161; margin-bottom: 10px; }}
+        .pp-desc {{ color: #444; margin-bottom: 20px; }}
+        .cc-cta {{ display: inline-block; background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; padding: 13px 26px; border-radius: 10px; }}
+        .cc-cta:hover {{ background: var(--primary-dark); }}
+        .pp-related {{ margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
+        .pp-related h2 {{ font-size: 1.15rem; color: var(--primary-dark); }}
+        .pp-related ul {{ list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }}
+        .pp-related a {{ text-decoration: none; color: var(--primary-dark); font-weight: 600; }}
+        .cc-footer {{ background: var(--primary-dark); color: #fff; text-align: center; padding: 20px 16px; margin-top: 30px; }}
+        .cc-footer a {{ color: #fff; }}
+    </style>
+</head>
+<body>
+    <header class="cc-header">
+        <div class="cc-header-inner">
+            <a href="/care/" aria-label="קטלוג טיפוח והיגיינה אהרוני"><img src="/images/logo.png" alt="אהרוני שיווק והפצה"></a>
+            <a href="tel:036346236" class="cc-phone">03-6346236</a>
+        </div>
+    </header>
+    <main class="cc-wrap">
+        <nav class="cc-breadcrumb"><a href="/care/">קטלוג טיפוח והיגיינה</a> ← <a href="{escape(cat_link)}">{escape(cat or 'מוצרים')}</a> ← {escape(name)}</nav>
+        <div class="pp-main">
+            <div class="pp-img">{img_html}</div>
+            <div class="pp-info">
+                <h1>{escape(name)}</h1>
+                {f'<div class="pp-brand">{escape(brand)}</div>' if brand else ''}
+                <div class="pp-priceline">{price_html}</div>
+                {f'<div class="pp-unit">יחידת מכירה: {escape(unit)}</div>' if unit else ''}
+                {f'<p class="pp-desc">{escape(desc)}</p>' if desc else ''}
+                <a class="cc-cta" href="{escape(catalog_deep)}">להוספה לסל והזמנה →</a>
+            </div>
+        </div>
+        {related_html}
+    </main>
+    <footer class="cc-footer">
+        <div><strong>אהרוני שיווק והפצה</strong></div>
+        <div><a href="tel:0526000158">052-6000158</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
+        <div>משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
+        <div style="margin-top:8px;"><a href="{escape(cat_link)}">חזרה לקטגוריה</a> · <a href="/care/">חזרה לקטלוג המלא</a></div>
     </footer>
 </body>
 </html>
@@ -576,6 +844,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 bake_care_products()
                 update_merchant_feed()
                 generate_care_category_pages()
+                generate_care_product_pages()
             except Exception as schema_err:
                 print(f'אזהרה: עדכון סכמת care/פיד/דפי קטגוריה נכשל: {schema_err}')
 
@@ -673,6 +942,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 bake_care_products()
                 update_merchant_feed()
                 generate_care_category_pages()
+                generate_care_product_pages()
             except Exception as schema_err:
                 print(f'אזהרה: עדכון סכמת care/פיד/דפי קטגוריה נכשל: {schema_err}')
 
