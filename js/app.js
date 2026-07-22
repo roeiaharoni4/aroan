@@ -506,8 +506,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         let filtered = PRODUCTS;
 
         if (searchQuery !== "") {
-            const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+            // חיפוש לפי מילים: כל מילה בשאילתה חייבת להימצא (בכל סדר) בשם/מותג/מק"ט.
+            // כך "אולוויז מידה 4" מוצא "תחבושות אולוויז אולטרה לילה סקיור נייט מידה 4".
+            // נירמול מרכאות/גרשיים כדי ש-מ"ל, מ״ל ו-מ׳ל יתאימו זה לזה.
+            const normalize = s => (s || "").toLowerCase().replace(/["'`´׳״]/g, "").replace(/\s+/g, " ");
+            const nq = normalize(searchQuery);
+            const terms = nq.split(" ").filter(Boolean);
+            filtered = filtered.filter(p => {
+                const hay = normalize(`${p.name} ${p.brand || ""}`);
+                if (terms.every(t => hay.includes(t))) return true;   // כל מילה בשם/מותג
+                return normalize(p.id || "").includes(nq);            // או מק"ט מלא
+            });
         } else if (activeBrand) {
             // בחירת מותג מציגה את כל מוצרי המותג מכל הקטגוריות
             filtered = PRODUCTS.filter(p => p.brand === activeBrand);
