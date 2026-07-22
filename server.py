@@ -324,8 +324,42 @@ def generate_care_category_pages():
             f.write(html)
 
 
+def _care_faq(label):
+    """שאלות ותשובות ל-/care/ — תשובות מדויקות בלבד (הזמנה, אזור חלוקה, מע"מ, החזרות, מבצעים).
+    השאלה הראשונה ממוקדת-קטגוריה; מוזרק גם כטקסט גלוי וגם כסכמת FAQPage."""
+    topic = f'מוצרי {label}' if label else 'המוצרים'
+    return [
+        (f'איך מזמינים {topic}?',
+         'בוחרים את המוצרים בקטלוג ושולחים את ההזמנה בלחיצה בוואטסאפ 052-6000158 או בטלפון 03-6346236. '
+         'ההזמנה נשלחת אלינו עם רשימת המוצרים והכמויות ואנחנו חוזרים לתיאום.'),
+        ('לאילו אזורים מגיע המשלוח?',
+         'אנחנו מספקים לאזור אור יהודה, בקעת אונו, גוש דן והמרכז.'),
+        ('המחירים כוללים מע"מ?',
+         'כן. המחירים המוצגים הם מחירים לצרכן וכוללים מע"מ.'),
+        ('אפשר להחזיר או לבטל הזמנה?',
+         'בהתאם לחוק הגנת הצרכן ניתן לבטל עסקה ולהחזיר מוצר, למעט מוצרי היגיינה שנפתחו. '
+         'ליצירת קשר: 052-6000158.'),
+        ('יש מבצעים?',
+         'כן — קטגוריית "מבצעים" בקטלוג מרכזת את המוצרים שנמכרים כעת במחיר מוזל.'),
+    ]
+
+
 def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards_html, schema):
     from xml.sax.saxutils import escape
+    faq = _care_faq(cat)
+    faq_schema = {
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        'mainEntity': [
+            {'@type': 'Question', 'name': q,
+             'acceptedAnswer': {'@type': 'Answer', 'text': a}}
+            for q, a in faq
+        ],
+    }
+    faq_html = '\n'.join(
+        f'<div class="cc-faq-item"><h3 class="cc-faq-q">{escape(q)}</h3>'
+        f'<p class="cc-faq-a">{escape(a)}</p></div>'
+        for q, a in faq
+    )
     return f'''<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -348,6 +382,9 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap"></noscript>
     <script type="application/ld+json">
 {json.dumps(schema, ensure_ascii=False, indent=2)}
+    </script>
+    <script type="application/ld+json">
+{json.dumps(faq_schema, ensure_ascii=False, indent=2)}
     </script>
     <style>
         :root {{ --primary: #639C7D; --primary-dark: #1A4231; }}
@@ -378,6 +415,11 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         .cp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 0.9rem; }}
         .cc-footer {{ background: var(--primary-dark); color: #fff; text-align: center; padding: 20px 16px; margin-top: 30px; }}
         .cc-footer a {{ color: #fff; }}
+        .cc-faq {{ margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
+        .cc-faq h2 {{ font-size: 1.25rem; color: var(--primary-dark); margin: 0 0 14px; }}
+        .cc-faq-item {{ margin-bottom: 14px; }}
+        .cc-faq-q {{ font-size: 1rem; color: var(--primary-dark); margin: 0 0 4px; }}
+        .cc-faq-a {{ margin: 0; color: #555; }}
     </style>
 </head>
 <body>
@@ -396,6 +438,10 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         <ul class="cp-list">
 {cards_html}
         </ul>
+        <section class="cc-faq">
+            <h2>שאלות ותשובות</h2>
+{faq_html}
+        </section>
     </main>
     <footer class="cc-footer">
         <div><strong>אהרוני שיווק והפצה</strong></div>
