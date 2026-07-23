@@ -972,3 +972,109 @@ body:has(.fab-container) .scroll-top-btn {
         display: none;
     }
 }
+
+/* --- הזמנה במובייל: טבלה → כרטיסים אנכיים (משותף לכל הקטלוגים) ---
+   מבוסס על classes סמנטיים (oc-*) שמוזרקים ב-app.js, כך שעובד גם עם מחירים
+   (care/סוכן — מציג סה"כ לשורה) וגם בלי (קטלוג רגיל — תמונה+שם+כמות). */
+@media (max-width: 768px) {
+    #order-modal .table-responsive {
+        overflow-x: visible !important;
+    }
+
+    #order-modal .order-table,
+    #order-modal .order-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    #order-modal .order-table thead {
+        display: none;
+    }
+
+    #order-modal .order-table tr {
+        display: grid;
+        grid-template-columns: 52px 1fr auto;
+        grid-template-areas:
+            "img name name"
+            "img qty total";
+        gap: 6px 10px;
+        align-items: center;
+        border: 1px solid #e8e8e8;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        background: #fff;
+    }
+
+    #order-modal .order-table td {
+        display: block;
+        border: none !important;
+        padding: 0;
+        text-align: right;
+    }
+
+    #order-modal .order-table .oc-img {
+        grid-area: img;
+    }
+
+    #order-modal .order-table .oc-img img {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    #order-modal .order-table .oc-name {
+        grid-area: name;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    /* מק"ט, קטגוריה, יחידה ומחיר-יחידה מוסתרים במובייל */
+    #order-modal .order-table .oc-sku,
+    #order-modal .order-table .oc-cat,
+    #order-modal .order-table .oc-unit,
+    #order-modal .order-table .oc-price {
+        display: none;
+    }
+
+    #order-modal .order-table .oc-qty {
+        grid-area: qty;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    #order-modal .order-table .oc-qty::before {
+        content: 'כמות:';
+        font-size: 0.85rem;
+        color: var(--text-secondary, #666);
+    }
+
+    #order-modal .order-table .oc-qty .order-input {
+        width: 64px;
+        min-height: 40px;
+        text-align: center;
+    }
+
+    /* סה"כ לשורה — קיים רק כשיש מחירים (care/סוכן) */
+    #order-modal .order-table .oc-total {
+        grid-area: total;
+        font-weight: 700;
+        color: var(--primary-dark, #1A4231);
+        white-space: nowrap;
+    }
+
+    #order-modal .order-table .oc-total::after {
+        content: ' ₪';
+    }
+
+    /* מניעת זום אוטומטי של iOS + כפתורי שליחה נוחים */
+    #order-modal input,
+    #order-modal textarea {
+        font-size: 16px;
+    }
+
+    #order-modal .modal-footer button {
+        flex: 1 1 45%;
+        min-height: 46px;
+    }
+}

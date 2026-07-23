@@ -1145,14 +1145,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const row = document.createElement("tr");
 
             // Helpers
-            const createCell = (text) => {
+            const createCell = (text, cls) => {
                 const td = document.createElement("td");
                 td.textContent = text;
+                if (cls) td.className = cls;
                 return td;
             };
 
             // Image
             const tdImage = document.createElement("td");
+            tdImage.className = "oc-img";
             tdImage.style.textAlign = "center";
             if (product.image) {
                 const img = document.createElement("img");
@@ -1165,12 +1167,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             row.appendChild(tdImage);
 
-            row.appendChild(createCell(product.id));
-            row.appendChild(createCell(product.name));
-            row.appendChild(createCell(product.category));
+            row.appendChild(createCell(product.id, "oc-sku"));
+            row.appendChild(createCell(product.name, "oc-name"));
+            row.appendChild(createCell(product.category, "oc-cat"));
 
             // Qty
             const tdQty = document.createElement("td");
+            tdQty.className = "oc-qty";
             const qtyInp = document.createElement("input");
             qtyInp.className = "order-input";
             qtyInp.type = "number";
@@ -1180,11 +1183,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             tdQty.appendChild(qtyInp);
             row.appendChild(tdQty);
 
-            row.appendChild(createCell(product.unit));
+            row.appendChild(createCell(product.unit, "oc-unit"));
 
             // Price & Total - Conditional
             if (CONFIG.showPrices) {
                 const tdPrice = document.createElement("td");
+                tdPrice.className = "oc-price";
                 const priceInp = document.createElement("input");
                 priceInp.className = "order-input";
                 priceInp.type = "number";
@@ -1194,6 +1198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 row.appendChild(tdPrice);
 
                 const tdTotal = document.createElement("td");
+                tdTotal.className = "oc-total";
                 const updateRow = () => {
                     const q = parseFloat(qtyInp.value) || 0;
                     const p = parseFloat(priceInp.value) || 0;
