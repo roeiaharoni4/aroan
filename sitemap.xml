@@ -163,6 +163,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://aroam.co.il/guides/office-paper-consumption/</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://aroam.co.il/or-yehuda/</loc>
     <lastmod>2026-07-20</lastmod>
     <changefreq>monthly</changefreq>
