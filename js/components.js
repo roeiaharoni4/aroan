@@ -118,6 +118,7 @@ class SiteFooter extends HTMLElement {
                                 <li><a href="/education/">פתרונות למוסדות חינוך</a></li>
                                 <li><a href="/or-yehuda/">ספק באור יהודה</a></li>
                                 <li><a href="/gush-dan/">ספק בגוש דן</a></li>
+                                <li><a href="/guides/">מדריכים</a></li>
                                 <li><a href="/about/">אודות</a></li>
                                 <li><a href="/contact/">צור קשר</a></li>
                                 <li><a href="/accessibility/">הצהרת נגישות</a></li>
