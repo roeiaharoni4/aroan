@@ -9,5 +9,10 @@
   "min_items": 0,
   "percent": 10.0
  },
- "category_discounts": []
+ "category_discounts": [
+  {
+   "category": "שיער",
+   "percent": 12.0
+  }
+ ]
 }
