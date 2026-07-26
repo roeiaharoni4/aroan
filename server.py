@@ -123,6 +123,18 @@ def bake_care_products():
         f.write(html)
 
 
+# מיפוי קטגוריות הקטלוג לטקסונומיה של Google Merchant — עוזר לגוגל להציג את המוצר
+# לחיפושים הנכונים (משפר חשיפה ואיכות הפיד). ברירת מחדל: Personal Care.
+GOOGLE_PRODUCT_CATEGORIES = {
+    'שיער': 'Health & Beauty > Personal Care > Hair Care',
+    'כביסה': 'Home & Garden > Household Supplies > Laundry Supplies',
+    'היגיינת פה': 'Health & Beauty > Personal Care > Oral Care',
+    'נשים': 'Health & Beauty > Personal Care > Feminine Sanitary Supplies',
+    'גבר': 'Health & Beauty > Personal Care > Shaving & Grooming',
+    'כללי': 'Health & Beauty > Personal Care',
+}
+
+
 def update_merchant_feed():
     """בונה פיד XML ל-Google Merchant Center מ-pricelist.csv (מוצרי B2C עם תמונה ומחיר).
 
@@ -168,6 +180,12 @@ def update_merchant_feed():
             parts.append(f"<g:sale_price>{price:.2f} ILS</g:sale_price>")
         if r.get('brand'):
             parts.append(f"<g:brand>{escape(r['brand'])}</g:brand>")
+        # סיווג לטקסונומיה של גוגל + product_type — משפר התאמה לחיפושים וחשיפה
+        cat = r.get('category', '')
+        gcat = GOOGLE_PRODUCT_CATEGORIES.get(cat, 'Health & Beauty > Personal Care')
+        parts.append(f"<g:google_product_category>{escape(gcat)}</g:google_product_category>")
+        if cat:
+            parts.append(f"<g:product_type>{escape('טיפוח והיגיינה > ' + cat)}</g:product_type>")
         # אין ברקוד (GTIN) — מצהירים על כך כדי ש-Merchant לא ידחה
         parts.append("<g:identifier_exists>no</g:identifier_exists>")
         items_xml.append("    <item>\n      " + "\n      ".join(parts) + "\n    </item>")
