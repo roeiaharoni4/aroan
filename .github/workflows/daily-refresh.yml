@@ -1,0 +1,57 @@
+# רענון יומי של הקבצים הנגזרים מהמחירון
+name: רענון יומי של האתר
+
+# למה: המבצעים מתוחמים בתאריכים, אבל דפי המוצר/קטגוריה, הסכמה והפיד נבנים
+# בזמן שמירה בעורך. הריצה היומית גורמת למבצע שנגמר (או שאמור להתחיל) להשתקף
+# באתר לבד, בלי שרועי ייכנס לעורך וישמור.
+on:
+  schedule:
+    - cron: '0 3 * * *'      # 03:00 UTC = 06:00 בישראל, לפני תחילת יום העבודה
+  workflow_dispatch:          # מאפשר גם הרצה ידנית מלשונית Actions
+
+permissions:
+  contents: write             # נדרש כדי לדחוף את השינוי חזרה לריפו
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: הורדת הקוד
+        uses: actions/checkout@v4
+
+      - name: התקנת Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: הרצת הגנרטורים
+        run: python3 tools/refresh_site.py
+
+      - name: בדיקת תקינות הקבצים שנוצרו
+        run: |
+          python3 - <<'PY'
+          import xml.dom.minidom, json, re, sys
+          # פיד ו-sitemap חייבים להיות XML תקין — פיד שבור פוסל מוצרים ב-Merchant
+          for f in ('data/merchant-feed.xml', 'sitemap.xml'):
+              xml.dom.minidom.parse(f)
+              print('XML תקין:', f)
+          # כל ה-JSON-LD בעמוד /care/ חייב להיפרס
+          html = open('care/index.html', encoding='utf-8').read()
+          blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)
+          for b in blocks:
+              json.loads(b)
+          print('JSON-LD תקין:', len(blocks), 'בלוקים')
+          PY
+
+      - name: commit ודחיפה (רק אם משהו השתנה)
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "אין שינויים — אין מבצע שנגמר או התחיל היום."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "רענון אוטומטי: עדכון מבצעים, פיד וסכמה ($(date +%d.%m.%Y))"
+          git push
+          echo "השינויים נדחפו — האתר יתעדכן תוך דקות."
