@@ -63,9 +63,20 @@ function doPost(e) {
 
     var customer = data.customer || {};
     var itemsText = (data.items || []).slice(0, 200).map(function (item) {
-      return clean_(item.name, 120) + ' (מק"ט ' + clean_(item.id, 30) + ') x' +
+      var line = clean_(item.name, 120) + ' (מק"ט ' + clean_(item.id, 30) + ') x' +
         clean_(item.qty, 10) + ' ' + clean_(item.unit, 20);
+      // מבצע חבילה — כמה יחידות לתת חינם באספקה
+      if (Number(item.free) > 0) {
+        line += ' | מבצע ' + clean_(item.bundle, 10) + ' — ' + clean_(item.free, 10) + ' חינם';
+      }
+      // מחירים מוצגים רק בקטלוגים שיש בהם מחיר (טיפוח/סוכן)
+      if (Number(item.total) > 0) {
+        line += ' | ' + Number(item.total).toFixed(2) + ' ש"ח';
+      }
+      return line;
     }).join('\n');
+
+    var totalPriceText = Number(data.totalPrice) > 0 ? Number(data.totalPrice).toFixed(2) : '';
 
     sheet.appendRow([
       new Date(),                          // תאריך קבלה
@@ -78,6 +89,7 @@ function doPost(e) {
       clean_(customer.notes, 500),         // הערות
       itemsText,                           // פירוט פריטים
       clean_(data.totalItems, 10),         // סה"כ פריטים
+      totalPriceText,                      // סה"כ לתשלום (ריק בקטלוג בלי מחירים)
       'חדשה'                               // סטטוס
     ]);
 
@@ -93,7 +105,8 @@ function doPost(e) {
         'כתובת: ' + (clean_(customer.address, 200) || 'לא צוינה') + '\n' +
         'הערות: ' + (clean_(customer.notes, 500) || 'אין') + '\n\n' +
         'פירוט:\n' + itemsText + '\n\n' +
-        'סה"כ פריטים: ' + (clean_(data.totalItems, 10) || '') + '\n\n' +
+        'סה"כ פריטים: ' + (clean_(data.totalItems, 10) || '') + '\n' +
+        (totalPriceText ? 'סה"כ לתשלום: ' + totalPriceText + ' ש"ח\n' : '') + '\n' +
         'הגיליון המלא: https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID;
       MailApp.sendEmail(NOTIFY_EMAIL, subject, body);
     }
@@ -115,7 +128,8 @@ function getOrCreateSheet_() {
   }
   if (sheet.getLastRow() === 0) {
     var headers = ['תאריך קבלה', 'מספר הזמנה', 'תאריך אספקה מבוקש', 'שם העסק',
-      'איש קשר', 'טלפון', 'כתובת למשלוח', 'הערות', 'פירוט פריטים', 'סה"כ פריטים', 'סטטוס'];
+      'איש קשר', 'טלפון', 'כתובת למשלוח', 'הערות', 'פירוט פריטים', 'סה"כ פריטים',
+      'סה"כ לתשלום', 'סטטוס'];
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#d9ead3');
     sheet.setFrozenRows(1);
@@ -137,9 +151,13 @@ function testOrder() {
       contents: JSON.stringify({
         orderId: 'AR-TEST-0001',
         date: '2026-07-08',
-        totalItems: 3,
+        totalItems: 5,
+        totalPrice: 105.30,
         customer: { business: 'עסק לדוגמה', contact: 'רועי', phone: '052-6000158', address: 'היצירה 16, אור יהודה', notes: 'בדיקה' },
-        items: [{ id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 3, unit: 'יחידה' }]
+        items: [
+          { id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 2, unit: 'יחידה', price: 35.10, total: 70.20 },
+          { id: 'PL001', name: 'שמפו לדוגמה', qty: 3, unit: 'יחידה', price: 35.10, total: 35.10, bundle: '2+1', free: 1 }
+        ]
       })
     }
   };

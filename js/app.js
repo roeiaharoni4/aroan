@@ -1394,7 +1394,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 qty: qty,
                 unit: product.unit,
                 price: price,
-                total: itemTotal
+                total: itemTotal,
+                // מבצע חבילה — כדי שבמייל/בגיליון יהיה ברור כמה יחידות לתת חינם
+                bundle: product.bundle || "",
+                free: freeQty(product, qty)
             });
             totalItems += qty;
             totalPrice += itemTotal;
