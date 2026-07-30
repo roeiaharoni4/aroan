@@ -1379,7 +1379,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=18">
+    <link rel="stylesheet" href="/css/style.css?v=19">
     <style>
         /* Adjust catalog layout for site wrapper */
         body {
@@ -1463,6 +1463,25 @@
             border-radius: 6px;
             padding: 1px 8px;
             font-size: 0.8em;
+            flex-shrink: 0;
+        }
+
+        /* מבצע חבילה (1+1) בבאנר */
+        .promo-bundle {
+            background: #fff;
+            color: var(--primary-dark, #1A4231);
+            border-radius: 6px;
+            padding: 1px 8px;
+            font-size: 0.8em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* "בתוקף עד" — טקסט קטן בשקופית */
+        .promo-validity-inline {
+            font-size: 0.72em;
+            opacity: 0.85;
+            font-weight: 400;
             flex-shrink: 0;
         }
 
@@ -1611,7 +1630,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=27" defer></script>
+    <script src="/js/app.js?v=28" defer></script>
 </head>
 
 <body>
@@ -1664,6 +1683,14 @@
                 return Number.isInteger(n) ? n : n.toFixed(1);
             }
 
+            // "בתוקף עד DD.MM" בטקסט קטן — תאריכי המוצר גוברים על החלון הגלובלי
+            function validityText(p) {
+                const win = (window.CATALOG_PROMO && window.CATALOG_PROMO.window) || {};
+                const end = (p && (p.promo_start || p.promo_end)) ? (p.promo_end || '') : (win.ends || '');
+                const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(end);
+                return m ? `בתוקף עד ${m[3]}.${m[2]}` : '';
+            }
+
             function build() {
                 const promo = window.CATALOG_PROMO || {};
                 const sales = PRODUCTS.filter(p => p.original_price > p.price);
@@ -1684,6 +1711,9 @@
                     }
                 });
                 sales.forEach(p => slides.push({ product: p }));
+                // מבצעי חבילה (1+1 / 2+1) — מוצר שיש לו גם מחיר מבצע כבר קיבל שקופית למעלה
+                PRODUCTS.filter(p => p.bundle && !(p.original_price > p.price))
+                    .forEach(p => slides.push({ product: p }));
                 if (slides.length === 0) {
                     // אין מבצעים — מסתירים גם אם השרת שמר מקום מראש
                     el.style.display = 'none';
@@ -1710,16 +1740,37 @@
                         const name = document.createElement('span');
                         name.className = 'promo-name';
                         name.textContent = p.name;
-                        const oldPrice = document.createElement('span');
-                        oldPrice.className = 'promo-old';
-                        oldPrice.textContent = p.original_price.toFixed(2) + ' ₪';
-                        const newPrice = document.createElement('span');
-                        newPrice.className = 'promo-new';
-                        newPrice.textContent = p.price.toFixed(2) + ' ₪';
-                        const tag = document.createElement('span');
-                        tag.className = 'promo-tag';
-                        tag.textContent = 'מבצע';
-                        d.append(name, oldPrice, newPrice, tag);
+                        d.appendChild(name);
+                        if (p.original_price > p.price) {
+                            const oldPrice = document.createElement('span');
+                            oldPrice.className = 'promo-old';
+                            oldPrice.textContent = p.original_price.toFixed(2) + ' ₪';
+                            const newPrice = document.createElement('span');
+                            newPrice.className = 'promo-new';
+                            newPrice.textContent = p.price.toFixed(2) + ' ₪';
+                            const tag = document.createElement('span');
+                            tag.className = 'promo-tag';
+                            tag.textContent = 'מבצע';
+                            d.append(oldPrice, newPrice, tag);
+                        } else {
+                            const newPrice = document.createElement('span');
+                            newPrice.className = 'promo-new';
+                            newPrice.textContent = p.price.toFixed(2) + ' ₪';
+                            d.appendChild(newPrice);
+                        }
+                        if (p.bundle) {
+                            const bTag = document.createElement('span');
+                            bTag.className = 'promo-bundle';
+                            bTag.textContent = p.bundle;
+                            d.appendChild(bTag);
+                        }
+                        const validity = validityText(p);
+                        if (validity) {
+                            const v = document.createElement('span');
+                            v.className = 'promo-validity-inline';
+                            v.textContent = validity;
+                            d.appendChild(v);
+                        }
                         d.style.cursor = 'pointer';
                         d.addEventListener('click', goToSales);
                     }

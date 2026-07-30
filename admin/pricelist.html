@@ -63,6 +63,14 @@
                         </label>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <strong>חלון תוקף המבצעים:</strong>
+                        <span>מתאריך</span>
+                        <input type="date" id="promo-window-start" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                        <span>עד תאריך</span>
+                        <input type="date" id="promo-window-end" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                        <span style="font-size:0.82rem; color:#888;">אופציונלי — חל על כל המבצעים (באנר, הנחת סל, קטגוריה וחבילות) חוץ ממוצרים שהוגדרו להם תאריכים משלהם. ריק = בלי הגבלה.</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <strong>הנחת סל:</strong>
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
                             <input type="checkbox" id="cart-discount-enabled"> פעילה
@@ -181,6 +189,32 @@
                         להסרת מבצע פשוט מרוקנים את השדה.
                     </p>
 
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="prod-bundle">מבצע חבילה</label>
+                            <select id="prod-bundle">
+                                <option value="">ללא</option>
+                                <option value="1+1">1+1</option>
+                                <option value="2+1">2+1</option>
+                                <option value="3+1">3+1</option>
+                                <option value="1+2">1+2</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="prod-promo-start">תוקף מתאריך</label>
+                            <input type="date" id="prod-promo-start">
+                        </div>
+                        <div class="form-group">
+                            <label for="prod-promo-end">תוקף עד תאריך</label>
+                            <input type="date" id="prod-promo-end">
+                        </div>
+                    </div>
+                    <p style="font-size:0.85rem; color:#888; margin:-8px 0 12px;">
+                        מבצע חבילה: "2+1" = הלקוח מקבל יחידה שלישית חינם, והעגלה מחשבת זאת אוטומטית.
+                        התאריכים חלים על כל המבצעים של המוצר (חבילה ומחיר מבצע) — כשהם ריקים חל
+                        חלון המבצעים הכללי מלמטה. מבצע שפג תוקף נעלם לבד מהאתר.
+                    </p>
+
                     <div class="form-group">
                         <label for="prod-description">תיאור (אופציונלי)</label>
                         <textarea id="prod-description" rows="3"></textarea>
@@ -223,10 +257,38 @@
                     לדוגמה: הנחה של 10% על מוצר שנמכר ב-20 ₪ תציג מחיר מבצע 18 ₪ עם המחיר המקורי מחוק.
                     מוצרים בלי מחיר מכירה ידולגו.
                 </p>
+
+                <hr style="border:none; border-top:1px solid #eee; margin:16px 0;">
+
+                <div class="form-group">
+                    <label for="bulk-bundle">מבצע חבילה לנבחרים</label>
+                    <select id="bulk-bundle">
+                        <option value="">— בחר —</option>
+                        <option value="1+1">1+1</option>
+                        <option value="2+1">2+1</option>
+                        <option value="3+1">3+1</option>
+                        <option value="1+2">1+2</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bulk-promo-start">תוקף מתאריך (אופציונלי)</label>
+                        <input type="date" id="bulk-promo-start">
+                    </div>
+                    <div class="form-group">
+                        <label for="bulk-promo-end">תוקף עד תאריך (אופציונלי)</label>
+                        <input type="date" id="bulk-promo-end">
+                    </div>
+                </div>
+                <p style="font-size:0.85rem; color:#888;">
+                    מחיל מבצע חבילה (למשל 2+1) על כל המוצרים המסומנים. העגלה תחשב את היחידות החינמיות אוטומטית.
+                </p>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
                 <button type="button" class="btn btn-outline" id="cancel-bulk-btn">ביטול</button>
                 <button type="button" class="btn btn-outline" id="clear-bulk-sale-btn" style="color:#c0554d; border-color:#c0554d;">בטל מבצע לנבחרים</button>
+                <button type="button" class="btn btn-outline" id="clear-bulk-bundle-btn" style="color:#c0554d; border-color:#c0554d;">בטל חבילה לנבחרים</button>
+                <button type="button" class="btn btn-outline" id="apply-bulk-bundle-btn">החל חבילה</button>
                 <button type="button" class="btn btn-primary" id="apply-bulk-sale-btn">החל מבצע</button>
             </div>
         </div>

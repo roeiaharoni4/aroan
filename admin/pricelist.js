@@ -42,6 +42,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const priceInput = document.getElementById('prod-price');
     const marginInput = document.getElementById('prod-margin');
     const salePriceInput = document.getElementById('prod-sale-price');
+    const bundleInput = document.getElementById('prod-bundle');
+    const promoStartInput = document.getElementById('prod-promo-start');
+    const promoEndInput = document.getElementById('prod-promo-end');
+
+    // נירמול מבצע חבילה ותאריכים (זהה לוולידציה בשרת)
+    function cleanBundle(v) {
+        const s = String(v || '').replace(/\s/g, '');
+        const m = /^(\d{1,2})\+(\d{1,2})$/.exec(s);
+        if (!m) return '';
+        const buy = parseInt(m[1], 10), free = parseInt(m[2], 10);
+        return (buy >= 1 && free >= 1) ? `${buy}+${free}` : '';
+    }
+
+    function cleanDate(v) {
+        const s = String(v || '').trim();
+        return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+    }
     const descInput = document.getElementById('prod-description');
 
     const fileInput = document.getElementById('prod-image-file');
@@ -122,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
             cost: item.cost !== undefined && item.cost !== '' ? toNum(item.cost) || 0 : '',
             price: toNum(item.price) || 0,
             sale_price: item.sale_price !== undefined && item.sale_price !== '' ? toNum(item.sale_price) || '' : '',
+            bundle: cleanBundle(item.bundle),
+            promo_start: cleanDate(item.promo_start),
+            promo_end: cleanDate(item.promo_end),
             // ברירת מחדל: מוצג. רק '0' מפורש = מוסתר (לא עולה לאתר)
             active: String(item.active).trim() === '0' ? '0' : '1',
             description: (item.description || '').trim()
@@ -151,6 +171,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const price = toNum(p.price);
             const m = marginOf(cost, price);
 
+            // תגי מבצע חבילה ותוקף בעמודת "מחיר מבצע" — כדי לראות במבט מה מוגדר
+            const bundleTag = cleanBundle(p.bundle)
+                ? ` <span style="background:#639C7D;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.75rem;">${esc(cleanBundle(p.bundle))}</span>`
+                : '';
+            const endTag = cleanDate(p.promo_end)
+                ? ` <span style="color:#888;font-size:0.72rem;">עד ${esc(cleanDate(p.promo_end).split('-').reverse().join('.'))}</span>`
+                : '';
+
             tr.innerHTML = `
                 <td><input type="checkbox" class="row-select" data-id="${esc(p.id)}" ${selectedIds.has(p.id) ? 'checked' : ''}></td>
                 <td class="td-img"><img src="${esc(imgSrc)}" onerror="this.src='../images/logo.png'"></td>
@@ -161,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${isNaN(cost) ? '—' : cost.toFixed(2)}</td>
                 <td>${isNaN(price) ? '—' : price.toFixed(2)}</td>
                 <td>${isNaN(m) ? '—' : m.toFixed(1) + '%'}</td>
-                <td>${isNaN(toNum(p.sale_price)) ? '—' : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}</td>
+                <td>${isNaN(toNum(p.sale_price)) ? (bundleTag || endTag ? '' : '—') : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}${bundleTag}${endTag}</td>
                 <td class="action-btns">
                     <button class="toggle-btn" title="${hidden ? 'הצג באתר' : 'הסתר מהאתר (נגמר במלאי)'}" data-id="${esc(p.id)}">${hidden ? '🚫' : '👁️'}</button>
                     <button class="edit-btn" title="ערוך" data-id="${esc(p.id)}">✏️</button>
@@ -336,6 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const m = marginOf(toNum(p.cost), toNum(p.price));
         marginInput.value = isNaN(m) ? '' : m.toFixed(1);
         salePriceInput.value = isNaN(toNum(p.sale_price)) ? '' : toNum(p.sale_price);
+        bundleInput.value = cleanBundle(p.bundle);
+        promoStartInput.value = cleanDate(p.promo_start);
+        promoEndInput.value = cleanDate(p.promo_end);
         descInput.value = p.description || '';
         urlInput.value = p.image;
 
@@ -412,6 +443,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const promoStart = cleanDate(promoStartInput.value);
+        const promoEnd = cleanDate(promoEndInput.value);
+        if (promoStart && promoEnd && promoStart > promoEnd) {
+            alert('תאריך תחילת המבצע חייב להיות לפני תאריך הסיום.');
+            return;
+        }
+
         const newProduct = {
             id: idInput.value.trim(),
             name: nameInput.value.trim(),
@@ -422,6 +460,9 @@ document.addEventListener('DOMContentLoaded', () => {
             cost: costInput.value === '' ? '' : toNum(costInput.value) || 0,
             price: regularPrice,
             sale_price: salePrice,
+            bundle: cleanBundle(bundleInput.value),
+            promo_start: promoStart,
+            promo_end: promoEnd,
             // שומר על מצב ההסתרה הקיים בעריכה; מוצר חדש מוצג כברירת מחדל
             active: (products.find(p => p.id === originalIdInput.value) || {}).active === '0' ? '0' : '1',
             description: descInput.value.trim()
@@ -481,10 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
         price: ['price', 'מכירה', 'מחיר מכירה', 'מחיר ללקוח', 'מחיר יחידה'],
         sale_price: ['sale_price', 'sale', 'מבצע', 'מחיר מבצע', 'מחיר במבצע'],
         margin: ['margin', 'רווח', 'אחוז רווח', 'רווח %', '% רווח', 'אחוז'],
+        bundle: ['bundle', 'חבילה', 'מבצע חבילה', '1+1', 'מארז'],
+        promo_start: ['promo_start', 'תוקף מתאריך', 'תחילת מבצע', 'מתאריך'],
+        promo_end: ['promo_end', 'תוקף עד', 'סוף מבצע', 'עד תאריך'],
         description: ['description', 'תיאור', 'הערות', 'פירוט']
     };
 
-    const FIELD_NAMES = { id: 'מק"ט', name: 'שם', category: 'קטגוריה', unit: 'יחידה', brand: 'מותג', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', margin: 'רווח %', description: 'תיאור' };
+    const FIELD_NAMES = { id: 'מק"ט', name: 'שם', category: 'קטגוריה', unit: 'יחידה', brand: 'מותג', image: 'תמונה', cost: 'עלות', price: 'מכירה', sale_price: 'מבצע', margin: 'רווח %', bundle: 'חבילה', promo_start: 'תוקף מתאריך', promo_end: 'תוקף עד', description: 'תיאור' };
 
     function normalizeHeader(h) {
         return String(h || '').trim().toLowerCase().replace(/["'״׳]/g, '"').replace(/\s+/g, ' ');
@@ -713,6 +757,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('bulk-count').textContent = selectedIds.size;
         bulkPercentInput.value = '';
+        document.getElementById('bulk-bundle').value = '';
+        document.getElementById('bulk-promo-start').value = '';
+        document.getElementById('bulk-promo-end').value = '';
         bulkModal.classList.add('active');
     };
 
@@ -749,6 +796,49 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(`המבצע בוטל ל-${cleared} מוצרים. אל תשכח ללחוץ על "שמור שינויים".`, 'success');
     };
 
+    // --- מבצע חבילה קבוצתי (1+1 / 2+1) לכל המוצרים המסומנים ---
+    const bulkBundleSelect = document.getElementById('bulk-bundle');
+    const bulkPromoStart = document.getElementById('bulk-promo-start');
+    const bulkPromoEnd = document.getElementById('bulk-promo-end');
+
+    document.getElementById('apply-bulk-bundle-btn').onclick = () => {
+        const bundle = cleanBundle(bulkBundleSelect.value);
+        if (!bundle) {
+            alert('בחר מבצע חבילה (למשל 2+1)');
+            return;
+        }
+        const start = cleanDate(bulkPromoStart.value);
+        const end = cleanDate(bulkPromoEnd.value);
+        if (start && end && start > end) {
+            alert('תאריך תחילת המבצע חייב להיות לפני תאריך הסיום.');
+            return;
+        }
+        let applied = 0;
+        products.forEach(p => {
+            if (!selectedIds.has(p.id)) return;
+            p.bundle = bundle;
+            p.promo_start = start;
+            p.promo_end = end;
+            applied++;
+        });
+        bulkModal.classList.remove('active');
+        renderTable(searchInput.value);
+        showToast(`הוחל מבצע ${bundle} על ${applied} מוצרים. אל תשכח ללחוץ על "שמור שינויים".`, 'success');
+    };
+
+    document.getElementById('clear-bulk-bundle-btn').onclick = () => {
+        let cleared = 0;
+        products.forEach(p => {
+            if (selectedIds.has(p.id) && (p.bundle || p.promo_start || p.promo_end)) {
+                p.bundle = ''; p.promo_start = ''; p.promo_end = '';
+                cleared++;
+            }
+        });
+        bulkModal.classList.remove('active');
+        renderTable(searchInput.value);
+        showToast(`מבצע החבילה בוטל ל-${cleared} מוצרים. אל תשכח ללחוץ על "שמור שינויים".`, 'success');
+    };
+
     // --- מבצעים כלליים: באנר, הנחת סל והנחות קטגוריה (pricelist-promo.json) ---
     const bannerText = document.getElementById('banner-text');
     const bannerEnabled = document.getElementById('banner-enabled');
@@ -757,6 +847,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartDiscountItems = document.getElementById('cart-discount-items');
     const cartDiscountPct = document.getElementById('cart-discount-pct');
     const catDiscountPct = document.getElementById('cat-discount-pct');
+    const promoWindowStart = document.getElementById('promo-window-start');
+    const promoWindowEnd = document.getElementById('promo-window-end');
     const catDiscountsListEl = document.getElementById('cat-discounts-list');
     const savePromoBtn = document.getElementById('save-promo-btn');
     let categoryDiscounts = []; // [{category, percent}]
@@ -789,6 +881,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cd.min_items > 0) cartDiscountItems.value = cd.min_items;
             if (cd.percent > 0) cartDiscountPct.value = cd.percent;
             categoryDiscounts = (p.category_discounts || []).filter(r => r.category && r.percent > 0);
+            const win = p.window || {};
+            promoWindowStart.value = cleanDate(win.starts);
+            promoWindowEnd.value = cleanDate(win.ends);
             renderCatDiscounts();
         })
         .catch(() => { });
@@ -817,6 +912,12 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('להנחת סל פעילה צריך אחוז הנחה + סכום מינימום או כמות פריטים (לפחות אחד מהם)');
             return;
         }
+        const winStart = cleanDate(promoWindowStart.value);
+        const winEnd = cleanDate(promoWindowEnd.value);
+        if (winStart && winEnd && winStart > winEnd) {
+            alert('תאריך תחילת חלון המבצעים חייב להיות לפני תאריך הסיום.');
+            return;
+        }
         savePromoBtn.disabled = true;
         try {
             const res = await fetch('/api/promo', {
@@ -830,7 +931,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         min_items: toNum(cartDiscountItems.value) || 0,
                         percent: toNum(cartDiscountPct.value) || 0
                     },
-                    category_discounts: categoryDiscounts
+                    category_discounts: categoryDiscounts,
+                    window: { starts: winStart, ends: winEnd }
                 })
             });
             const result = await res.json();

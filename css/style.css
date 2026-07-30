@@ -445,6 +445,34 @@ button {
     vertical-align: 2px;
 }
 
+/* מבצע חבילה (1+1 / 2+1) — ירוק המותג, להבדיל מתג "מבצע" האדום */
+.bundle-badge {
+    display: inline-block;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-right: 8px;
+    vertical-align: 2px;
+}
+
+/* "בתוקף עד DD.MM.YYYY" — טקסט קטן מתחת למחיר */
+.promo-validity {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-top: 3px;
+}
+
+/* "N חינם" בשורת ההזמנה */
+.oc-free {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--primary-color);
+}
+
 .product-sku {
     font-size: 0.8rem;
     color: var(--text-secondary);
@@ -1063,7 +1091,8 @@ body:has(.fab-container) .scroll-top-btn {
         white-space: nowrap;
     }
 
-    #order-modal .order-table .oc-total::after {
+    /* ה-₪ נצמד לסכום עצמו (ולא אחרי תווית "חינם" של מבצע חבילה) */
+    #order-modal .order-table .oc-total .oc-amount::after {
         content: ' ₪';
     }
 

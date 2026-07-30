@@ -141,6 +141,20 @@ def _promo_dates_for(row, window):
     return window.get('starts', ''), window.get('ends', '')
 
 
+def _price_is_discounted(row, effective_price):
+    """האם המחיר האפקטיבי מוזל בפועל — ממבצע פרטני או מהנחת קטגוריה.
+
+    בקובץ הציבורי price הוא כבר מחיר המבצע (אם יש), ו-original_price המחיר הרגיל.
+    הנחת קטגוריה מורידה את המחיר מתחת ל-price שבקובץ.
+    """
+    try:
+        raw = float(row.get('price') or 0)
+        regular = float(row.get('original_price') or 0)
+    except ValueError:
+        return False
+    return regular > effective_price or effective_price < raw
+
+
 def _sale_effective_date(row, window):
     """טווח תוקף המבצע בפורמט ISO של Merchant (`start/end`). ריק כשאין תאריך סיום."""
     import datetime
@@ -268,12 +282,16 @@ def update_merchant_feed():
         link = f"{SITE_BASE_URL}/care/product/{quote(slugs[r['id']])}/"
         desc = r.get('description') or r['name']
 
-        # מבצע פרטני: g:price = המחיר הרגיל, g:sale_price = מחיר המבצע (Merchant מציג מחוק)
+        # מבצע (פרטני או הנחת קטגוריה): g:price = המחיר הרגיל, g:sale_price = מחיר המבצע
         try:
             regular = float(r.get('original_price') or 0)
+            raw = float(r.get('price') or 0)
         except ValueError:
-            regular = 0
-        on_sale = regular > price
+            regular, raw = 0, price
+        list_price = max(regular, raw)   # המחיר לפני כל הנחה
+        on_sale = list_price > price
+        if on_sale:
+            regular = list_price
 
         parts = [
             f"<g:id>{escape(r['id'])}</g:id>",
@@ -431,7 +449,7 @@ def generate_care_category_pages():
             offer = {'@type': 'Offer', 'price': price, 'priceCurrency': 'ILS',
                      'availability': 'https://schema.org/InStock', 'url': page_url}
             _, promo_end = _promo_dates_for(r, window)
-            if promo_end and regular > price:
+            if promo_end and _price_is_discounted(r, price):
                 offer['priceValidUntil'] = promo_end
             product = {'@type': 'Product', 'name': r['name'], 'sku': r['id'], 'offers': offer}
             if img:
@@ -715,8 +733,9 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
 
     # "בתוקף עד" בטקסט קטן — רק כשקיים תאריך סיום ויש בכלל מבצע
     promo_end = (promo_dates or ('', ''))[1]
+    discounted = _price_is_discounted(r, price)
     validity_html = ''
-    if promo_end and (on_sale or bundle):
+    if promo_end and (discounted or bundle):
         d = promo_end.split('-')
         validity_html = f'<div class="pp-validity">בתוקף עד {d[2]}.{d[1]}.{d[0]}</div>'
 
@@ -731,7 +750,7 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
 
     offer = {'@type': 'Offer', 'price': round(price, 2), 'priceCurrency': 'ILS',
              'availability': 'https://schema.org/InStock', 'url': page_url}
-    if promo_end and on_sale:
+    if promo_end and discounted:
         offer['priceValidUntil'] = promo_end
     product_schema = {'@context': 'https://schema.org', '@type': 'Product',
                       'name': name, 'sku': pid, 'offers': offer}
@@ -880,7 +899,7 @@ def update_care_schema():
         except ValueError:
             _regular = 0
         _, _promo_end = _promo_dates_for(r, window)
-        if _promo_end and _regular > price:
+        if _promo_end and _price_is_discounted(r, price):
             offer['priceValidUntil'] = _promo_end
         product = {
             '@type': 'Product',

@@ -15,6 +15,7 @@ let CONFIG = {};
 
 // מבצע ברמת הסל (נטען מ-CONFIG.promoSource — קטלוג הטיפוח): {min_total, percent}
 let CART_PROMO = null;
+let PROMO_WINDOW = { starts: '', ends: '' }; // חלון תוקף גלובלי למבצעים (ריק = בלי הגבלה)
 
 let IMAGE_BASE_URL = '';
 
@@ -288,7 +289,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // מבצע: original_price קיים רק בקובץ המחירון הנסתר — כשהוא גבוה מהמחיר מוצג "מבצע"
                             original_price: parseFloat(item.original_price) || 0,
                             description: item.description || "", // Optional description
-                            brand: (item.brand || "").trim() || detectBrand(item.name) // עמודת brand בקובץ גוברת על זיהוי אוטומטי
+                            brand: (item.brand || "").trim() || detectBrand(item.name), // עמודת brand בקובץ גוברת על זיהוי אוטומטי
+                            // מבצע חבילה ותוקף — קיימים רק בקובץ המחירון (בקטלוג הרגיל העמודות לא קיימות)
+                            bundle: (item.bundle || "").trim(),
+                            promo_start: (item.promo_start || "").trim(),
+                            promo_end: (item.promo_end || "").trim()
                         }
                     }).filter(p => p.id && p.name);
 
@@ -314,30 +319,117 @@ document.addEventListener("DOMContentLoaded", async () => {
             const promo = await res.json();
             window.CATALOG_PROMO = promo; // נגיש גם לסקריפט הבאנר בעמוד
 
-            // הנחת קטגוריה: חלה על מוצרים בלי מבצע פרטני, עיגול ל-10 אגורות
-            (promo.category_discounts || []).forEach(rule => {
-                const pct = parseFloat(rule.percent);
-                if (!(pct > 0) || !rule.category) return;
-                PRODUCTS.forEach(p => {
-                    if (p.category !== rule.category) return;
-                    if (p.original_price > p.price) return; // מבצע פרטני גובר
-                    if (!(p.price > 0)) return;
-                    const discounted = Math.round(p.price * (1 - pct / 100) * 10) / 10;
-                    if (discounted < p.price) {
-                        p.original_price = p.price;
-                        p.price = discounted;
-                    }
-                });
+            PROMO_WINDOW = promo.window || { starts: '', ends: '' };
+            const windowActive = promoActive(PROMO_WINDOW.starts, PROMO_WINDOW.ends);
+
+            // מבצע פרטני שפג תוקף — חוזרים למחיר הרגיל (price בקובץ הוא מחיר המבצע)
+            PRODUCTS.forEach(p => {
+                if (p.original_price > p.price && !productPromoActive(p)) {
+                    p.price = p.original_price;
+                    p.original_price = 0;
+                }
+                if (p.bundle && !productPromoActive(p)) p.bundle = '';
             });
+
+            // הנחת קטגוריה: חלה על מוצרים בלי מבצע פרטני, עיגול ל-10 אגורות
+            if (windowActive) {
+                (promo.category_discounts || []).forEach(rule => {
+                    const pct = parseFloat(rule.percent);
+                    if (!(pct > 0) || !rule.category) return;
+                    PRODUCTS.forEach(p => {
+                        if (p.category !== rule.category) return;
+                        if (p.original_price > p.price) return; // מבצע פרטני גובר
+                        if (!(p.price > 0)) return;
+                        if (!productPromoActive(p)) return;     // תאריכי המוצר גוברים
+                        const discounted = Math.round(p.price * (1 - pct / 100) * 10) / 10;
+                        if (discounted < p.price) {
+                            p.original_price = p.price;
+                            p.price = discounted;
+                        }
+                    });
+                });
+            }
 
             const cd = promo.cart_discount;
             const minTotal = cd ? parseFloat(cd.min_total) || 0 : 0;
             const minItems = cd ? parseInt(cd.min_items, 10) || 0 : 0;
-            if (cd && cd.enabled && parseFloat(cd.percent) > 0 && (minTotal > 0 || minItems > 0)) {
+            if (windowActive && cd && cd.enabled && parseFloat(cd.percent) > 0 && (minTotal > 0 || minItems > 0)) {
                 CART_PROMO = { min_total: minTotal, min_items: minItems, percent: parseFloat(cd.percent) };
             }
         } catch (e) {
             console.warn('Promotions load failed', e);
+        }
+    }
+
+    // --- תוקף מבצעים ומבצעי חבילה (1+1 / 2+1) ---
+    // תאריך מקומי כ-YYYY-MM-DD להשוואה לקסיקוגרפית מול התאריכים בקובץ
+    function todayISO() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // מבצע בתוקף היום (כולל קצוות). מחרוזת ריקה = בלי הגבלה מאותו צד
+    function promoActive(starts, ends) {
+        const today = todayISO();
+        if (starts && today < starts) return false;
+        if (ends && today > ends) return false;
+        return true;
+    }
+
+    // תאריכי המוצר גוברים על החלון הגלובלי
+    function productPromoActive(p) {
+        if (p.promo_start || p.promo_end) return promoActive(p.promo_start, p.promo_end);
+        return promoActive(PROMO_WINDOW.starts, PROMO_WINDOW.ends);
+    }
+
+    // "2+1" → {buy:2, free:1}; קלט לא תקין → null
+    function parseBundle(str) {
+        const m = /^(\d{1,2})\+(\d{1,2})$/.exec((str || "").replace(/\s/g, ""));
+        if (!m) return null;
+        const buy = parseInt(m[1], 10), free = parseInt(m[2], 10);
+        if (buy < 1 || free < 1) return null;
+        return { buy: buy, free: free };
+    }
+
+    // כמות בתשלום לפי מבצע חבילה: כל (buy+free) יחידות → free חינם
+    function chargeableQty(product, qty) {
+        const b = parseBundle(product && product.bundle);
+        if (!b || !(qty > 0)) return qty;
+        const group = b.buy + b.free;
+        const freeUnits = Math.floor(qty / group) * b.free;
+        return qty - freeUnits;
+    }
+
+    // מספר היחידות שהלקוח מקבל חינם (לתצוגה בטבלת ההזמנה ובהודעה)
+    function freeQty(product, qty) {
+        return qty - chargeableQty(product, qty);
+    }
+
+    // תאריך הסיום הרלוונטי למוצר (פר-מוצר גובר), לתצוגת "בתוקף עד"
+    function promoEndFor(p) {
+        if (p.promo_start || p.promo_end) return p.promo_end || '';
+        return PROMO_WINDOW.ends || '';
+    }
+
+    // DD.MM.YYYY לתצוגה
+    function fmtDateHe(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+        return m ? `${m[3]}.${m[2]}.${m[1]}` : "";
+    }
+
+    // מוסיף לאלמנט המחיר תווית חבילה ("1+1") ושורת "בתוקף עד" בטקסט קטן
+    function appendBundleInfo(priceEl, product) {
+        if (!parseBundle(product.bundle)) return;
+        const badge = document.createElement("span");
+        badge.className = "bundle-badge";
+        badge.textContent = product.bundle;
+        priceEl.appendChild(badge);
+        const end = fmtDateHe(promoEndFor(product));
+        if (end) {
+            const validity = document.createElement("div");
+            validity.className = "promo-validity";
+            validity.textContent = "בתוקף עד " + end;
+            priceEl.appendChild(validity);
         }
     }
 
@@ -434,7 +526,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Rendering categories:", categories);
 
         // קטגוריית "מבצעים" — מוצגת כשיש מוצרים במבצע או מבצע סל פעיל (רק בקטלוג הטיפוח)
-        if (PRODUCTS.some(p => p.original_price > p.price) || CART_PROMO) {
+        if (PRODUCTS.some(p => p.original_price > p.price || parseBundle(p.bundle)) || CART_PROMO) {
             const saleBtn = document.createElement("button");
             saleBtn.type = "button";
             saleBtn.className = "cat-btn cat-btn-sale" + (activeCategory === 'sales' ? " active" : "");
@@ -526,7 +618,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const recentIds = getRecentProductIds();
             filtered = PRODUCTS.filter(p => recentIds.has(p.id));
         } else if (activeCategory === 'sales') {
-            filtered = PRODUCTS.filter(p => p.original_price > p.price);
+            filtered = PRODUCTS.filter(p => p.original_price > p.price || parseBundle(p.bundle));
             // מבצע סל פעיל בלי מבצעים פרטניים — המבצע חל על הכול, מציגים את כל המוצרים
             if (filtered.length === 0 && CART_PROMO) filtered = PRODUCTS;
         } else if (activeCategory) {
@@ -728,6 +820,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     saleBadge.textContent = "מבצע";
                     price.appendChild(saleBadge);
                 }
+                appendBundleInfo(price, product);
                 body.appendChild(price);
             }
 
@@ -966,7 +1059,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const product = PRODUCTS.find(p => p.id === id);
             if (!product) continue;
             totalItems += qty;
-            totalPrice += qty * product.price;
+            // מבצע חבילה: משלמים רק על היחידות המחויבות (1+1 → 2 יח' = תשלום על 1)
+            totalPrice += chargeableQty(product, qty) * product.price;
         }
 
         if (summaryItemsEl) summaryItemsEl.textContent = totalItems;
@@ -1199,10 +1293,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 const tdTotal = document.createElement("td");
                 tdTotal.className = "oc-total";
+                // סכום ותווית "חינם" הם צמתים נפרדים כדי שעדכון אחד לא ימחק את השני
+                const totalAmount = document.createElement("span");
+                totalAmount.className = "oc-amount";
+                const freeNote = document.createElement("div");
+                freeNote.className = "oc-free";
+                tdTotal.appendChild(totalAmount);
+                tdTotal.appendChild(freeNote);
                 const updateRow = () => {
                     const q = parseFloat(qtyInp.value) || 0;
                     const p = parseFloat(priceInp.value) || 0;
-                    tdTotal.textContent = (q * p).toFixed(2);
+                    // מבצע חבילה: הסה"כ מגלם את היחידות שחינם, וציון קטן מסביר כמה
+                    const charged = chargeableQty(product, q);
+                    totalAmount.textContent = (charged * p).toFixed(2);
+                    const free = q - charged;
+                    freeNote.textContent = free > 0 ? `${free} חינם (${product.bundle})` : "";
                 };
                 qtyInp.addEventListener("input", () => { updateRow(); updateSummary(); }); // Update global summary too
                 priceInp.addEventListener("input", () => { updateRow(); updateSummary(); });
@@ -1237,8 +1342,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             const product = PRODUCTS.find(p => p.id === id);
             if (!product || qty <= 0) continue;
             let line = `• ${product.name} | מק״ט: ${product.id} | כמות: ${qty} ${product.unit}`;
+            const free = freeQty(product, qty);
+            if (free > 0) {
+                line += ` | מבצע ${product.bundle} (${free} חינם)`;
+            }
             if (CONFIG.showPrices && product.price > 0) {
-                line += ` | ${(product.price * qty).toFixed(2)} ₪`;
+                line += ` | ${(chargeableQty(product, qty) * product.price).toFixed(2)} ₪`;
             }
             lines.push(line);
         }
@@ -1276,7 +1385,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const product = PRODUCTS.find(p => p.id === id);
             if (!product || qty <= 0) continue;
             const price = parseFloat(product.price) || 0;
-            const itemTotal = price * qty;
+            // מבצע חבילה: מחייבים רק את היחידות בתשלום
+            const itemTotal = chargeableQty(product, qty) * price;
             items.push({
                 id: product.id,
                 name: product.name,
@@ -1450,6 +1560,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 saleBadge.textContent = "מבצע";
                 qvPrice.appendChild(saleBadge);
             }
+            appendBundleInfo(qvPrice, product);
         } else {
             qvPrice.style.display = 'none';
         }
