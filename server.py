@@ -20,8 +20,71 @@ MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
 SITE_BASE_URL = 'https://aroam.co.il'
 
 
+def _clean_date(v):
+    """מנרמל תאריך ל-YYYY-MM-DD; כל קלט לא תקין הופך למחרוזת ריקה (= בלי הגבלה)."""
+    s = str(v or '').strip()
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', s):
+        return ''
+    try:
+        import datetime
+        datetime.date.fromisoformat(s)
+    except ValueError:
+        return ''
+    return s
+
+
+def _clean_bundle(v):
+    """מנרמל מבצע חבילה לפורמט 'X+Y' (קנה X קבל Y). קלט לא תקין → ריק."""
+    s = str(v or '').strip().replace(' ', '')
+    m = re.fullmatch(r'(\d{1,2})\+(\d{1,2})', s)
+    if not m:
+        return ''
+    buy, free = int(m.group(1)), int(m.group(2))
+    if buy < 1 or free < 1:
+        return ''
+    return f'{buy}+{free}'
+
+
+def _load_promo_window():
+    """החלון הגלובלי {'starts':..., 'ends':...} מקובץ המבצעים. מחרוזת ריקה = בלי הגבלה."""
+    try:
+        with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
+            w = (json.load(f).get('window') or {})
+        return {'starts': _clean_date(w.get('starts')), 'ends': _clean_date(w.get('ends'))}
+    except (FileNotFoundError, ValueError):
+        return {'starts': '', 'ends': ''}
+
+
+def _promo_active(starts, ends, today=None):
+    """האם מבצע בתוקף היום (כולל קצוות). מחרוזת ריקה = בלי הגבלה מאותו צד."""
+    import datetime
+    today = today or datetime.date.today().isoformat()
+    if starts and today < starts:
+        return False
+    if ends and today > ends:
+        return False
+    return True
+
+
+def _product_promo_active(row, window):
+    """תוקף המבצעים של מוצר: תאריכים פר-מוצר גוברים על החלון הגלובלי."""
+    start = _clean_date(row.get('promo_start'))
+    end = _clean_date(row.get('promo_end'))
+    if start or end:
+        return _promo_active(start, end)
+    if window is None:
+        window = _load_promo_window()  # ברירת מחדל בטוחה אם הקורא לא העביר חלון
+    return _promo_active(window.get('starts', ''), window.get('ends', ''))
+
+
 def _load_category_discounts():
-    """מחזיר {קטגוריה: אחוז} מקובץ המבצעים — כדי שהמחיר בפיד/סכמה יהיה המחיר שמוצג בפועל."""
+    """מחזיר {קטגוריה: אחוז} מקובץ המבצעים — כדי שהמחיר בפיד/סכמה יהיה המחיר שמוצג בפועל.
+
+    כשהחלון הגלובלי אינו בתוקף מוחזר {} — כך הנחות הקטגוריה כבויות בכל הגנרטורים.
+    """
+    window = _load_promo_window()
+    if not _promo_active(window['starts'], window['ends']):
+        return {}
     discounts = {}
     try:
         with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
@@ -35,17 +98,58 @@ def _load_category_discounts():
     return discounts
 
 
-def _effective_price(row, category_discounts):
-    """המחיר שהלקוח רואה בפועל: מחיר מבצע פרטני אם יש, אחרת הנחת קטגוריה, עיגול ל-10 אג'."""
+def _effective_price(row, category_discounts, window=None):
+    """המחיר שהלקוח רואה בפועל: מחיר מבצע פרטני אם יש, אחרת הנחת קטגוריה, עיגול ל-10 אג'.
+
+    מבצע שפג תוקף (לפי תאריכי המוצר או החלון הגלובלי) חוזר למחיר הרגיל.
+    """
     try:
         price = float(row.get('price') or 0)
     except ValueError:
         return 0
     if price <= 0:
         return 0
+    try:
+        regular = float(row.get('original_price') or 0)
+    except ValueError:
+        regular = 0
+
+    if not _product_promo_active(row, window):
+        # מבצע פרטני שפג — חוזרים למחיר המקורי; הנחת קטגוריה לא מוחלת
+        return regular if regular > price else price
+
     if not (row.get('original_price') or '').strip() and row.get('category') in category_discounts:
         price = round(price * (1 - category_discounts[row['category']] / 100) * 10) / 10
     return price
+
+
+def _bundle_label(row, window):
+    """תווית החבילה של מוצר ('1+1') אם הוגדרה ובתוקף, אחרת ריק."""
+    b = _clean_bundle(row.get('bundle'))
+    if not b or not _product_promo_active(row, window):
+        return ''
+    return b
+
+
+def _promo_dates_for(row, window):
+    """התאריכים החלים על המוצר: פר-מוצר אם הוגדרו, אחרת החלון הגלובלי."""
+    start = _clean_date(row.get('promo_start'))
+    end = _clean_date(row.get('promo_end'))
+    if start or end:
+        return start, end
+    window = window or {'starts': '', 'ends': ''}
+    return window.get('starts', ''), window.get('ends', '')
+
+
+def _sale_effective_date(row, window):
+    """טווח תוקף המבצע בפורמט ISO של Merchant (`start/end`). ריק כשאין תאריך סיום."""
+    import datetime
+    start, end = _promo_dates_for(row, window)
+    if not end:
+        return ''  # בלי סוף מוגדר אין מה לתחום
+    if not start:
+        start = datetime.date.today().isoformat()
+    return f'{start}T00:00:00Z/{end}T23:59:59Z'
 
 
 def _slugify_he(name):
@@ -88,11 +192,12 @@ def bake_care_products():
     with open(PRICELIST_PUBLIC_FILE, encoding='utf-8') as f:
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
     category_discounts = _load_category_discounts()
+    window = _load_promo_window()
     slugs = _care_product_slugs(rows)
 
     cards = []
     for r in rows:
-        price = _effective_price(r, category_discounts)
+        price = _effective_price(r, category_discounts, window)
         if price <= 0:
             continue
         img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
@@ -104,6 +209,9 @@ def bake_care_products():
             regular = 0
         if regular > price:
             price_html = f'<span class="product-price">{price:.2f} ₪ <span class="price-old">{regular:.2f} ₪</span></span>'
+        bundle = _bundle_label(r, window)
+        if bundle:
+            price_html += f' <span class="bundle-badge">{escape(bundle)}</span>'
         cards.append(
             f'<div class="product-card"><a href="{escape(link)}">'
             + (f'<img src="{escape(img)}" alt="{escape(r["name"])}" loading="lazy" width="200" height="200">' if img else '')
@@ -148,10 +256,11 @@ def update_merchant_feed():
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
     category_discounts = _load_category_discounts()
+    window = _load_promo_window()
     slugs = _care_product_slugs(rows)
     items_xml = []
     for r in rows:
-        price = _effective_price(r, category_discounts)
+        price = _effective_price(r, category_discounts, window)
         if price <= 0 or not (r.get('image') or '').strip():
             continue  # Merchant דורש מחיר ותמונה לכל מוצר
 
@@ -178,6 +287,10 @@ def update_merchant_feed():
         ]
         if on_sale:
             parts.append(f"<g:sale_price>{price:.2f} ILS</g:sale_price>")
+            # תיחום המבצע בתאריכים — גוגל מפסיק להציג את מחיר המבצע בעצמו בסוף החלון
+            eff = _sale_effective_date(r, window)
+            if eff:
+                parts.append(f"<g:sale_price_effective_date>{eff}</g:sale_price_effective_date>")
         if r.get('brand'):
             parts.append(f"<g:brand>{escape(r['brand'])}</g:brand>")
         # סיווג לטקסונומיה של גוגל + product_type — משפר התאמה לחיפושים וחשיפה
@@ -266,6 +379,7 @@ def generate_care_category_pages():
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
     category_discounts = _load_category_discounts()
+    window = _load_promo_window()
     slugs = _care_product_slugs(rows)
     by_cat = {}
     for r in rows:
@@ -286,7 +400,7 @@ def generate_care_category_pages():
 
         cards, schema_items = [], []
         for i, r in enumerate(products, start=1):
-            price = _effective_price(r, category_discounts)
+            price = _effective_price(r, category_discounts, window)
             if price <= 0:
                 continue
             img = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/')) if r.get('image') else ''
@@ -301,6 +415,9 @@ def generate_care_category_pages():
                 regular = 0
             if regular > price:
                 price_html = f'<span class="cp-old">{regular:.2f} ₪</span> ' + price_html
+            bundle = _bundle_label(r, window)
+            if bundle:
+                price_html += f' <span class="cp-bundle">{escape(bundle)}</span>'
 
             cards.append(
                 '<li class="cp-item">'
@@ -313,6 +430,9 @@ def generate_care_category_pages():
 
             offer = {'@type': 'Offer', 'price': price, 'priceCurrency': 'ILS',
                      'availability': 'https://schema.org/InStock', 'url': page_url}
+            _, promo_end = _promo_dates_for(r, window)
+            if promo_end and regular > price:
+                offer['priceValidUntil'] = promo_end
             product = {'@type': 'Product', 'name': r['name'], 'sku': r['id'], 'offers': offer}
             if img:
                 product['image'] = img
@@ -431,6 +551,7 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         .cp-desc {{ font-size: 0.85rem; color: #616161; margin-bottom: 6px; }}
         .cp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.05rem; }}
         .cp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 0.9rem; }}
+        .cp-bundle {{ background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-inline-start: 4px; }}
         .cc-footer {{ background: var(--primary-dark); color: #fff; text-align: center; padding: 20px 16px; margin-top: 30px; }}
         .cc-footer a {{ color: #fff; }}
         .cc-faq {{ margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
@@ -485,6 +606,7 @@ def generate_care_product_pages():
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
     category_discounts = _load_category_discounts()
+    window = _load_promo_window()
     slugs = _care_product_slugs(rows)
     cat_slug = {cat: cfg['slug'] for cat, cfg in CARE_CATEGORY_PAGES.items()}
 
@@ -494,7 +616,7 @@ def generate_care_product_pages():
 
     generated, sitemap_urls = set(), []
     for r in rows:
-        price = _effective_price(r, category_discounts)
+        price = _effective_price(r, category_discounts, window)
         if price <= 0:
             continue
         slug = slugs[r['id']]
@@ -509,14 +631,15 @@ def generate_care_product_pages():
 
         related = []
         for other in by_cat.get(cat, []):
-            if other['id'] == r['id'] or _effective_price(other, category_discounts) <= 0:
+            if other['id'] == r['id'] or _effective_price(other, category_discounts, window) <= 0:
                 continue
             related.append(other)
             if len(related) >= 6:
                 break
 
         html = _render_care_product_html(r, price, regular, on_sale, img, cat,
-                                         cat_slug.get(cat), page_url, slugs, related)
+                                         cat_slug.get(cat), page_url, slugs, related,
+                                         _bundle_label(r, window), _promo_dates_for(r, window))
         out_dir = os.path.join('care', 'product', slug)
         os.makedirs(out_dir, exist_ok=True)
         with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
@@ -566,7 +689,8 @@ def _update_sitemap_care_products(urls):
         f.write(xml)
 
 
-def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, page_url, slugs, related):
+def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, page_url, slugs, related,
+                              bundle='', promo_dates=('', '')):
     from urllib.parse import quote
     from xml.sax.saxutils import escape
 
@@ -586,6 +710,15 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
                       f'<span class="pp-price">{price:.2f} ₪</span> <span class="pp-sale">מבצע</span>')
     else:
         price_html = f'<span class="pp-price">{price:.2f} ₪</span>'
+    if bundle:
+        price_html += f' <span class="pp-bundle">{escape(bundle)}</span>'
+
+    # "בתוקף עד" בטקסט קטן — רק כשקיים תאריך סיום ויש בכלל מבצע
+    promo_end = (promo_dates or ('', ''))[1]
+    validity_html = ''
+    if promo_end and (on_sale or bundle):
+        d = promo_end.split('-')
+        validity_html = f'<div class="pp-validity">בתוקף עד {d[2]}.{d[1]}.{d[0]}</div>'
 
     related_html = ''
     if related:
@@ -598,6 +731,8 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
 
     offer = {'@type': 'Offer', 'price': round(price, 2), 'priceCurrency': 'ILS',
              'availability': 'https://schema.org/InStock', 'url': page_url}
+    if promo_end and on_sale:
+        offer['priceValidUntil'] = promo_end
     product_schema = {'@context': 'https://schema.org', '@type': 'Product',
                       'name': name, 'sku': pid, 'offers': offer}
     if img:
@@ -665,6 +800,8 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
         .pp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.5rem; }}
         .pp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 1.05rem; }}
         .pp-sale {{ background: #d32f2f; color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
+        .pp-bundle {{ background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
+        .pp-validity {{ font-size: 0.8rem; color: #6B6B6B; margin-bottom: 10px; }}
         .pp-unit {{ font-size: 0.9rem; color: #616161; margin-bottom: 10px; }}
         .pp-desc {{ color: #444; margin-bottom: 20px; }}
         .cc-cta {{ display: inline-block; background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; padding: 13px 26px; border-radius: 10px; }}
@@ -692,6 +829,7 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
                 <h1>{escape(name)}</h1>
                 {f'<div class="pp-brand">{escape(brand)}</div>' if brand else ''}
                 <div class="pp-priceline">{price_html}</div>
+                {validity_html}
                 {f'<div class="pp-unit">יחידת מכירה: {escape(unit)}</div>' if unit else ''}
                 {f'<p class="pp-desc">{escape(desc)}</p>' if desc else ''}
                 <a class="cc-cta" href="{escape(catalog_deep)}">להוספה לסל והזמנה →</a>
@@ -721,25 +859,34 @@ def update_care_schema():
         rows = [r for r in csv.DictReader(f) if r.get('id') and r.get('name')]
 
     category_discounts = _load_category_discounts()
+    window = _load_promo_window()
 
     items = []
     for i, r in enumerate(rows, start=1):
-        price = _effective_price(r, category_discounts)
+        price = _effective_price(r, category_discounts, window)
         # גוגל דורש מחיר ותמונה לכל מוצר בסכמה — מוצר בלי גורם לשגיאה קריטית בבדיקת העשירות.
         # מדלגים עליו; הוא יתווסף אוטומטית בשמירה הבאה אחרי שתהיה לו תמונה/מחיר
         if price <= 0 or not (r.get('image') or '').strip():
             continue
+        offer = {
+            '@type': 'Offer',
+            'price': price,
+            'priceCurrency': 'ILS',
+            'availability': 'https://schema.org/InStock',
+            'url': f'{SITE_BASE_URL}/care/',
+        }
+        try:
+            _regular = float(r.get('original_price') or 0)
+        except ValueError:
+            _regular = 0
+        _, _promo_end = _promo_dates_for(r, window)
+        if _promo_end and _regular > price:
+            offer['priceValidUntil'] = _promo_end
         product = {
             '@type': 'Product',
             'name': r['name'],
             'sku': r['id'],
-            'offers': {
-                '@type': 'Offer',
-                'price': price,
-                'priceCurrency': 'ILS',
-                'availability': 'https://schema.org/InStock',
-                'url': f'{SITE_BASE_URL}/care/',
-            },
+            'offers': offer,
         }
         if r.get('image'):
             product['image'] = SITE_BASE_URL + '/' + quote(r['image'].lstrip('/'))
@@ -776,15 +923,18 @@ def update_care_schema():
 
     # מניעת קפיצת פריסה (CLS): כשידוע כבר בזמן השמירה שיהיה באנר מבצעים,
     # שומרים לו את המקום מהרגע הראשון במקום לדחוף את הדף אחרי טעינת ה-JS
-    has_sales = any((r.get('original_price') or '').strip() for r in rows)
-    has_promo = has_sales or bool(category_discounts)
+    window_active = _promo_active(window['starts'], window['ends'])
+    has_sales = any((r.get('original_price') or '').strip() and _product_promo_active(r, window) for r in rows)
+    has_bundle = any(_bundle_label(r, window) for r in rows)
+    has_promo = has_sales or has_bundle or bool(category_discounts)
     try:
         with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
             promo_cfg = json.load(f)
         banner_cfg = promo_cfg.get('banner') or {}
         cart_cfg = promo_cfg.get('cart_discount') or {}
-        has_promo = has_promo or (banner_cfg.get('enabled') and banner_cfg.get('text')) or (
-            cart_cfg.get('enabled') and float(cart_cfg.get('percent') or 0) > 0)
+        has_promo = has_promo or (window_active and (
+            (banner_cfg.get('enabled') and banner_cfg.get('text')) or
+            (cart_cfg.get('enabled') and float(cart_cfg.get('percent') or 0) > 0)))
     except (FileNotFoundError, ValueError):
         pass
     banner_tag = '<div id="promo-banner" style="display:block"></div>' if has_promo else '<div id="promo-banner"></div>'
@@ -898,6 +1048,11 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     for r in (data.get('category_discounts') or [])
                     if r.get('category') and to_num(r.get('percent')) > 0
                 ][:20],
+                # חלון תוקף גלובלי לכל המבצעים (ריק = בלי הגבלה)
+                'window': {
+                    'starts': _clean_date((data.get('window') or {}).get('starts')),
+                    'ends': _clean_date((data.get('window') or {}).get('ends')),
+                },
             }
             with open(PRICELIST_PROMO_FILE, 'w', encoding='utf-8') as f:
                 json.dump(promo, f, ensure_ascii=False, indent=1)
@@ -962,8 +1117,10 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # 'active' נשמר רק במאסטר; מוצר מוסתר (active=0) לא נכתב לקובץ הציבורי
             # ולכן נעלם אוטומטית מהקטלוג, מהסכמה, מהפיד ומדפי הקטגוריה
-            master_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'cost', 'price', 'sale_price', 'active', 'description']
-            public_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'price', 'original_price', 'description']
+            master_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'cost', 'price', 'sale_price',
+                             'bundle', 'promo_start', 'promo_end', 'active', 'description']
+            public_fields = ['id', 'name', 'category', 'unit', 'brand', 'image', 'price', 'original_price',
+                             'bundle', 'promo_start', 'promo_end', 'description']
 
             def to_float(v):
                 try:
@@ -981,6 +1138,9 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     row = {k: p.get(k, '') for k in master_fields}
                     # ברירת מחדל: מוצג (1) אלא אם סומן במפורש כמוסתר
                     row['active'] = '0' if is_hidden(p) else '1'
+                    row['bundle'] = _clean_bundle(p.get('bundle'))
+                    row['promo_start'] = _clean_date(p.get('promo_start'))
+                    row['promo_end'] = _clean_date(p.get('promo_end'))
                     writer.writerow(row)
 
             # בקובץ הציבורי: כשיש מבצע — price = מחיר המבצע, original_price = המחיר הרגיל (לתצוגת "מבצע")
@@ -998,6 +1158,9 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         row['original_price'] = regular
                     else:
                         row['original_price'] = ''
+                    row['bundle'] = _clean_bundle(p.get('bundle'))
+                    row['promo_start'] = _clean_date(p.get('promo_start'))
+                    row['promo_end'] = _clean_date(p.get('promo_end'))
                     writer.writerow(row)
 
             # עדכון סכמה, פיד ודפי קטגוריה (SEO + שופינג ללקוחות פרטיים)
