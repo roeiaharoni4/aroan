@@ -13,7 +13,14 @@
   "starts": "",
   "ends": ""
  },
- "category_discounts": [],
+ "category_discounts": [
+  {
+   "category": "שיער",
+   "percent": 8.0,
+   "starts": "",
+   "ends": "2026-08-31"
+  }
+ ],
  "window": {
   "starts": "",
   "ends": ""
