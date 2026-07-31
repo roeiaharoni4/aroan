@@ -77,22 +77,35 @@ def _product_promo_active(row, window):
     return _promo_active(window.get('starts', ''), window.get('ends', ''))
 
 
-def _load_category_discounts():
-    """מחזיר {קטגוריה: אחוז} מקובץ המבצעים — כדי שהמחיר בפיד/סכמה יהיה המחיר שמוצג בפועל.
+def _scoped_active(rule, window):
+    """תוקף מבצע כללי: תאריכים משלו גוברים, אחרת החלון הגלובלי."""
+    starts = _clean_date((rule or {}).get('starts'))
+    ends = _clean_date((rule or {}).get('ends'))
+    if starts or ends:
+        return _promo_active(starts, ends)
+    window = window or {'starts': '', 'ends': ''}
+    return _promo_active(window.get('starts', ''), window.get('ends', ''))
 
-    כשהחלון הגלובלי אינו בתוקף מוחזר {} — כך הנחות הקטגוריה כבויות בכל הגנרטורים.
+
+def _load_category_discounts():
+    """מחזיר {קטגוריה: {'percent', 'ends'}} — רק כללים שבתוקף היום.
+
+    לכל כלל תאריכים משלו; כלל בלי תאריכים נופל לחלון הגלובלי. 'ends' נשמר
+    כדי שתאריך התוקף שמוצג (ו-priceValidUntil) יתאים לכלל שחל בפועל.
     """
     window = _load_promo_window()
-    if not _promo_active(window['starts'], window['ends']):
-        return {}
     discounts = {}
     try:
         with open(PRICELIST_PROMO_FILE, encoding='utf-8') as f:
             promo = json.load(f)
         for rule in promo.get('category_discounts', []):
             pct = float(rule.get('percent') or 0)
-            if rule.get('category') and pct > 0:
-                discounts[rule['category']] = pct
+            if not rule.get('category') or pct <= 0 or not _scoped_active(rule, window):
+                continue
+            ends = _clean_date(rule.get('ends'))
+            if not (_clean_date(rule.get('starts')) or ends):
+                ends = window.get('ends', '')   # אין תאריכים לכלל — חל תאריך החלון
+            discounts[rule['category']] = {'percent': pct, 'ends': ends}
     except (FileNotFoundError, ValueError):
         pass
     return discounts
@@ -119,7 +132,8 @@ def _effective_price(row, category_discounts, window=None):
         return regular if regular > price else price
 
     if not (row.get('original_price') or '').strip() and row.get('category') in category_discounts:
-        price = round(price * (1 - category_discounts[row['category']] / 100) * 10) / 10
+        pct = category_discounts[row['category']]['percent']
+        price = round(price * (1 - pct / 100) * 10) / 10
     return price
 
 
@@ -131,12 +145,18 @@ def _bundle_label(row, window):
     return b
 
 
-def _promo_dates_for(row, window):
-    """התאריכים החלים על המוצר: פר-מוצר אם הוגדרו, אחרת החלון הגלובלי."""
+def _promo_dates_for(row, window, category_discounts=None):
+    """התאריכים החלים על המוצר, לפי סדר עדיפויות:
+    תאריכי המוצר → תאריך כלל הקטגוריה שחל עליו → החלון הגלובלי."""
     start = _clean_date(row.get('promo_start'))
     end = _clean_date(row.get('promo_end'))
     if start or end:
         return start, end
+    # הנחת קטגוריה חלה רק כשאין למוצר מחיר מבצע פרטני
+    if category_discounts and not (row.get('original_price') or '').strip():
+        rule = category_discounts.get(row.get('category'))
+        if rule and rule.get('ends'):
+            return '', rule['ends']
     window = window or {'starts': '', 'ends': ''}
     return window.get('starts', ''), window.get('ends', '')
 
@@ -155,10 +175,10 @@ def _price_is_discounted(row, effective_price):
     return regular > effective_price or effective_price < raw
 
 
-def _sale_effective_date(row, window):
+def _sale_effective_date(row, window, category_discounts=None):
     """טווח תוקף המבצע בפורמט ISO של Merchant (`start/end`). ריק כשאין תאריך סיום."""
     import datetime
-    start, end = _promo_dates_for(row, window)
+    start, end = _promo_dates_for(row, window, category_discounts)
     if not end:
         return ''  # בלי סוף מוגדר אין מה לתחום
     if not start:
@@ -306,7 +326,7 @@ def update_merchant_feed():
         if on_sale:
             parts.append(f"<g:sale_price>{price:.2f} ILS</g:sale_price>")
             # תיחום המבצע בתאריכים — גוגל מפסיק להציג את מחיר המבצע בעצמו בסוף החלון
-            eff = _sale_effective_date(r, window)
+            eff = _sale_effective_date(r, window, category_discounts)
             if eff:
                 parts.append(f"<g:sale_price_effective_date>{eff}</g:sale_price_effective_date>")
         if r.get('brand'):
@@ -436,6 +456,11 @@ def generate_care_category_pages():
             bundle = _bundle_label(r, window)
             if bundle:
                 price_html += f' <span class="cp-bundle">{escape(bundle)}</span>'
+            # "עד DD.MM" צמוד לתג — לכל מבצע פעיל (מחיר מבצע, הנחת קטגוריה או חבילה)
+            _, _cat_end = _promo_dates_for(r, window, category_discounts)
+            if _cat_end and (bundle or _price_is_discounted(r, price)):
+                _d = _cat_end.split('-')
+                price_html += f' <span class="cp-validity">עד {_d[2]}.{_d[1]}</span>'
 
             cards.append(
                 '<li class="cp-item">'
@@ -448,7 +473,7 @@ def generate_care_category_pages():
 
             offer = {'@type': 'Offer', 'price': price, 'priceCurrency': 'ILS',
                      'availability': 'https://schema.org/InStock', 'url': page_url}
-            _, promo_end = _promo_dates_for(r, window)
+            _, promo_end = _promo_dates_for(r, window, category_discounts)
             if promo_end and _price_is_discounted(r, price):
                 offer['priceValidUntil'] = promo_end
             product = {'@type': 'Product', 'name': r['name'], 'sku': r['id'], 'offers': offer}
@@ -570,6 +595,7 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         .cp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.05rem; }}
         .cp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 0.9rem; }}
         .cp-bundle {{ background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-inline-start: 4px; }}
+        .cp-validity {{ font-size: 0.72rem; color: #6B6B6B; margin-inline-start: 4px; white-space: nowrap; }}
         .cc-footer {{ background: var(--primary-dark); color: #fff; text-align: center; padding: 20px 16px; margin-top: 30px; }}
         .cc-footer a {{ color: #fff; }}
         .cc-faq {{ margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
@@ -657,7 +683,7 @@ def generate_care_product_pages():
 
         html = _render_care_product_html(r, price, regular, on_sale, img, cat,
                                          cat_slug.get(cat), page_url, slugs, related,
-                                         _bundle_label(r, window), _promo_dates_for(r, window))
+                                         _bundle_label(r, window), _promo_dates_for(r, window, category_discounts))
         out_dir = os.path.join('care', 'product', slug)
         os.makedirs(out_dir, exist_ok=True)
         with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
@@ -731,13 +757,12 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
     if bundle:
         price_html += f' <span class="pp-bundle">{escape(bundle)}</span>'
 
-    # "בתוקף עד" בטקסט קטן — רק כשקיים תאריך סיום ויש בכלל מבצע
+    # "בתוקף עד" בטקסט קטן, צמוד לתג — רק כשקיים תאריך סיום ויש בכלל מבצע
     promo_end = (promo_dates or ('', ''))[1]
     discounted = _price_is_discounted(r, price)
-    validity_html = ''
     if promo_end and (discounted or bundle):
         d = promo_end.split('-')
-        validity_html = f'<div class="pp-validity">בתוקף עד {d[2]}.{d[1]}.{d[0]}</div>'
+        price_html += f' <span class="pp-validity">בתוקף עד {d[2]}.{d[1]}.{d[0]}</span>'
 
     related_html = ''
     if related:
@@ -820,7 +845,7 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
         .pp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 1.05rem; }}
         .pp-sale {{ background: #d32f2f; color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
         .pp-bundle {{ background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
-        .pp-validity {{ font-size: 0.8rem; color: #6B6B6B; margin-bottom: 10px; }}
+        .pp-validity {{ font-size: 0.78rem; color: #6B6B6B; margin-inline-start: 6px; white-space: nowrap; }}
         .pp-unit {{ font-size: 0.9rem; color: #616161; margin-bottom: 10px; }}
         .pp-desc {{ color: #444; margin-bottom: 20px; }}
         .cc-cta {{ display: inline-block; background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; padding: 13px 26px; border-radius: 10px; }}
@@ -848,7 +873,6 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
                 <h1>{escape(name)}</h1>
                 {f'<div class="pp-brand">{escape(brand)}</div>' if brand else ''}
                 <div class="pp-priceline">{price_html}</div>
-                {validity_html}
                 {f'<div class="pp-unit">יחידת מכירה: {escape(unit)}</div>' if unit else ''}
                 {f'<p class="pp-desc">{escape(desc)}</p>' if desc else ''}
                 <a class="cc-cta" href="{escape(catalog_deep)}">להוספה לסל והזמנה →</a>
@@ -898,7 +922,7 @@ def update_care_schema():
             _regular = float(r.get('original_price') or 0)
         except ValueError:
             _regular = 0
-        _, _promo_end = _promo_dates_for(r, window)
+        _, _promo_end = _promo_dates_for(r, window, category_discounts)
         if _promo_end and _price_is_discounted(r, price):
             offer['priceValidUntil'] = _promo_end
         product = {
@@ -942,7 +966,6 @@ def update_care_schema():
 
     # מניעת קפיצת פריסה (CLS): כשידוע כבר בזמן השמירה שיהיה באנר מבצעים,
     # שומרים לו את המקום מהרגע הראשון במקום לדחוף את הדף אחרי טעינת ה-JS
-    window_active = _promo_active(window['starts'], window['ends'])
     has_sales = any((r.get('original_price') or '').strip() and _product_promo_active(r, window) for r in rows)
     has_bundle = any(_bundle_label(r, window) for r in rows)
     has_promo = has_sales or has_bundle or bool(category_discounts)
@@ -951,9 +974,10 @@ def update_care_schema():
             promo_cfg = json.load(f)
         banner_cfg = promo_cfg.get('banner') or {}
         cart_cfg = promo_cfg.get('cart_discount') or {}
-        has_promo = has_promo or (window_active and (
-            (banner_cfg.get('enabled') and banner_cfg.get('text')) or
-            (cart_cfg.get('enabled') and float(cart_cfg.get('percent') or 0) > 0)))
+        # כל מבצע נבדק לפי התאריכים שלו (אחרת החלון הגלובלי)
+        has_promo = has_promo or (
+            (banner_cfg.get('enabled') and banner_cfg.get('text') and _scoped_active(banner_cfg, window)) or
+            (cart_cfg.get('enabled') and float(cart_cfg.get('percent') or 0) > 0 and _scoped_active(cart_cfg, window)))
     except (FileNotFoundError, ValueError):
         pass
     banner_tag = '<div id="promo-banner" style="display:block"></div>' if has_promo else '<div id="promo-banner"></div>'
@@ -1055,15 +1079,21 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             banner = data.get('banner') or {}
             cart = data.get('cart_discount') or {}
             promo = {
-                'banner': {'enabled': bool(banner.get('enabled')), 'text': str(banner.get('text', ''))[:200]},
+                'banner': {'enabled': bool(banner.get('enabled')), 'text': str(banner.get('text', ''))[:200],
+                           'starts': _clean_date(banner.get('starts')), 'ends': _clean_date(banner.get('ends'))},
                 'cart_discount': {
                     'enabled': bool(cart.get('enabled')),
                     'min_total': to_num(cart.get('min_total')),
                     'min_items': int(to_num(cart.get('min_items'))),
                     'percent': min(90.0, to_num(cart.get('percent'))),
+                    'starts': _clean_date(cart.get('starts')),
+                    'ends': _clean_date(cart.get('ends')),
                 },
                 'category_discounts': [
-                    {'category': str(r.get('category', ''))[:60], 'percent': min(90.0, to_num(r.get('percent')))}
+                    {'category': str(r.get('category', ''))[:60],
+                     'percent': min(90.0, to_num(r.get('percent'))),
+                     'starts': _clean_date(r.get('starts')),
+                     'ends': _clean_date(r.get('ends'))}
                     for r in (data.get('category_discounts') or [])
                     if r.get('category') and to_num(r.get('percent')) > 0
                 ][:20],

@@ -458,12 +458,15 @@ button {
     vertical-align: 2px;
 }
 
-/* "בתוקף עד DD.MM.YYYY" — טקסט קטן מתחת למחיר */
+/* "עד DD.MM" — טקסט קטן צמוד לתג המבצע, באותה שורה */
 .promo-validity {
-    font-size: 0.72rem;
+    display: inline-block;
+    font-size: 0.7em;
     font-weight: 400;
     color: var(--text-secondary);
-    margin-top: 3px;
+    margin-right: 6px;
+    vertical-align: 2px;
+    white-space: nowrap;
 }
 
 /* "N חינם" בשורת ההזמנה */

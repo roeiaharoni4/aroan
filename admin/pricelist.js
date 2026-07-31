@@ -849,6 +849,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const catDiscountPct = document.getElementById('cat-discount-pct');
     const promoWindowStart = document.getElementById('promo-window-start');
     const promoWindowEnd = document.getElementById('promo-window-end');
+    const bannerEnd = document.getElementById('banner-end');
+    const cartDiscountEnd = document.getElementById('cart-discount-end');
+    const catDiscountEnd = document.getElementById('cat-discount-end');
     const catDiscountsListEl = document.getElementById('cat-discounts-list');
     const savePromoBtn = document.getElementById('save-promo-btn');
     let categoryDiscounts = []; // [{category, percent}]
@@ -858,7 +861,9 @@ document.addEventListener('DOMContentLoaded', () => {
         categoryDiscounts.forEach((rule, idx) => {
             const chip = document.createElement('span');
             chip.style.cssText = 'background:#fdeeee; color:#c0554d; border:1px solid #c0554d; border-radius:14px; padding:3px 10px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;';
-            chip.textContent = `${rule.category} — ${rule.percent}%`;
+            chip.textContent = rule.ends
+                ? `${rule.category} — ${rule.percent}% · עד ${cleanDate(rule.ends).split('-').reverse().join('.')}`
+                : `${rule.category} — ${rule.percent}%`;
             const x = document.createElement('button');
             x.textContent = '✕';
             x.title = 'הסר הנחה';
@@ -880,10 +885,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cd.min_total > 0) cartDiscountMin.value = cd.min_total;
             if (cd.min_items > 0) cartDiscountItems.value = cd.min_items;
             if (cd.percent > 0) cartDiscountPct.value = cd.percent;
-            categoryDiscounts = (p.category_discounts || []).filter(r => r.category && r.percent > 0);
+            categoryDiscounts = (p.category_discounts || [])
+                .filter(r => r.category && r.percent > 0)
+                .map(r => ({ category: r.category, percent: r.percent, starts: cleanDate(r.starts), ends: cleanDate(r.ends) }));
             const win = p.window || {};
             promoWindowStart.value = cleanDate(win.starts);
             promoWindowEnd.value = cleanDate(win.ends);
+            bannerEnd.value = cleanDate((p.banner || {}).ends);
+            cartDiscountEnd.value = cleanDate(cd.ends);
             renderCatDiscounts();
         })
         .catch(() => { });
@@ -896,8 +905,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         categoryDiscounts = categoryDiscounts.filter(r => r.category !== category);
-        categoryDiscounts.push({ category, percent: pct });
+        categoryDiscounts.push({ category, percent: pct, starts: '', ends: cleanDate(catDiscountEnd.value) });
         catDiscountPct.value = '';
+        catDiscountEnd.value = '';
         renderCatDiscounts();
         showToast('ההנחה נוספה לרשימה — לחץ "שמור מבצעים" כדי להחיל', 'success');
     };
@@ -924,12 +934,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    banner: { enabled: bannerEnabled.checked, text: bannerText.value.trim() },
+                    banner: {
+                        enabled: bannerEnabled.checked,
+                        text: bannerText.value.trim(),
+                        starts: '',
+                        ends: cleanDate(bannerEnd.value)
+                    },
                     cart_discount: {
                         enabled: cartDiscountEnabled.checked,
                         min_total: toNum(cartDiscountMin.value) || 0,
                         min_items: toNum(cartDiscountItems.value) || 0,
-                        percent: toNum(cartDiscountPct.value) || 0
+                        percent: toNum(cartDiscountPct.value) || 0,
+                        starts: '',
+                        ends: cleanDate(cartDiscountEnd.value)
                     },
                     category_discounts: categoryDiscounts,
                     window: { starts: winStart, ends: winEnd }

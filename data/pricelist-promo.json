@@ -1,22 +1,21 @@
 {
  "banner": {
   "enabled": false,
-  "text": ""
+  "text": "",
+  "starts": "",
+  "ends": ""
  },
  "cart_discount": {
   "enabled": true,
   "min_total": 350.0,
   "min_items": 0,
-  "percent": 10.0
+  "percent": 10.0,
+  "starts": "",
+  "ends": ""
  },
- "category_discounts": [
-  {
-   "category": "שיער",
-   "percent": 8.0
-  }
- ],
+ "category_discounts": [],
  "window": {
   "starts": "",
-  "ends": "2026-09-01"
+  "ends": ""
  }
 }

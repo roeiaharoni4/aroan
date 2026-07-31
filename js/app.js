@@ -320,7 +320,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.CATALOG_PROMO = promo; // נגיש גם לסקריפט הבאנר בעמוד
 
             PROMO_WINDOW = promo.window || { starts: '', ends: '' };
-            const windowActive = promoActive(PROMO_WINDOW.starts, PROMO_WINDOW.ends);
 
             // מבצע פרטני שפג תוקף — חוזרים למחיר הרגיל (price בקובץ הוא מחיר המבצע)
             PRODUCTS.forEach(p => {
@@ -331,29 +330,28 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (p.bundle && !productPromoActive(p)) p.bundle = '';
             });
 
-            // הנחת קטגוריה: חלה על מוצרים בלי מבצע פרטני, עיגול ל-10 אגורות
-            if (windowActive) {
-                (promo.category_discounts || []).forEach(rule => {
-                    const pct = parseFloat(rule.percent);
-                    if (!(pct > 0) || !rule.category) return;
-                    PRODUCTS.forEach(p => {
-                        if (p.category !== rule.category) return;
-                        if (p.original_price > p.price) return; // מבצע פרטני גובר
-                        if (!(p.price > 0)) return;
-                        if (!productPromoActive(p)) return;     // תאריכי המוצר גוברים
-                        const discounted = Math.round(p.price * (1 - pct / 100) * 10) / 10;
-                        if (discounted < p.price) {
-                            p.original_price = p.price;
-                            p.price = discounted;
-                        }
-                    });
+            // הנחת קטגוריה: כל כלל נבדק לפי התאריכים שלו (אחרת החלון הגלובלי)
+            (promo.category_discounts || []).forEach(rule => {
+                const pct = parseFloat(rule.percent);
+                if (!(pct > 0) || !rule.category || !scopedActive(rule)) return;
+                PRODUCTS.forEach(p => {
+                    if (p.category !== rule.category) return;
+                    if (p.original_price > p.price) return; // מבצע פרטני גובר
+                    if (!(p.price > 0)) return;
+                    if (!productPromoActive(p)) return;     // תאריכי המוצר גוברים
+                    const discounted = Math.round(p.price * (1 - pct / 100) * 10) / 10;
+                    if (discounted < p.price) {
+                        p.original_price = p.price;
+                        p.price = discounted;
+                        p._catRule = rule;                  // לזיהוי תאריך התוקף הרלוונטי
+                    }
                 });
-            }
+            });
 
             const cd = promo.cart_discount;
             const minTotal = cd ? parseFloat(cd.min_total) || 0 : 0;
             const minItems = cd ? parseInt(cd.min_items, 10) || 0 : 0;
-            if (windowActive && cd && cd.enabled && parseFloat(cd.percent) > 0 && (minTotal > 0 || minItems > 0)) {
+            if (cd && cd.enabled && scopedActive(cd) && parseFloat(cd.percent) > 0 && (minTotal > 0 || minItems > 0)) {
                 CART_PROMO = { min_total: minTotal, min_items: minItems, percent: parseFloat(cd.percent) };
             }
         } catch (e) {
@@ -382,6 +380,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         return promoActive(PROMO_WINDOW.starts, PROMO_WINDOW.ends);
     }
 
+    // תוקף של מבצע כללי (באנר / הנחת סל / כלל קטגוריה):
+    // תאריכים משלו גוברים, אחרת נופלים לחלון הגלובלי
+    function scopedActive(rule) {
+        if (rule && (rule.starts || rule.ends)) return promoActive(rule.starts, rule.ends);
+        return promoActive(PROMO_WINDOW.starts, PROMO_WINDOW.ends);
+    }
+
     // "2+1" → {buy:2, free:1}; קלט לא תקין → null
     function parseBundle(str) {
         const m = /^(\d{1,2})\+(\d{1,2})$/.exec((str || "").replace(/\s/g, ""));
@@ -405,10 +410,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         return qty - chargeableQty(product, qty);
     }
 
-    // תאריך הסיום הרלוונטי למוצר (פר-מוצר גובר), לתצוגת "בתוקף עד"
+    // תאריך הסיום הרלוונטי למוצר, לפי סדר עדיפויות:
+    // תאריכי המוצר → תאריך כלל הקטגוריה שהוחל עליו → החלון הגלובלי
     function promoEndFor(p) {
         if (p.promo_start || p.promo_end) return p.promo_end || '';
+        if (p._catRule && (p._catRule.starts || p._catRule.ends)) return p._catRule.ends || '';
         return PROMO_WINDOW.ends || '';
+    }
+
+    // האם למוצר יש מבצע פעיל כלשהו (מחיר מבצע / הנחת קטגוריה / חבילה)
+    function hasActivePromo(p) {
+        return p.original_price > p.price || !!parseBundle(p.bundle);
     }
 
     // DD.MM.YYYY לתצוגה
@@ -417,20 +429,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         return m ? `${m[3]}.${m[2]}.${m[1]}` : "";
     }
 
-    // מוסיף לאלמנט המחיר תווית חבילה ("1+1") ושורת "בתוקף עד" בטקסט קטן
+    // תווית מבצע חבילה ("1+1") — תג בלבד
     function appendBundleInfo(priceEl, product) {
         if (!parseBundle(product.bundle)) return;
         const badge = document.createElement("span");
         badge.className = "bundle-badge";
         badge.textContent = product.bundle;
         priceEl.appendChild(badge);
-        const end = fmtDateHe(promoEndFor(product));
-        if (end) {
-            const validity = document.createElement("div");
-            validity.className = "promo-validity";
-            validity.textContent = "בתוקף עד " + end;
-            priceEl.appendChild(validity);
-        }
+    }
+
+    // "עד DD.MM" בטקסט קטן צמוד לתג — לכל מבצע פעיל (מחיר מבצע, הנחת קטגוריה או חבילה)
+    function appendPromoValidity(priceEl, product) {
+        if (!hasActivePromo(product)) return;
+        const end = promoEndFor(product);
+        if (!end) return;
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(end);
+        if (!m) return;
+        const validity = document.createElement("span");
+        validity.className = "promo-validity";
+        validity.textContent = `עד ${m[3]}.${m[2]}`;
+        validity.title = `המבצע בתוקף עד ${m[3]}.${m[2]}.${m[1]}`;
+        priceEl.appendChild(validity);
     }
 
     // הנחת הסל (0 אם לא הופעלה או שלא הגיעו לרף הסכום/הכמות). עיגול ל-10 אגורות
@@ -821,6 +840,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     price.appendChild(saleBadge);
                 }
                 appendBundleInfo(price, product);
+                appendPromoValidity(price, product);
                 body.appendChild(price);
             }
 
@@ -1564,6 +1584,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 qvPrice.appendChild(saleBadge);
             }
             appendBundleInfo(qvPrice, product);
+            appendPromoValidity(qvPrice, product);
         } else {
             qvPrice.style.display = 'none';
         }

@@ -61,6 +61,8 @@
                         <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
                             <input type="checkbox" id="banner-enabled"> מוצג
                         </label>
+                        <span>עד תאריך</span>
+                        <input type="date" id="banner-end" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
                     </div>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <strong>חלון תוקף המבצעים:</strong>
@@ -68,7 +70,7 @@
                         <input type="date" id="promo-window-start" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
                         <span>עד תאריך</span>
                         <input type="date" id="promo-window-end" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
-                        <span style="font-size:0.82rem; color:#888;">אופציונלי — חל על כל המבצעים (באנר, הנחת סל, קטגוריה וחבילות) חוץ ממוצרים שהוגדרו להם תאריכים משלהם. ריק = בלי הגבלה.</span>
+                        <span style="font-size:0.82rem; color:#888;">ברירת מחדל לכל המבצעים. לכל מבצע (באנר / הנחת סל / קטגוריה) ולכל מוצר אפשר לקבוע תאריך משלו — והוא גובר. ריק = בלי הגבלה.</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <strong>הנחת סל:</strong>
@@ -82,11 +84,15 @@
                         <span>פריטים (מספיק אחד מהשניים) — הנחה של</span>
                         <input type="number" id="cart-discount-pct" min="1" max="90" step="0.5" style="width:70px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
                         <span>% על כל ההזמנה (ההנחה מחושבת אוטומטית בעגלה)</span>
+                        <span>עד תאריך</span>
+                        <input type="date" id="cart-discount-end" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
                     </div>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <strong>הנחת קטגוריה:</strong>
                         <select id="cat-discount-select" style="padding:7px 8px; border:1px solid #ddd; border-radius:6px; background:#fff;"></select>
                         <input type="number" id="cat-discount-pct" min="1" max="90" step="0.5" placeholder="%" style="width:70px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                        <span>עד תאריך</span>
+                        <input type="date" id="cat-discount-end" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
                         <button id="add-cat-discount-btn" class="btn btn-outline">הוסף</button>
                         <span id="cat-discounts-list" style="display:flex; gap:6px; flex-wrap:wrap;"></span>
                     </div>
