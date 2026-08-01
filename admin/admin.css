@@ -177,6 +177,63 @@ body {
     border: 1px solid var(--border-color);
 }
 
+/* עמודת תיאור עם עריכה ישירה — למעבר על תיאורים בכמות בלי לפתוח חלון לכל מוצר */
+.th-desc {
+    min-width: 320px;
+}
+
+.th-hint {
+    font-weight: 400;
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
+
+.td-desc {
+    width: 40%;
+    min-width: 320px;
+}
+
+.desc-inline {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-color, #1e293b);
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    resize: vertical;
+    overflow: hidden;
+}
+
+.desc-inline:focus {
+    outline: none;
+    border-color: #639C7D;
+    box-shadow: 0 0 0 2px rgba(99, 156, 125, 0.18);
+}
+
+.desc-inline::placeholder {
+    color: #b91c1c;
+    opacity: 0.75;
+}
+
+/* תיאור ששונה וטרם נשמר לקובץ */
+.desc-inline.desc-dirty {
+    border-color: #639C7D;
+    background: #f2f9f5;
+}
+
+#save-all-btn.has-unsaved {
+    animation: unsaved-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes unsaved-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 156, 125, 0.55); }
+    50%      { box-shadow: 0 0 0 6px rgba(99, 156, 125, 0); }
+}
+
 .action-btns button {
     background: none;
     border: none;

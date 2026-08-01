@@ -94,6 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${p.category}</td>
                 <td>${p.unit}</td>
                 <td>${parseFloat(p.price).toFixed(2)}</td>
+                <td class="td-desc">
+                    <textarea class="desc-inline" rows="3" data-id="${p.id}"
+                        placeholder="אין תיאור">${p.description || ''}</textarea>
+                </td>
                 <td class="action-btns">
                     <button class="edit-btn" title="ערוך" data-id="${p.id}">✏️</button>
                     <button class="delete-btn" title="מחק" data-id="${p.id}">🗑️</button>
@@ -109,6 +113,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.onclick = () => deleteProduct(btn.dataset.id);
         });
+
+        // עריכת תיאור ישירות מהטבלה — נועד למעבר על תיאורים בכמות בלי לפתוח
+        // חלון לכל מוצר. השינוי נשמר למערך בזיכרון; "שמור שינויים" כותב לקובץ.
+        document.querySelectorAll('.desc-inline').forEach(area => {
+            const autoGrow = () => {
+                area.style.height = 'auto';
+                area.style.height = area.scrollHeight + 'px';
+            };
+            autoGrow();
+            area.addEventListener('input', autoGrow);
+            area.addEventListener('change', () => {
+                const p = products.find(prod => prod.id === area.dataset.id);
+                if (!p) return;
+                const value = area.value.trim();
+                if (p.description === value) return;
+                p.description = value;
+                area.classList.add('desc-dirty');
+                markUnsaved();
+            });
+        });
+    }
+
+    // מסמן שיש שינויים שטרם נכתבו לקובץ — התיאורים נערכים בכמות ולכן קל לשכוח לשמור
+    function markUnsaved() {
+        const btn = document.getElementById('save-all-btn');
+        if (btn) btn.classList.add('has-unsaved');
     }
 
     function updateCategoryDatalist() {
@@ -295,6 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await res.json();
             if (result.success) {
                 showToast('הקטלוג עודכן בהצלחה!', 'success');
+                saveAllBtn.classList.remove('has-unsaved');
+                document.querySelectorAll('.desc-dirty').forEach(el => el.classList.remove('desc-dirty'));
             } else {
                 throw new Error(result.error);
             }
