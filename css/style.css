@@ -481,6 +481,28 @@ button {
     color: var(--text-secondary);
 }
 
+/* מידע אריזה/קרטון — מוצג רק כשהשדה מולא ב-CSV */
+.product-packaging {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.15rem;
+}
+
+.qv-packaging {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+/* הדגשת מוצר בהגעה מ-deep link (?product=<id>).
+   site.css מגדיר border ל-.highlight-product, אבל style.css נטען אחריו
+   ו-.product-card דורס אותו באותה ספציפיות — לכן הכלל חוזר כאן. */
+#products .product-card.highlight-product {
+    border-width: 2px;
+    border-style: solid;
+    border-color: var(--primary);
+}
+
 .card-footer {
     margin-top: 0.75rem;
     display: flex;

@@ -45,6 +45,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const qvSku = document.getElementById("qv-sku");
     const qvPrice = document.getElementById("qv-price");
     const qvDesc = document.getElementById("qv-description");
+    // שורת האריזה נוצרת דינמית ולא כאלמנט ב-HTML, כדי לא לחייב הוספת אותו
+    // מזהה בארבעה קבצים נפרדים (catalog, catalog-shell, care, agent)
+    const qvPackaging = (() => {
+        if (!qvDesc) return null;
+        const el = document.createElement("div");
+        el.id = "qv-packaging";
+        el.className = "qv-packaging";
+        el.style.display = "none";
+        qvDesc.insertAdjacentElement("afterend", el);
+        return el;
+    })();
     const qvInput = document.getElementById("qv-input");
     const qvMinus = document.getElementById("qv-minus");
     const qvPlus = document.getElementById("qv-plus");
@@ -289,6 +300,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // מבצע: original_price קיים רק בקובץ המחירון הנסתר — כשהוא גבוה מהמחיר מוצג "מבצע"
                             original_price: parseFloat(item.original_price) || 0,
                             description: item.description || "", // Optional description
+                            // מידע אריזה/קרטון — עמודה אופציונלית בקטלוג העסקי, מוצגת רק כשמולאה
+                            packaging: (item.packaging || "").trim(),
                             brand: (item.brand || "").trim() || detectBrand(item.name), // עמודת brand בקובץ גוברת על זיהוי אוטומטי
                             // מבצע חבילה ותוקף — קיימים רק בקובץ המחירון (בקטלוג הרגיל העמודות לא קיימות)
                             bundle: (item.bundle || "").trim(),
@@ -649,6 +662,39 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
+        // בקטגוריית "הזמנות אחרונות": כפתור למילוי הכמויות מההזמנה האחרונה בבת אחת.
+        // רוב ההזמנות ב-B2B הן חזרה על הזמנה קודמת, ולכן זה מקצר את התהליך משמעותית.
+        if (activeCategory === 'recent' && searchQuery === "" && !activeBrand) {
+            const lastOrder = getRecentOrders()[0];
+            if (lastOrder && (lastOrder.items || []).length) {
+                const bar = document.createElement('div');
+                bar.style.cssText = 'grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--bg-light, #f6faf8); border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 10px 14px;';
+                const label = document.createElement('span');
+                label.textContent = `ההזמנה האחרונה שלך (${lastOrder.date}) — ${lastOrder.items.length} פריטים`;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-primary';
+                btn.textContent = 'הוסף הכל לסל';
+                btn.addEventListener('click', () => {
+                    let added = 0;
+                    lastOrder.items.forEach(i => {
+                        // רק מוצרים שעדיין קיימים בקטלוג
+                        if (!PRODUCTS.some(p => p.id === i.id)) return;
+                        const qty = parseInt(i.qty, 10);
+                        if (!qty || qty <= 0) return;
+                        cart[i.id] = qty;
+                        added++;
+                    });
+                    updateSummary();
+                    renderProducts();
+                    if (added) trackEvent('add_to_cart', { order_items: added, source: 'recent_order' });
+                });
+                bar.appendChild(label);
+                bar.appendChild(btn);
+                productsEl.appendChild(bar);
+            }
+        }
+
         // בקטגוריית המבצעים: שורת הסבר על מבצע הסל (קנייה מעל סכום/כמות)
         if (activeCategory === 'sales' && CART_PROMO && searchQuery === "" && !activeBrand) {
             const note = document.createElement('div');
@@ -849,6 +895,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             sku.textContent = "מק״ט: " + product.id;
             body.appendChild(sku);
 
+            // מידע אריזה/קרטון — מוצג רק כשהשדה מולא ב-CSV
+            if (product.packaging) {
+                const pack = document.createElement("div");
+                pack.className = "product-packaging";
+                pack.textContent = product.packaging;
+                body.appendChild(pack);
+            }
+
             // Footer / Controls
             const footer = document.createElement("div");
             footer.className = "card-footer";
@@ -916,6 +970,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // מעקב אירועים: שולח גם ל-dataLayer (GTM) וגם ל-GA4, באותה תבנית של order_sent.
+    // עד כה דווח רק order_sent — כלומר לא היה מידע על מה שקורה לפני השליחה.
+    function trackEvent(name, params) {
+        try {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push(Object.assign({ event: name }, params));
+            if (typeof gtag === 'function') gtag('event', name, params);
+        } catch (e) {
+            /* מעקב לא אמור להפיל את הקטלוג */
+        }
+    }
+
     // נעילת גלילת הרקע כשמודאל כלשהו פתוח
     function syncModalScrollLock() {
         document.body.style.overflow = document.querySelector(".modal-overlay.open") ? "hidden" : "";
@@ -926,6 +992,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         fillOrderTable();
         orderModal.classList.add("open");
         syncModalScrollLock();
+        const items = Object.keys(cart).length;
+        if (items > 0) {
+            trackEvent("begin_checkout", { order_items: items });
+        }
     }
 
     function setupEventListeners() {
@@ -1053,6 +1123,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             inputEl.value = next;
         }
         updateSummary();
+
+        // add_to_cart נשלח רק במעבר מ-0 לכמות כלשהי, כדי שכל לחיצה על "+"
+        // לא תיספר כהוספה נפרדת ותנפח את הנתונים
+        if (current === 0 && next > 0) {
+            const product = PRODUCTS.find(p => p.id === id);
+            if (product) {
+                trackEvent("add_to_cart", {
+                    item_id: product.id,
+                    item_name: product.name,
+                    item_category: product.category
+                });
+            }
+        }
 
         if (delta > 0 && event) {
             animateAddToCart(event.target);
@@ -1600,12 +1683,28 @@ document.addEventListener("DOMContentLoaded", async () => {
             qvDesc.style.display = 'none';
         }
 
+        // מידע אריזה/קרטון — מוצג רק כשהשדה מולא
+        if (qvPackaging) {
+            if (product.packaging) {
+                qvPackaging.textContent = product.packaging;
+                qvPackaging.style.display = 'block';
+            } else {
+                qvPackaging.textContent = "";
+                qvPackaging.style.display = 'none';
+            }
+        }
+
         // Init Quantity
         const currentQty = cart[product.id] || 0;
         qvInput.value = currentQty > 0 ? currentQty : 1; // Default to 1 if not in cart
 
         quickViewModal.classList.add("open");
         syncModalScrollLock();
+        trackEvent("view_item", {
+            item_id: product.id,
+            item_name: product.name,
+            item_category: product.category
+        });
     }
 
     function renderSkeleton(count) {
