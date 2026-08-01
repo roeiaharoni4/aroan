@@ -700,10 +700,13 @@ def generate_care_product_pages():
     _update_sitemap_care_products(sitemap_urls)
 
 
-def _cleanup_stale_product_pages(valid_slugs):
-    """מוחק תיקיות תחת care/product/ שאין להן מוצר קיים (הוסתר/שונה שמו/נמחק)."""
+def _cleanup_stale_product_pages(valid_slugs, base=os.path.join('care', 'product')):
+    """מוחק תיקיות מוצר שאין להן מוצר קיים (הוסתר/שונה שמו/נמחק).
+
+    ה-base פרמטרי כדי שגם עץ המוצרים של הקטלוג העסקי (catalog/product/)
+    ינוקה באותו מנגנון — כל עץ מנוקה מול קבוצת ה-slugs שלו בלבד.
+    """
     import shutil
-    base = os.path.join('care', 'product')
     if not os.path.isdir(base):
         return
     for name in os.listdir(base):
@@ -712,12 +715,16 @@ def _cleanup_stale_product_pages(valid_slugs):
             shutil.rmtree(path, ignore_errors=True)
 
 
-def _update_sitemap_care_products(urls):
-    """מזריק את כתובות דפי המוצר ל-sitemap.xml בין הסימונים (או לפני </urlset> בפעם הראשונה)."""
+def _update_sitemap_care_products(urls, start='  <!-- CARE_PRODUCTS_SITEMAP_START -->',
+                                  end='  <!-- CARE_PRODUCTS_SITEMAP_END -->'):
+    """מזריק כתובות דפי מוצר ל-sitemap.xml בין הסימונים (או לפני </urlset> בפעם הראשונה).
+
+    הסימונים פרמטריים כדי ששני עצי המוצרים (care ו-catalog) יחזיקו בלוק נפרד
+    ולא ידרסו זה את זה.
+    """
     import datetime
     from xml.sax.saxutils import escape
     sitemap_file = 'sitemap.xml'
-    start, end = '  <!-- CARE_PRODUCTS_SITEMAP_START -->', '  <!-- CARE_PRODUCTS_SITEMAP_END -->'
     today = datetime.date.today().isoformat()
     entries = '\n'.join(
         f'  <url>\n    <loc>{escape(u)}</loc>\n    <lastmod>{today}</lastmod>\n'
@@ -1081,6 +1088,298 @@ def generate_catalog_category_schema():
     return updated
 
 
+def generate_catalog_product_pages():
+    """יוצר דף SEO סטטי לכל מוצר בקטלוג העסקי תחת catalog/product/<slug>/index.html.
+
+    בניגוד לדפי המוצר של /care/ — כאן אין מחיר: המחירון העסקי מוסתר בכוונה,
+    ולכן הסכמה היא Product בלי Offer. המשמעות: אין rich snippet של מחיר
+    בתוצאות החיפוש, אבל הדף עדיין מדורג על הטקסט.
+    """
+    from urllib.parse import quote
+
+    rows = _load_catalog_rows()
+    slugs = _care_product_slugs(rows)          # דטרמיניסטי ומשותף לשני הקטלוגים
+
+    by_cat = {}
+    for r in rows:
+        by_cat.setdefault(r.get('category', ''), []).append(r)
+
+    generated, sitemap_urls = set(), []
+    for r in rows:
+        slug = slugs[r['id']]
+        cat = r.get('category', '')
+        page_url = f'{SITE_BASE_URL}/catalog/product/{quote(slug)}/'
+
+        related = [o for o in by_cat.get(cat, []) if o['id'] != r['id']][:6]
+        html = _render_catalog_product_html(r, cat, _catalog_category_slug(cat), page_url, slugs, related)
+
+        out_dir = os.path.join('catalog', 'product', slug)
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
+            f.write(html)
+        generated.add(slug)
+        sitemap_urls.append(page_url)
+
+    _cleanup_stale_product_pages(generated, base=os.path.join('catalog', 'product'))
+    _update_sitemap_care_products(sitemap_urls,
+                                  start='  <!-- CATALOG_PRODUCTS_SITEMAP_START -->',
+                                  end='  <!-- CATALOG_PRODUCTS_SITEMAP_END -->')
+    return len(generated)
+
+
+def bake_catalog_product_index():
+    """מזריק ל-10 דפי הקטגוריה בלוק סטטי עם קישור לכל מוצר בקטגוריה.
+
+    שתי סיבות: (1) ה-HTML של דפי הקטגוריה ריק ממוצרים — catalog-shell.js בונה
+    את #products ב-connectedCallback דרך innerHTML ומוחק כל תוכן שהושם בתוכו,
+    ולכן אי אפשר להזריק לשם כמו ב-/care/; (2) בלי קישורים נכנסים גוגל לא יגיע
+    בכלל ל-176 דפי המוצר.
+
+    הבלוק יושב מחוץ ל-<catalog-shell> ונשאר גלוי לגולשים כאינדקס לדפדוף —
+    תוכן אמיתי, לא הסתרה. משתמש ב-.cat-links הקיים ולכן לא מוסיף CSS.
+    """
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    rows = _load_catalog_rows()
+    slugs = _care_product_slugs(rows)
+    start_marker, end_marker = '<!-- CATALOG_INDEX_START -->', '<!-- CATALOG_INDEX_END -->'
+    updated = []
+
+    for slug, category in CATALOG_CATEGORIES.items():
+        path = f'catalog/{slug}/index.html'
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8') as f:
+            html = f.read()
+
+        items = [r for r in rows if r.get('category') == category]
+        if not items:
+            continue
+        links = '\n'.join(
+            f'                <a href="/catalog/product/{quote(slugs[r["id"]])}/">{escape(r["name"])}</a>'
+            for r in items)
+        block = f'''{start_marker}
+    <section class="cat-seo">
+        <div class="container">
+            <h2>כל המוצרים בקטגוריית {escape(category)}</h2>
+            <p>לחצו על מוצר לפרטים מלאים, או הוסיפו אותו להזמנה ישירות מהקטלוג שלמעלה.</p>
+            <div class="cat-links">
+{links}
+            </div>
+        </div>
+    </section>
+    {end_marker}'''
+
+        if start_marker in html and end_marker in html:
+            new_html = re.sub(re.escape(start_marker) + r'.*?' + re.escape(end_marker),
+                              lambda m: block, html, flags=re.S)
+        else:
+            new_html = html.replace('<site-footer></site-footer>', block + '\n\n    <site-footer></site-footer>', 1)
+
+        if new_html != html:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(new_html)
+            updated.append(f'{slug}:{len(items)}')
+
+    return updated
+
+
+def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
+    """HTML של דף מוצר בקטלוג העסקי. קליל בכוונה — בלי app.js ובלי style.css,
+    ולכן שינוי כאן לא מחייב העלאת פרמטרי גרסה."""
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    name, pid = r['name'], r['id']
+    desc = (r.get('description') or '').strip()
+    unit = (r.get('unit') or '').strip()
+    packaging = (r.get('packaging') or '').strip()
+    img_rel = (r.get('image') or '').strip()
+    img_abs = SITE_BASE_URL + '/' + quote(img_rel.lstrip('/')) if img_rel else ''
+
+    title = f'{name} — סיטונאות לעסקים | אהרוני שיווק והפצה'
+    meta_desc = (desc[:150] if desc
+                 else f'{name} במחירים סיטונאיים לעסקים, מוסדות ומסעדות. אספקה מהירה בגוש דן והמרכז.')
+
+    cat_url = f'/catalog/{cat_slug}/' if cat_slug else '/catalog/'
+    # deep link: app.js גולל לכרטיס המוצר ומדגיש אותו (הקוד קיים וגנרי)
+    catalog_cta = f'{cat_url}?product={quote(pid)}'
+    wa_text = quote(f'שלום, אשמח להצעת מחיר עבור: {name} (מק״ט {pid})')
+    wa_cta = f'https://wa.me/{CATALOG_WHATSAPP}?text={wa_text}'
+
+    schema = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        'name': name,
+        'sku': pid,
+        'category': cat,
+        'url': page_url,
+        # אין Offer בכוונה — המחירון העסקי לא מפורסם
+        'brand': {'@type': 'Brand', 'name': 'אהרוני שיווק והפצה'},
+        'manufacturer': {'@type': 'Organization', 'name': 'אהרוני שיווק והפצה'},
+    }
+    if desc:
+        schema['description'] = desc
+    if img_abs:
+        schema['image'] = img_abs
+
+    breadcrumb = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {'@type': 'ListItem', 'position': 1, 'name': 'דף הבית', 'item': f'{SITE_BASE_URL}/'},
+            {'@type': 'ListItem', 'position': 2, 'name': 'קטלוג מוצרים', 'item': f'{SITE_BASE_URL}/catalog/'},
+            {'@type': 'ListItem', 'position': 3, 'name': cat or 'מוצרים',
+             'item': f'{SITE_BASE_URL}{cat_url}'},
+            {'@type': 'ListItem', 'position': 4, 'name': name, 'item': page_url},
+        ],
+    }
+
+    img_html = (f'<img class="p-img" src="/{quote(img_rel.lstrip("/"))}" alt="{escape(name)}" '
+                f'width="420" height="420" loading="eager">'
+                if img_rel else '<div class="p-noimg">אין תמונה</div>')
+
+    specs = [('מק״ט', pid)]
+    if cat:
+        specs.append(('קטגוריה', cat))
+    if unit:
+        specs.append(('יחידת מידה', unit))
+    if packaging:
+        specs.append(('אריזה', packaging))
+    specs_html = '\n'.join(
+        f'      <div class="spec"><dt>{escape(k)}</dt><dd>{escape(v)}</dd></div>' for k, v in specs)
+
+    related_html = ''
+    if related:
+        links = '\n'.join(
+            f'      <a class="chip" href="/catalog/product/{quote(slugs[o["id"]])}/">{escape(o["name"])}</a>'
+            for o in related)
+        related_html = f'''
+  <section class="related">
+    <h2>מוצרים נוספים בקטגוריית {escape(cat)}</h2>
+    <div class="chips">
+{links}
+    </div>
+    <p><a class="more" href="{escape(cat_url)}">לכל המוצרים בקטגוריה &laquo;</a></p>
+  </section>'''
+
+    desc_html = f'    <p class="p-desc">{escape(desc)}</p>\n' if desc else ''
+
+    return f'''<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{escape(title)}</title>
+    <meta name="description" content="{escape(meta_desc)}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{escape(page_url)}">
+    <meta property="og:type" content="product">
+    <meta property="og:title" content="{escape(title)}">
+    <meta property="og:description" content="{escape(meta_desc)}">
+    <meta property="og:url" content="{escape(page_url)}">
+    <meta property="og:image" content="{escape(img_abs or SITE_BASE_URL + '/images/og-image.png')}">
+    <link rel="icon" href="/images/logo.png">
+    <script type="application/ld+json">
+{json.dumps(schema, ensure_ascii=False, indent=2)}
+    </script>
+    <script type="application/ld+json">
+{json.dumps(breadcrumb, ensure_ascii=False, indent=2)}
+    </script>
+    <style>
+        :root {{ --primary: #639C7D; --dark: #1A4231; --ink: #23302a; --muted: #5c6b63; --line: #e3ebe6; }}
+        * {{ box-sizing: border-box; }}
+        body {{ margin: 0; font-family: 'Assistant', 'Heebo', Arial, sans-serif; color: var(--ink);
+               background: #fff; line-height: 1.7; }}
+        a {{ color: var(--dark); }}
+        .wrap {{ max-width: 1000px; margin: 0 auto; padding: 0 16px; }}
+        header.site {{ background: var(--dark); color: #fff; padding: 14px 0; }}
+        header.site .wrap {{ display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                            flex-wrap: wrap; }}
+        header.site a {{ color: #fff; text-decoration: none; font-weight: 700; }}
+        .crumbs {{ font-size: .9rem; color: var(--muted); padding: 14px 0; }}
+        .crumbs a {{ color: var(--muted); }}
+        .p-main {{ display: grid; grid-template-columns: 420px 1fr; gap: 32px; align-items: start;
+                  padding-bottom: 28px; }}
+        .p-img {{ width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; }}
+        .p-noimg {{ width: 100%; aspect-ratio: 1; border: 1px dashed var(--line); border-radius: 10px;
+                   display: flex; align-items: center; justify-content: center; color: var(--muted); }}
+        h1 {{ font-size: 1.8rem; margin: 0 0 10px; color: var(--dark); }}
+        .p-desc {{ font-size: 1.05rem; }}
+        dl.specs {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 18px 0; padding: 0; }}
+        .spec {{ border-bottom: 1px solid var(--line); padding-bottom: 6px; }}
+        .spec dt {{ font-size: .82rem; color: var(--muted); }}
+        .spec dd {{ margin: 0; font-weight: 600; }}
+        .ctas {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }}
+        .btn {{ flex: 1 1 220px; text-align: center; padding: 13px 18px; border-radius: 8px;
+               text-decoration: none; font-weight: 700; border: 2px solid var(--dark); }}
+        .btn-wa {{ background: var(--dark); color: #fff; }}
+        .btn-cat {{ background: #fff; color: var(--dark); }}
+        .note {{ color: var(--muted); font-size: .92rem; margin-top: 12px; }}
+        .related {{ border-top: 1px solid var(--line); padding: 22px 0 8px; }}
+        .related h2 {{ font-size: 1.15rem; color: var(--dark); }}
+        .chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+        .chip {{ display: inline-block; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+                text-decoration: none; font-size: .9rem; background: #f6faf8; }}
+        .more {{ font-weight: 700; text-decoration: none; }}
+        footer.site {{ background: var(--dark); color: #fff; margin-top: 30px; padding: 22px 0; }}
+        footer.site a {{ color: #cfe6d9; }}
+        @media (max-width: 820px) {{
+            .p-main {{ grid-template-columns: 1fr; gap: 20px; }}
+            dl.specs {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+
+<body>
+    <header class="site">
+        <div class="wrap">
+            <a href="/">אהרוני שיווק והפצה</a>
+            <a href="tel:0526000158">052-6000158</a>
+        </div>
+    </header>
+
+    <div class="wrap">
+        <nav class="crumbs" aria-label="breadcrumb">
+            <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
+            <a href="{escape(cat_url)}">{escape(cat or 'מוצרים')}</a> &laquo; {escape(name)}
+        </nav>
+
+        <article class="p-main">
+            <div>{img_html}</div>
+            <div>
+                <h1>{escape(name)}</h1>
+{desc_html}                <dl class="specs">
+{specs_html}
+                </dl>
+                <div class="ctas">
+                    <a class="btn btn-wa" href="{escape(wa_cta)}" target="_blank" rel="noopener">בקש הצעת מחיר בוואטסאפ</a>
+                    <a class="btn btn-cat" href="{escape(catalog_cta)}">הוסף להזמנה בקטלוג</a>
+                </div>
+                <p class="note">אספקה סיטונאית לעסקים, מוסדות ומסעדות באור יהודה, בקעת אונו וגוש דן.
+                    המחירים ניתנים בהצעת מחיר אישית לפי כמות.</p>
+            </div>
+        </article>
+{related_html}
+    </div>
+
+    <footer class="site">
+        <div class="wrap">
+            <div>אהרוני שיווק והפצה &middot; אור יהודה &middot;
+                <a href="tel:0526000158">052-6000158</a> &middot;
+                <a href="tel:036346236">03-6346236</a></div>
+            <div><a href="/catalog/">קטלוג מוצרים</a> &middot; <a href="/about/">אודות</a> &middot;
+                <a href="/contact/">צור קשר</a></div>
+        </div>
+    </footer>
+</body>
+
+</html>
+'''
+
+
 class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         # Disable caching for API and data files
@@ -1238,6 +1537,8 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # הקבצים הנגזרים מהקטלוג העסקי — נכשלים בשקט כדי לא להפיל שמירה
             try:
                 generate_catalog_category_schema()
+                generate_catalog_product_pages()
+                bake_catalog_product_index()
             except Exception as gen_err:
                 print(f'אזהרה: עדכון הקבצים הנגזרים של הקטלוג נכשל: {gen_err}')
 
