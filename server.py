@@ -19,6 +19,11 @@ CARE_PAGE_FILE = 'care/index.html'
 MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
 SITE_BASE_URL = 'https://aroam.co.il'
 
+# עמודות הקטלוג העסקי (data/products.csv). מקור אמת יחיד לכתיבה מהעורך —
+# packaging = מידע אריזה/קרטון, subcategory = שיוך לדף תת-קטגוריה (שניהם אופציונליים).
+PRODUCT_FIELDS = ['id', 'name', 'category', 'subcategory', 'unit', 'image',
+                  'price', 'packaging', 'description']
+
 
 def _clean_date(v):
     """מנרמל תאריך ל-YYYY-MM-DD; כל קלט לא תקין הופך למחרוזת ריקה (= בלי הגבלה)."""
@@ -1132,20 +1137,13 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             products = json.loads(post_data.decode('utf-8'))
             
-            # Write to CSV
+            # רשימת עמודות קבועה ולא נגזרת מהמוצר הראשון: אם מוצר אחד חסר שדה,
+            # גזירה דינמית הייתה מוחקת את העמודה מכל הקובץ.
             with open(DATA_FILE, 'w', newline='', encoding='utf-8') as f:
-                if len(products) > 0:
-                    fieldnames = list(products[0].keys())
-                    # Ensure description is present if not in first product
-                    if 'description' not in fieldnames:
-                        fieldnames.append('description')
-                    writer = csv.DictWriter(f, fieldnames=fieldnames)
-                    writer.writeheader()
-                    for p in products:
-                        writer.writerow(p)
-                else:
-                    # Empty file with headers
-                    f.write('id,name,category,unit,image,price,description\n')
+                writer = csv.DictWriter(f, fieldnames=PRODUCT_FIELDS, extrasaction='ignore')
+                writer.writeheader()
+                for p in products:
+                    writer.writerow({k: p.get(k, '') for k in PRODUCT_FIELDS})
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

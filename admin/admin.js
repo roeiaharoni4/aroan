@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const catInput = document.getElementById('prod-category');
     const unitInput = document.getElementById('prod-unit');
     const priceInput = document.getElementById('prod-price');
+    const packagingInput = document.getElementById('prod-packaging');
+    const subcatInput = document.getElementById('prod-subcategory');
     const descInput = document.getElementById('prod-description');
     
     const fileInput = document.getElementById('prod-image-file');
@@ -46,13 +48,17 @@ document.addEventListener('DOMContentLoaded', () => {
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
+                // כל שדה שלא נרשם כאן נמחק בשמירה הבאה — לשמור מסונכרן עם
+                // PRODUCT_FIELDS ב-server.py ועם אובייקט השמירה ב-save-modal-btn
                 products = results.data.map(item => ({
                     id: item.id || '',
                     name: item.name || '',
                     category: item.category || '',
+                    subcategory: item.subcategory || '',
                     unit: item.unit || 'יחידה',
                     image: item.image || '',
                     price: item.price || 0,
+                    packaging: item.packaging || '',
                     description: item.description || ''
                 })).filter(p => p.id && p.name);
                 
@@ -156,6 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
         catInput.value = p.category;
         unitInput.value = p.unit;
         priceInput.value = p.price;
+        packagingInput.value = p.packaging || '';
+        subcatInput.value = p.subcategory || '';
         descInput.value = p.description || '';
         urlInput.value = p.image;
         
@@ -233,9 +241,11 @@ document.addEventListener('DOMContentLoaded', () => {
             id: idInput.value.trim(),
             name: nameInput.value.trim(),
             category: catInput.value.trim(),
+            subcategory: subcatInput.value.trim(),
             unit: unitInput.value.trim() || 'יחידה',
             image: urlInput.value.trim(),
             price: parseFloat(priceInput.value) || 0,
+            packaging: packagingInput.value.trim(),
             description: descInput.value.trim()
         };
         
