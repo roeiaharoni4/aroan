@@ -1088,6 +1088,236 @@ def generate_catalog_category_schema():
     return updated
 
 
+# דפי תת-קטגוריה — נגזרו משאילתות אמיתיות ב-Search Console (3 חודשים) שהיו
+# להן הופעות ולא היה להן דף תואם באתר. ההופעות בהערה הן הבסיס לבחירה.
+CATALOG_SUBCATEGORIES = {
+    'hand-towels': {
+        'parent': 'paper',
+        'h1': 'נייר ניגוב ידיים ומגבות נייר בסיטונאות',
+        'title': 'נייר מגבת בסיטונאות | נייר ניגוב ידיים תעשייתי לעסקים | אהרוני',
+        'description': 'נייר מגבת ונייר ניגוב ידיים תעשייתי בסיטונאות: גלילים תעשייתיים, '
+                       'צץ רץ ונייר תאית לדיספנסרים — לעסקים, מפעלים ומוסדות בגוש דן.',
+        'intro': 'נייר ניגוב ידיים הוא פריט הצריכה השוטף ביותר בשירותים של עסק, ולכן ההפרש '
+                 'בין מחיר קמעונאי למחיר סיטונאי מצטבר לסכום משמעותי בשנה. אנחנו מספקים גלילים '
+                 'תעשייתיים, נייר צץ רץ בשליפה יחידנית ונייר תאית דו-שכבתי — בהתאמה לדיספנסרים '
+                 'הנפוצים ובאריזות מוסדיות. אספקה קבועה למפעלים, למשרדים, למסעדות ולמוסדות חינוך.',
+    },
+    'toilet-paper': {
+        'parent': 'paper',
+        'h1': 'נייר טואלט מוסדי בסיטונאות',
+        'title': 'נייר טואלט בסיטונאות | נייר טואלט מוסדי לעסקים | אהרוני שיווק והפצה',
+        'description': 'נייר טואלט מוסדי בסיטונאות לעסקים ומוסדות: גלילי ג׳מבו, מארזים גדולים '
+                       'ונייר קומפקט לדיספנסרים. מחירים סיטונאיים ומשלוח מהיר בגוש דן והמרכז.',
+        'intro': 'נייר טואלט מוסדי נבדל מהנייר הביתי בעיקר בגודל הגליל ובהתאמה לדיספנסר: גליל '
+                 'ג׳מבו מחזיק הרבה יותר מגליל רגיל, מצמצם החלפות ומונע מחסור בשירותים ציבוריים. '
+                 'בקטלוג מארזים מוסדיים גדולים, גלילי ג׳מבו ונייר קומפקט — לבתי ספר, לבנייני '
+                 'משרדים, למסעדות ולמפעלים.',
+    },
+    'cups': {
+        'parent': 'disposables',
+        'h1': 'כוסות חד פעמיות בסיטונאות',
+        'title': 'כוסות חד פעמיות בסיטונאות | כוסות נייר ופלסטיק לעסקים | אהרוני',
+        'description': 'כוסות חד פעמיות בסיטונאות: כוסות נייר לשתייה חמה, כוסות אספרסו, '
+                       'כוסות פלסטיק לשתייה קרה וכוסות בירה — לעסקים, בתי קפה ומשרדים.',
+        'intro': 'כוסות חד פעמיות הן מוצר שנגמר מהר בכל עסק עם פינת קפה או שירות ללקוחות. '
+                 'בקטלוג כוסות נייר לשתייה חמה במידות הנפוצות, כוסות אספרסו, כוסות פלסטיק '
+                 'לשתייה קרה וכוסות בירה — הכול במחירים סיטונאיים ובאריזות שמתאימות לצריכה '
+                 'שוטפת של מטבחון משרדי, בית קפה או דוכן משקאות.',
+    },
+    'containers': {
+        'parent': 'disposables',
+        'h1': 'קופסאות אוכל ואריזות מזון חד פעמיות בסיטונאות',
+        'title': 'קופסאות חד פעמי בסיטונאות | אריזות מזון לעסקי משלוחים | אהרוני',
+        'description': 'קופסאות פלסטיק חד פעמיות ואריזות מזון בסיטונאות: קופסאות אוכל מחולקות, '
+                       'קופסאות סלט וקערות חומוס — למסעדות, לקייטרינג ולעסקי משלוחים.',
+        'intro': 'אריזת המזון היא מה שהלקוח פוגש כשהמשלוח מגיע, ולכן היא חלק מהשירות ולא רק '
+                 'מהתפעול. בקטלוג קופסאות אוכל מחולקות שמונעות ערבוב בין מנה לתוספות, קופסאות '
+                 'סלט אישיות, קופסאות בנפחים משפחתיים וקערות חומוס — למסעדות, לחומוסיות, '
+                 'לקייטרינג ולעסקי משלוחים.',
+    },
+    'tableware': {
+        'parent': 'disposables',
+        'h1': 'צלחות וסכו״ם חד פעמי בסיטונאות',
+        'title': 'צלחות חד פעמי בסיטונאות | סכו״ם חד פעמי לעסקים ומסעדות | אהרוני',
+        'description': 'צלחות וסכו״ם חד פעמי בסיטונאות: צלחות מתכלות, סכו״ם קשיח וסכו״ם רגיל '
+                       'במארזים — למסעדות, לקייטרינג, לאירועים ולמטבחונים משרדיים.',
+        'intro': 'סכו״ם קשיח וצלחות מתכלות משנים את מראה ההגשה לעומת חד-פעמי בסיסי, ולכן הרבה '
+                 'מסעדות וקייטרינג עוברים אליהם. בקטלוג צלחות מתכלות בשלושה גדלים, צלחות '
+                 'פלסטיק גדולות, וסכו״ם חד-פעמי רגיל וקשיח במארזים — במחירים סיטונאיים.',
+    },
+}
+
+
+def generate_catalog_subcategory_pages():
+    """יוצר דפי SEO לתת-קטגוריות תחת catalog/<parent>/<slug>/.
+
+    כל דף מכוון לשאילתה עם הופעות אמיתיות ב-Search Console שלא היה לה דף.
+    שיוך המוצרים נעשה דרך עמודת subcategory ב-CSV ולא לפי מילים בשם המוצר —
+    התאמת מילות מפתח ייצרה false positives ("סבון ידיים" נכנס ל"נייר ניגוב
+    ידיים", "עט לחיץ בקופסא" נכנס ל"קופסאות").
+    """
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+
+    rows = _load_catalog_rows()
+    slugs = _care_product_slugs(rows)
+    generated = []
+
+    for slug, cfg in CATALOG_SUBCATEGORIES.items():
+        items = [r for r in rows if (r.get('subcategory') or '').strip() == slug]
+        if not items:
+            continue
+        parent = cfg['parent']
+        parent_name = CATALOG_CATEGORIES.get(parent, '')
+        page_url = f'{SITE_BASE_URL}/catalog/{parent}/{slug}/'
+
+        cards = '\n'.join(
+            f'''            <article class="sc-item">
+                <h3><a href="/catalog/product/{quote(slugs[r["id"]])}/">{escape(r['name'])}</a></h3>
+                <p>{escape((r.get('description') or '').strip())}</p>
+            </article>''' for r in items)
+
+        siblings = '\n'.join(
+            f'                <a href="/catalog/{c["parent"]}/{s}/">{escape(c["h1"])}</a>'
+            for s, c in CATALOG_SUBCATEGORIES.items() if s != slug)
+
+        schema = {
+            '@context': 'https://schema.org', '@type': 'CollectionPage',
+            'name': cfg['title'], 'description': cfg['description'], 'url': page_url,
+            'breadcrumb': {'@type': 'BreadcrumbList', 'itemListElement': [
+                {'@type': 'ListItem', 'position': 1, 'name': 'דף הבית', 'item': f'{SITE_BASE_URL}/'},
+                {'@type': 'ListItem', 'position': 2, 'name': 'קטלוג מוצרים', 'item': f'{SITE_BASE_URL}/catalog/'},
+                {'@type': 'ListItem', 'position': 3, 'name': parent_name,
+                 'item': f'{SITE_BASE_URL}/catalog/{parent}/'},
+                {'@type': 'ListItem', 'position': 4, 'name': cfg['h1'], 'item': page_url},
+            ]},
+            'publisher': {'@type': 'WholesaleStore', 'name': 'אהרוני שיווק והפצה',
+                          'url': f'{SITE_BASE_URL}/', 'telephone': '+972526000158'},
+            'mainEntity': {'@type': 'ItemList', 'numberOfItems': len(items), 'itemListElement': [
+                {'@type': 'ListItem', 'position': i, 'name': r['name'],
+                 'url': f'{SITE_BASE_URL}/catalog/product/{quote(slugs[r["id"]])}/'}
+                for i, r in enumerate(items, 1)]},
+        }
+
+        wa = quote(f'שלום, אשמח להצעת מחיר עבור {cfg["h1"]}')
+        html = f'''<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{escape(cfg['title'])}</title>
+    <meta name="description" content="{escape(cfg['description'])}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{escape(page_url)}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{escape(cfg['title'])}">
+    <meta property="og:description" content="{escape(cfg['description'])}">
+    <meta property="og:url" content="{escape(page_url)}">
+    <meta property="og:image" content="{SITE_BASE_URL}/images/og-image.png">
+    <link rel="icon" href="/images/logo.png">
+    <script type="application/ld+json">
+{json.dumps(schema, ensure_ascii=False, indent=2)}
+    </script>
+    <style>
+        :root {{ --primary: #639C7D; --dark: #1A4231; --ink: #23302a; --muted: #5c6b63; --line: #e3ebe6; }}
+        * {{ box-sizing: border-box; }}
+        body {{ margin: 0; font-family: 'Assistant', 'Heebo', Arial, sans-serif; color: var(--ink);
+               background: #fff; line-height: 1.75; }}
+        .wrap {{ max-width: 980px; margin: 0 auto; padding: 0 16px; }}
+        header.site {{ background: var(--dark); color: #fff; padding: 14px 0; }}
+        header.site .wrap {{ display: flex; align-items: center; justify-content: space-between;
+                            gap: 12px; flex-wrap: wrap; }}
+        header.site a {{ color: #fff; text-decoration: none; font-weight: 700; }}
+        .crumbs {{ font-size: .9rem; color: var(--muted); padding: 14px 0; }}
+        .crumbs a {{ color: var(--muted); }}
+        h1 {{ color: var(--dark); font-size: 1.9rem; margin: 6px 0 12px; }}
+        .lead {{ font-size: 1.06rem; }}
+        .ctas {{ display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 6px; }}
+        .btn {{ flex: 1 1 220px; text-align: center; padding: 13px 18px; border-radius: 8px;
+               text-decoration: none; font-weight: 700; border: 2px solid var(--dark); }}
+        .btn-wa {{ background: var(--dark); color: #fff; }}
+        .btn-cat {{ background: #fff; color: var(--dark); }}
+        .sc-list {{ border-top: 1px solid var(--line); margin-top: 26px; padding-top: 6px; }}
+        .sc-item {{ border-bottom: 1px solid var(--line); padding: 14px 0; }}
+        .sc-item h3 {{ margin: 0 0 4px; font-size: 1.08rem; }}
+        .sc-item h3 a {{ color: var(--dark); text-decoration: none; }}
+        .sc-item h3 a:hover {{ text-decoration: underline; }}
+        .sc-item p {{ margin: 0; color: var(--muted); }}
+        .chips {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }}
+        .chips a {{ display: inline-block; padding: 7px 12px; border: 1px solid var(--line);
+                   border-radius: 999px; text-decoration: none; font-size: .9rem;
+                   background: #f6faf8; color: var(--dark); }}
+        .more {{ display: block; margin-top: 18px; font-weight: 700; color: var(--dark); }}
+        footer.site {{ background: var(--dark); color: #fff; margin-top: 34px; padding: 22px 0; }}
+        footer.site a {{ color: #cfe6d9; }}
+    </style>
+</head>
+
+<body>
+    <header class="site">
+        <div class="wrap">
+            <a href="/">אהרוני שיווק והפצה</a>
+            <a href="tel:0526000158">052-6000158</a>
+        </div>
+    </header>
+
+    <div class="wrap">
+        <nav class="crumbs" aria-label="breadcrumb">
+            <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
+            <a href="/catalog/{parent}/">{escape(parent_name)}</a> &laquo; {escape(cfg['h1'])}
+        </nav>
+
+        <h1>{escape(cfg['h1'])}</h1>
+        <p class="lead">{escape(cfg['intro'])}</p>
+
+        <div class="ctas">
+            <a class="btn btn-wa" href="https://wa.me/{CATALOG_WHATSAPP}?text={wa}"
+               target="_blank" rel="noopener">בקש הצעת מחיר בוואטסאפ</a>
+            <a class="btn btn-cat" href="/catalog/{parent}/">להזמנה מהקטלוג</a>
+        </div>
+
+        <section class="sc-list">
+            <h2>המוצרים בקטגוריה</h2>
+{cards}
+            <a class="more" href="/catalog/{parent}/">לכל המוצרים ב{escape(parent_name)} &laquo;</a>
+        </section>
+
+        <section>
+            <h2>קטגוריות נוספות</h2>
+            <div class="chips">
+{siblings}
+            </div>
+        </section>
+    </div>
+
+    <footer class="site">
+        <div class="wrap">
+            <div>אהרוני שיווק והפצה &middot; אור יהודה &middot;
+                <a href="tel:0526000158">052-6000158</a> &middot;
+                <a href="tel:036346236">03-6346236</a></div>
+            <div><a href="/catalog/">קטלוג מוצרים</a> &middot; <a href="/about/">אודות</a> &middot;
+                <a href="/contact/">צור קשר</a></div>
+        </div>
+    </footer>
+</body>
+
+</html>
+'''
+        out_dir = os.path.join('catalog', parent, slug)
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
+            f.write(html)
+        generated.append(f'{parent}/{slug}:{len(items)}')
+
+    _update_sitemap_care_products(
+        [f'{SITE_BASE_URL}/catalog/{c["parent"]}/{s}/' for s, c in CATALOG_SUBCATEGORIES.items()
+         if any((r.get('subcategory') or '').strip() == s for r in rows)],
+        start='  <!-- CATALOG_SUBCATS_SITEMAP_START -->',
+        end='  <!-- CATALOG_SUBCATS_SITEMAP_END -->')
+    return generated
+
+
 def generate_catalog_product_pages():
     """יוצר דף SEO סטטי לכל מוצר בקטלוג העסקי תחת catalog/product/<slug>/index.html.
 
@@ -1159,6 +1389,20 @@ def bake_catalog_product_index():
         links = '\n'.join(
             f'                <a href="/catalog/product/{quote(slugs[r["id"]])}/">{escape(r["name"])}</a>'
             for r in items)
+
+        # קישור לדפי התת-קטגוריה של הקטגוריה הזו (אם יש להם מוצרים משויכים)
+        subs = [(s, c) for s, c in CATALOG_SUBCATEGORIES.items()
+                if c['parent'] == slug and any((r.get('subcategory') or '').strip() == s for r in rows)]
+        subs_html = ''
+        if subs:
+            sub_links = '\n'.join(
+                f'                <a href="/catalog/{slug}/{s}/">{escape(c["h1"])}</a>' for s, c in subs)
+            subs_html = f'''            <p style="margin-top:24px;">לפי סוג מוצר:</p>
+            <div class="cat-links">
+{sub_links}
+            </div>
+'''
+
         block = f'''{start_marker}
     <section class="cat-seo">
         <div class="container">
@@ -1167,7 +1411,7 @@ def bake_catalog_product_index():
             <div class="cat-links">
 {links}
             </div>
-        </div>
+{subs_html}        </div>
     </section>
     {end_marker}'''
 
@@ -1538,6 +1782,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 generate_catalog_category_schema()
                 generate_catalog_product_pages()
+                generate_catalog_subcategory_pages()
                 bake_catalog_product_index()
             except Exception as gen_err:
                 print(f'אזהרה: עדכון הקבצים הנגזרים של הקטלוג נכשל: {gen_err}')

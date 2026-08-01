@@ -1672,4 +1672,36 @@
     <priority>0.6</priority>
   </url>
   <!-- CATALOG_PRODUCTS_SITEMAP_END -->
+  <!-- CATALOG_SUBCATS_SITEMAP_START -->
+  <url>
+    <loc>https://aroam.co.il/catalog/paper/hand-towels/</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/paper/toilet-paper/</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/disposables/cups/</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/disposables/containers/</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/disposables/tableware/</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <!-- CATALOG_SUBCATS_SITEMAP_END -->
 </urlset>

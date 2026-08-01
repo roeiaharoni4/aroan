@@ -31,6 +31,7 @@ GENERATORS = [
     # הקטלוג העסקי (products.csv)
     ('סכמת ItemList בדפי הקטגוריה', server.generate_catalog_category_schema),
     ('דפי המוצר של הקטלוג + sitemap', server.generate_catalog_product_pages),
+    ('דפי תת-הקטגוריה', server.generate_catalog_subcategory_pages),
     ('אינדקס המוצרים בדפי הקטגוריה', server.bake_catalog_product_index),
 ]
 

@@ -57,6 +57,14 @@
 - [Arts & Crafts for Schools](https://aroam.co.il/catalog/crafts/): מוצרי יצירה למוסדות חינוך וגנים.
 - [Complementary Products](https://aroam.co.il/catalog/misc/): מוצרים משלימים: קפה, גלילי קופה, רדיד ועוד.
 
+## Product Types (דפי תת-קטגוריה)
+
+- [Hand Towels & Industrial Wiping Paper](https://aroam.co.il/catalog/paper/hand-towels/): נייר מגבת ונייר ניגוב ידיים תעשייתי בסיטונאות — גלילים תעשייתיים, צץ רץ ונייר תאית לדיספנסרים.
+- [Institutional Toilet Paper](https://aroam.co.il/catalog/paper/toilet-paper/): נייר טואלט מוסדי בסיטונאות — גלילי ג׳מבו, מארזים גדולים ונייר קומפקט.
+- [Disposable Cups](https://aroam.co.il/catalog/disposables/cups/): כוסות חד פעמיות בסיטונאות — כוסות נייר לשתייה חמה, אספרסו, פלסטיק לשתייה קרה וכוסות בירה.
+- [Food Containers & Packaging](https://aroam.co.il/catalog/disposables/containers/): קופסאות אוכל ואריזות מזון חד פעמיות — קופסאות מחולקות, קופסאות סלט וקערות חומוס.
+- [Disposable Plates & Cutlery](https://aroam.co.il/catalog/disposables/tableware/): צלחות וסכו״ם חד פעמי בסיטונאות — צלחות מתכלות וסכו״ם קשיח.
+
 ## Consumer (B2C) Catalog
 
 - [Personal Care & Hygiene Catalog](https://aroam.co.il/care/): קטלוג טיפוח והיגיינה במחירים לצרכן — מוצרי שיער, היגיינה אישית, היגיינת פה וכביסה ללקוחות פרטיים, עם מחירים והזמנה בוואטסאפ.
