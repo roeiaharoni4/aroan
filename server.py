@@ -991,6 +991,96 @@ def update_care_schema():
     with open(CARE_PAGE_FILE, 'w', encoding='utf-8') as f:
         f.write(html)
 
+
+# ======================================================================
+#  הקטלוג העסקי (B2B) — data/products.csv
+#  מקביל לגנרטורים של /care/ אבל בלי מחירים: בקטלוג הלקוחות המחירים
+#  מוסתרים בכוונה, ולכן דפי המוצר נבנים בלי Offer בסכמה.
+# ======================================================================
+
+# slug של דף הקטגוריה ← שם הקטגוריה ב-CSV (זהה ל-presetCategory שבכל דף)
+CATALOG_CATEGORIES = {
+    'cleaning': 'ניקיון',
+    'cleaning-accessories': 'אביזרי ניקיון',
+    'paper': 'מוצרי נייר',
+    'disposables': 'חד פעמי ואריזות',
+    'office-supplies': 'ציוד משרדי',
+    'hygiene': 'טיפוח והיגיינה',
+    'bags': 'שקיות',
+    'air-fresheners': 'מבשמים',
+    'crafts': 'מוצרי יצירה',
+    'misc': 'שונים',
+}
+
+CATALOG_WHATSAPP = '972526000158'
+
+
+def _load_catalog_rows():
+    """קורא את מוצרי הקטלוג העסקי. מחזיר רק שורות עם מזהה ושם."""
+    with open(DATA_FILE, encoding='utf-8') as f:
+        return [r for r in csv.DictReader(f) if (r.get('id') or '').strip() and (r.get('name') or '').strip()]
+
+
+def _catalog_category_slug(category):
+    """שם קטגוריה בעברית ← slug של דף הקטגוריה (או None אם אין דף כזה)."""
+    for slug, name in CATALOG_CATEGORIES.items():
+        if name == category:
+            return slug
+    return None
+
+
+def generate_catalog_category_schema():
+    """מסנכרן את ItemList בסכמת 10 דפי הקטגוריה מול products.csv.
+
+    הרשימה הייתה כתובה ידנית בכל דף וכבר נסחפה מהנתונים (ניקיון 38 מול 39
+    ב-CSV, מוצרי נייר 17 מול 19). כאן היא נגזרת מהקובץ בכל שמירה.
+
+    לא משתמשים בסימוני HTML כי הרשימה יושבת בתוך JSON-LD — הערת HTML בתוכו
+    הייתה שוברת את ה-JSON. במקום זה מפרסרים את הבלוק ומחליפים רק את
+    mainEntity, כך שכל שאר השדות שנכתבו ידנית (name/description/keywords)
+    נשמרים כלשונם.
+    """
+    rows = _load_catalog_rows()
+    updated = []
+
+    for slug, category in CATALOG_CATEGORIES.items():
+        path = f'catalog/{slug}/index.html'
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8') as f:
+            html = f.read()
+
+        names = [r['name'] for r in rows if r.get('category') == category]
+        items = [{'@type': 'ListItem', 'position': i, 'name': n} for i, n in enumerate(names, 1)]
+
+        # מאתרים את בלוק ה-JSON-LD של CollectionPage (יכולים להיות כמה בלוקים בדף)
+        pattern = re.compile(r'(<script type="application/ld\+json">\s*)(\{.*?\})(\s*</script>)', re.S)
+
+        def replace(match):
+            try:
+                data = json.loads(match.group(2))
+            except ValueError:
+                return match.group(0)
+            if data.get('@type') != 'CollectionPage':
+                return match.group(0)
+            main = data.get('mainEntity') or {}
+            main['@type'] = 'ItemList'
+            main['numberOfItems'] = len(items)
+            main['itemListElement'] = items
+            data['mainEntity'] = main
+            body = json.dumps(data, ensure_ascii=False, indent=2)
+            body = '\n'.join(('    ' + line) if line else line for line in body.split('\n'))
+            return match.group(1) + body.lstrip() + match.group(3)
+
+        new_html = pattern.sub(replace, html, count=1)
+        if new_html != html:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(new_html)
+            updated.append(f'{slug}:{len(items)}')
+
+    return updated
+
+
 class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         # Disable caching for API and data files
@@ -1144,6 +1234,12 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 writer.writeheader()
                 for p in products:
                     writer.writerow({k: p.get(k, '') for k in PRODUCT_FIELDS})
+
+            # הקבצים הנגזרים מהקטלוג העסקי — נכשלים בשקט כדי לא להפיל שמירה
+            try:
+                generate_catalog_category_schema()
+            except Exception as gen_err:
+                print(f'אזהרה: עדכון הקבצים הנגזרים של הקטלוג נכשל: {gen_err}')
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

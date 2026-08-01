@@ -28,6 +28,8 @@ GENERATORS = [
     ('פיד Google Merchant', server.update_merchant_feed),
     ('דפי הקטגוריה', server.generate_care_category_pages),
     ('דפי המוצר + sitemap', server.generate_care_product_pages),
+    # הקטלוג העסקי (products.csv)
+    ('סכמת ItemList בדפי הקטגוריה', server.generate_catalog_category_schema),
 ]
 
 
