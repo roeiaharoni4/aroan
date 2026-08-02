@@ -706,6 +706,135 @@ body:has(.fab-container) .scroll-top-btn {
     flex-wrap: wrap;
 }
 
+/* ===== תצוגת סל מלאת-מסך (CONFIG.cartView) =====
+   מופעלת ע"י המחלקה .cart-page שנוספת ל-#order-modal. כל הכללים כאן מגודרים
+   תחתיה — מודאל בלי המחלקה (דף הסוכן, תצוגה מהירה) נשאר בדיוק כפי שהיה. */
+.modal-overlay.cart-page {
+    background: var(--bg-body, #f7f8f7);
+    backdrop-filter: none;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.cart-page .modal-content {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+}
+
+/* הדר, גוף ופוטר מיושרים לאותה עמודה בת 1200px */
+.cart-page .modal-header,
+.cart-page .modal-footer {
+    padding-inline: max(1.5rem, calc((100% - 1200px) / 2));
+}
+
+.cart-page .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    gap: 1rem;
+    padding-block: 1rem;
+    background: #fff;
+}
+
+.cart-page .modal-title {
+    font-size: 1.35rem;
+    margin-left: auto;
+}
+
+/* ה-× מיותר כשיש "המשך בקנייה" מפורש */
+.cart-page #close-order-btn {
+    display: none;
+}
+
+.cart-page #cart-back-btn {
+    font-size: 0.92rem;
+    padding: 0.45rem 0.9rem;
+    white-space: nowrap;
+}
+
+.cart-page .modal-body {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 1.5rem 1rem;
+}
+
+/* דסקטופ: טבלת המוצרים מימין, פרטי ההזמנה משמאל */
+@media (min-width: 1024px) {
+    .cart-page .modal-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+        grid-auto-flow: row dense;
+        align-items: start;
+        gap: 1rem 1.75rem;
+    }
+
+    /* הטבלה תופסת את הטור הראשון לכל אורכו */
+    .cart-page .modal-body .table-responsive {
+        grid-column: 1;
+        grid-row: 1 / span 99;
+    }
+
+    /* כל השאר (נאדג', תאריך, אספקה, פרטי לקוח) נערם בטור השני */
+    .cart-page .modal-body > *:not(.table-responsive) {
+        grid-column: 2;
+    }
+}
+
+.cart-page .order-table {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* בר הפעולה — דביק לתחתית המסך, ברוחב מלא, סה"כ מול הכפתורים */
+.cart-page .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.07);
+    padding-block: 0.9rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+/* מנטרל את ה-inline width:100% שמכריח את הכפתורים לשורה נפרדת */
+.cart-page .modal-footer > div {
+    width: auto !important;
+    margin-left: 0 !important;
+}
+
+@media (max-width: 1023px) {
+    .cart-page .modal-body {
+        padding: 1rem;
+    }
+
+    .cart-page .modal-title {
+        font-size: 1.15rem;
+    }
+
+    /* במובייל הכפתורים חוזרים לשורה מלאה מתחת לסה"כ */
+    .cart-page .modal-footer {
+        justify-content: center;
+    }
+
+    .cart-page .modal-footer > div:last-child {
+        width: 100% !important;
+        justify-content: stretch;
+    }
+
+    .cart-page .modal-footer > div:last-child .btn {
+        flex: 1;
+    }
+}
+
 /* Tables */
 .order-table {
     width: 100%;

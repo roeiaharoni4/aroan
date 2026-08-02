@@ -47,7 +47,7 @@
     <!-- Styles -->
         <script>(function () { var l = document.createElement('link'); l.rel = 'preload'; l.as = 'fetch'; l.href = '/data/products.csv?v=1&_t=' + Math.floor(Date.now() / 3600000); document.head.appendChild(l); })();</script>
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=21">
+    <link rel="stylesheet" href="/css/style.css?v=22">
     <style>
         body { padding-top: 0; }
         .fixed-header { position: sticky; top: 80px; z-index: 900; }
@@ -77,6 +77,8 @@
     <!-- Scripts -->
     <script>
         window.CATALOG_CONFIG = {
+            // סיכום ההזמנה נפתח כתצוגה מלאת-מסך עם כתובת משלה
+            cartView: true,
             showPrices: false,
             showAddButton: true,
             allowPdf: false,
@@ -86,7 +88,7 @@
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
     <script src="/js/catalog-shell.js" defer></script>
-    <script src="/js/app.js?v=32" defer></script>
+    <script src="/js/app.js?v=33" defer></script>
 
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">

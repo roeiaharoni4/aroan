@@ -14,7 +14,10 @@ const DEFAULT_CONFIG = {
     // כל השאר ('b2b') נשאר בהתנהגות הקיימת של קטלוג הלקוחות ודף הסוכן.
     customerMode: 'b2b',
     // כתובת קונפיג שיטות האספקה. null = בלי משלוח כלל (הקטלוג העסקי והסוכן).
-    shippingSource: null
+    shippingSource: null,
+    // true = סיכום ההזמנה נפתח כתצוגה מלאת-מסך עם ?cart=1 בכתובת במקום כחלון.
+    // דף הסוכן משאיר false — שם המודאל משרת גם הצעות מחיר, PDF והיסטוריה.
+    cartView: false
 };
 let CONFIG = {};
 
@@ -219,6 +222,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Event Listeners
         setupEventListeners();
+
+        // כניסה ישירה / רענון בכתובת של הסל — פותחים אותו מחדש.
+        // עגלה ריקה: מנקים את הפרמטר, כדי שקישור ישן לא ינחית על סל ריק.
+        if (CONFIG.cartView && urlParams.get(CART_PARAM) === CART_PARAM_VALUE) {
+            if (Object.keys(cart).length > 0) openOrderModal();
+            else { try { history.replaceState({}, '', cartUrl(false)); } catch (e) { } }
+        }
     }
 
     function applyConfiguration() {
@@ -1150,16 +1160,81 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.body.style.overflow = document.querySelector(".modal-overlay.open") ? "hidden" : "";
     }
 
+    // --- תצוגת סל מלאת-מסך (CONFIG.cartView) ---
+    // הסל מקבל כתובת משלו (?cart=1) כדי ש-GA4 יראה אותו כשלב במשפך, שכפתור
+    // "אחורה" יסגור אותו במקום לצאת מהעמוד, ושאפשר יהיה לבנות קהל רימרקטינג
+    // של "הגיע לסל ולא הזמין". המצב כבוי בדף הסוכן.
+    // הפרמטר הוא view=cart ולא cart=1: הפרמטר `cart` כבר תפוס לשיתוף עגלה
+    // בפורמט cart=id:qty,id:qty ("שתף קישור"), ואסור להתנגש בו.
+    const CART_PARAM = 'view';
+    const CART_PARAM_VALUE = 'cart';
+    let cartStatePushed = false;   // האם אנחנו דחפנו את המצב להיסטוריה
+
+    function cartUrl(open) {
+        const url = new URL(window.location.href);
+        if (open) url.searchParams.set(CART_PARAM, CART_PARAM_VALUE);
+        else url.searchParams.delete(CART_PARAM);
+        return url.pathname + (url.search || '') + url.hash;
+    }
+
     function openOrderModal() {
         if (!orderModal) return;
         fillOrderTable();
         renderFulfillmentOptions();
         orderModal.classList.add("open");
+        if (CONFIG.cartView) {
+            orderModal.classList.add("cart-page");
+            renderCartBackButton();
+            if (!cartStatePushed) {
+                try { history.pushState({ cartOpen: true }, '', cartUrl(true)); cartStatePushed = true; } catch (e) { }
+            }
+        }
         syncModalScrollLock();
         const items = Object.keys(cart).length;
         if (items > 0) {
             trackEvent("begin_checkout", { order_items: items });
+            if (CONFIG.cartView) {
+                // page_view וירטואלי — בלעדיו לסל אין קיום בדוחות GA4
+                trackEvent("view_cart", { order_items: items });
+                if (typeof gtag === 'function') {
+                    // נתיב קנוני ולא cartUrl(): פרמטרים אחרים (למשל cart=id:qty
+                    // של "שתף קישור") היו מפצלים את הסל להמון עמודים בדוח
+                    gtag('event', 'page_view', {
+                        page_path: window.location.pathname + '?' + CART_PARAM + '=' + CART_PARAM_VALUE,
+                        page_title: 'סיכום הזמנה'
+                    });
+                }
+            }
         }
+    }
+
+    // סגירה: נתיב יחיד לכל דרכי הסגירה (כפתור, Esc, אחרי שליחה)
+    function closeOrderView(fromPopstate) {
+        if (!orderModal) return;
+        orderModal.classList.remove("open");
+        orderModal.classList.remove("cart-page");
+        syncModalScrollLock();
+        if (!CONFIG.cartView || fromPopstate) { cartStatePushed = false; return; }
+        if (cartStatePushed) {
+            cartStatePushed = false;
+            try { history.back(); } catch (e) { }
+        } else {
+            // נכנסו ישירות עם ?cart=1 — מנקים את הפרמטר בלי להוסיף צעד להיסטוריה
+            try { history.replaceState({}, '', cartUrl(false)); } catch (e) { }
+        }
+    }
+
+    // "המשך בקנייה" — בתצוגת מסך מלא ה-× לבדו לא מספיק ברור
+    function renderCartBackButton() {
+        const header = orderModal.querySelector('.modal-header');
+        if (!header || header.querySelector('#cart-back-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'cart-back-btn';
+        btn.type = 'button';
+        btn.className = 'btn btn-outline';
+        btn.textContent = '→ המשך בקנייה';
+        btn.addEventListener('click', () => closeOrderView());
+        header.insertBefore(btn, header.firstChild);
     }
 
     function setupEventListeners() {
@@ -1183,20 +1258,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (closeOrderBtn) {
-            closeOrderBtn.addEventListener("click", () => {
-                orderModal.classList.remove("open");
-                syncModalScrollLock();
-            });
+            closeOrderBtn.addEventListener("click", () => closeOrderView());
         }
 
         if (orderModal) {
             orderModal.addEventListener("click", (e) => {
-                if (e.target === orderModal) {
-                    orderModal.classList.remove("open");
-                    syncModalScrollLock();
+                // בתצוגת מסך מלא הרקע הוא כל המסך — לחיצה עליו אסור שתסגור את הסל
+                if (e.target === orderModal && !orderModal.classList.contains("cart-page")) {
+                    closeOrderView();
                 }
             });
         }
+
+        // כפתור "אחורה" סוגר את הסל במקום לצאת מהקטלוג
+        window.addEventListener('popstate', () => {
+            if (orderModal && orderModal.classList.contains('cart-page')) {
+                closeOrderView(true);
+            }
+        });
 
         setupQuickViewListeners();
 
@@ -1432,8 +1511,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const close = () => {
             overlay.remove();
-            if (orderModal) orderModal.classList.remove("open");
-            syncModalScrollLock();
+            // עובר דרך closeOrderView כדי שגם ?cart=1 ינוקה מהכתובת אחרי השליחה
+            closeOrderView();
         };
         box.querySelector("#order-confirm-close").addEventListener("click", close);
         overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
