@@ -17,7 +17,9 @@ const DEFAULT_CONFIG = {
     shippingSource: null,
     // true = סיכום ההזמנה נפתח כתצוגה מלאת-מסך עם ?cart=1 בכתובת במקום כחלון.
     // דף הסוכן משאיר false — שם המודאל משרת גם הצעות מחיר, PDF והיסטוריה.
-    cartView: false
+    cartView: false,
+    // עריכת מחיר היחידה בטבלת ההזמנה — כלי של הסוכן להצעות מחיר בלבד
+    editablePrices: false
 };
 let CONFIG = {};
 
@@ -1187,7 +1189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // שורות מוצר עשירות (תמונה גדולה) רק בקטלוג עם מחירים — קטלוג הטיפוח.
             // בקטלוג העסקי הטבלה הקומפקטית עדיפה להזמנה של עשרות מק"טים.
             if (CONFIG.showPrices) orderModal.classList.add("cart-rich");
-            renderCartBackButton();
+            renderCartChrome();
             renderCartSummaryCard();
             updateSummary();
             if (!cartStatePushed) {
@@ -1310,17 +1312,45 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (send) send.disabled = totals.totalItems === 0;
     }
 
-    // "המשך בקנייה" — בתצוגת מסך מלא ה-× לבדו לא מספיק ברור
-    function renderCartBackButton() {
+    // כרום התצוגה: רצועת ה-utility והלוגו של האתר, כדי שהסל ירגיש חלק
+    // מהאתר ולא מסך זר — התצוגה מלאת-המסך מסתירה את הכרום האמיתי.
+    function renderCartChrome() {
+        const content = orderModal.querySelector('.modal-content');
         const header = orderModal.querySelector('.modal-header');
-        if (!header || header.querySelector('#cart-back-btn')) return;
-        const btn = document.createElement('button');
-        btn.id = 'cart-back-btn';
-        btn.type = 'button';
-        btn.className = 'btn btn-outline';
-        btn.textContent = '→ המשך בקנייה';
-        btn.addEventListener('click', () => closeOrderView());
-        header.insertBefore(btn, header.firstChild);
+        if (!content || !header) return;
+
+        if (!content.querySelector('.cart-utility-bar')) {
+            const bar = document.createElement('div');
+            bar.className = 'cart-utility-bar';
+            bar.innerHTML = `
+                <div class="cub-inner">
+                    <span>אור יהודה · משלוחים בגוש דן והמרכז</span>
+                    <a href="tel:036346236">03-6346236</a>
+                </div>
+            `;
+            content.insertBefore(bar, content.firstChild);
+        }
+
+        if (!header.querySelector('.cart-logo')) {
+            const logo = document.createElement('img');
+            logo.className = 'cart-logo';
+            logo.src = '/images/logo.png';
+            logo.alt = 'אהרוני שיווק והפצה';
+            logo.width = 100;
+            logo.height = 60;
+            header.insertBefore(logo, header.firstChild);
+        }
+
+        // "המשך בקנייה" — בתצוגת מסך מלא ה-× לבדו לא מספיק ברור
+        if (!header.querySelector('#cart-back-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'cart-back-btn';
+            btn.type = 'button';
+            btn.className = 'btn btn-outline';
+            btn.textContent = '→ המשך בקנייה';
+            btn.addEventListener('click', () => closeOrderView());
+            header.appendChild(btn);
+        }
     }
 
     function setupEventListeners() {
@@ -1768,6 +1798,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 priceInp.type = "number";
                 priceInp.step = "0.01";
                 priceInp.value = product.price.toFixed(2);
+                // עריכת מחיר היחידה היא כלי של הסוכן להצעות מחיר. ללקוח היא רק
+                // מבלבלת: שינוי עדכן את שורת הסכום אך לא את סה"כ הסל ולא את
+                // ההודעה הנשלחת, כך שהמספרים על המסך סתרו זה את זה.
+                if (!CONFIG.editablePrices) {
+                    priceInp.readOnly = true;
+                    priceInp.tabIndex = -1;
+                    priceInp.setAttribute("aria-label", "מחיר ליחידה");
+                }
                 tdPrice.appendChild(priceInp);
                 row.appendChild(tdPrice);
 
