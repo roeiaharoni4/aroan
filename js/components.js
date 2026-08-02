@@ -160,6 +160,48 @@ class SiteFooter extends HTMLElement {
 customElements.define('site-header', SiteHeader);
 customElements.define('site-footer', SiteFooter);
 
+// --- ייחוס תנועה ממומנת: שמירת UTM/gclid לכל אורך הסשן ---
+// נדרש כי הגולש עשוי לנחות עם הפרמטרים בכתובת ואז לנווט לדף אחר לפני שימלא טופס.
+// שמירה בגישת first-touch: הערך הראשון בסשן מנצח, ניווט פנימי לא דורס אותו.
+const AROAM_ATTR_KEY = 'aroam_attribution';
+const AROAM_ATTR_FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid'];
+
+function readAttribution() {
+    try { return JSON.parse(sessionStorage.getItem(AROAM_ATTR_KEY) || '{}'); } catch (e) { return {}; }
+}
+
+function captureAttribution() {
+    const stored = readAttribution();
+    const params = new URLSearchParams(window.location.search);
+    let changed = false;
+
+    AROAM_ATTR_FIELDS.forEach(field => {
+        const value = params.get(field);
+        if (value && !stored[field]) {
+            stored[field] = value.slice(0, 120);
+            changed = true;
+        }
+    });
+
+    if (!stored.landing_page) {
+        stored.landing_page = window.location.pathname;
+        changed = true;
+    }
+
+    if (changed) {
+        try { sessionStorage.setItem(AROAM_ATTR_KEY, JSON.stringify(stored)); } catch (e) { }
+    }
+    return stored;
+}
+
+// מחרוזת קריאה לאדם, לעמודת "מקור" בגיליון הלידים
+function attributionLabel(attr) {
+    const parts = [attr.utm_campaign, attr.utm_term, attr.utm_source].filter(Boolean);
+    return parts.length ? parts.join(' | ') : 'אורגני / ישיר';
+}
+
+captureAttribution();
+
 // Auto-inject components
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -227,6 +269,19 @@ document.addEventListener('DOMContentLoaded', () => {
         waBtn.innerHTML = '<svg width="35" height="35" viewBox="0 0 32 32" fill="#fff" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7zm5.7-7.7c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.6-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1.1-1.1 2.6s1.1 3 1.3 3.2c.2.2 2.2 3.4 5.4 4.8.8.3 1.3.5 1.8.7.8.2 1.5.2 2 .1.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>';
         waBtn.title = "צ'אט בוואטסאפ";
         document.body.appendChild(waBtn);
+    }
+
+    // --- 2b. בר CTA דביק במובייל (דפי נחיתה ממומנים ודפי פלחים) ---
+    // מופעל ע"י data-cta-bar על ה-body. הקישורים משתמשים ב-tel:/wa.me ולכן
+    // נתפסים אוטומטית ע"י מאזין ההמרות המואצל שלמעלה (phone_click / whatsapp_click).
+    if (document.body.hasAttribute('data-cta-bar') && !document.querySelector('.lp-cta-bar')) {
+        const bar = document.createElement('div');
+        bar.className = 'lp-cta-bar';
+        bar.innerHTML = `
+            <a class="lp-cta-call" href="tel:0526000158"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> התקשרו עכשיו</a>
+            <a class="lp-cta-wa" href="https://wa.me/972526000158" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7zm5.7-7.7c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.6-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1.1-1.1 2.6s1.1 3 1.3 3.2c.2.2 2.2 3.4 5.4 4.8.8.3 1.3.5 1.8.7.8.2 1.5.2 2 .1.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg> וואטסאפ</a>`;
+        document.body.appendChild(bar);
+        document.body.classList.add('has-cta-bar');
     }
 
     // --- 3. Scroll to Top ---
@@ -320,6 +375,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alertBox.style.display = 'none';
             }
             
+            const attribution = readAttribution();
+
             try {
                 // Send request to Google Apps Script Webhook via AJAX
                 await fetch('https://script.google.com/macros/s/AKfycbxfp0qDK0ergyj-cVzdCVWiLieGXDjsSAymi1vvk-fWPnDPpiPc9nO8ujJye6JREyyL/exec', {
@@ -334,6 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         'אימייל': email || 'לא צוין',
                         'הודעה / בקשה': message || 'ללא הודעה',
                         '_subject': subject,
+                        // ייחוס: בלי השדות האלה אי אפשר לדעת איזו מודעה הביאה את הליד
+                        'עמוד': window.location.pathname,
+                        'דף נחיתה': attribution.landing_page || window.location.pathname,
+                        'מקור': attributionLabel(attribution),
+                        'gclid': attribution.gclid || '',
                         '_honey': form.querySelector('[name="_honey"]')?.value || '' // Honeypot spam prevention
                     })
                 });

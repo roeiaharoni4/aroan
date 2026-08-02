@@ -38,6 +38,17 @@ body:has(.fab-container) #a11y-menu {
     bottom: 138px;
 }
 
+/* בדפי הנחיתה הממומנים יש בר CTA תחתון קבוע במובייל - מרימים מעליו */
+@media (max-width: 768px) {
+    body.has-cta-bar #a11y-toggle-btn {
+        bottom: 88px;
+    }
+
+    body.has-cta-bar #a11y-menu {
+        bottom: 148px;
+    }
+}
+
 #a11y-toggle-btn svg {
     width: 30px;
     height: 30px;

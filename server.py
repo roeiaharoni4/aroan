@@ -1275,6 +1275,8 @@ def generate_catalog_subcategory_pages():
 <html lang="he" dir="rtl">
 
 <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{escape(cfg['title'])}</title>
@@ -1585,6 +1587,8 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
 <html lang="he" dir="rtl">
 
 <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{escape(title)}</title>

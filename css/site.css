@@ -1062,3 +1062,245 @@ ul {
     height: 100%;
     border: none;
 }
+
+/* --- דפי נחיתה ממומנים (/lp/*) --- */
+/* הירו בגרדיאנט המותג במקום תמונה: טעינה מיידית בלי בקשת רשת נוספת */
+.lp-hero {
+    background: linear-gradient(135deg, #1A4231 0%, #2F6B4F 55%, #639C7D 100%);
+    color: #ffffff;
+    padding: 54px 0 60px;
+}
+
+.lp-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 460px;
+    gap: 44px;
+    align-items: start;
+}
+
+.lp-hero h1 {
+    color: #ffffff;
+    font-size: 2.6rem;
+    line-height: 1.25;
+    margin-bottom: 16px;
+}
+
+.lp-hero .lp-sub {
+    font-size: 1.15rem;
+    line-height: 1.7;
+    opacity: 0.93;
+    margin-bottom: 26px;
+}
+
+.lp-points {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.lp-points li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 500;
+    list-style: none;
+}
+
+.lp-points svg {
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: #8FD6A3;
+}
+
+.lp-direct {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.lp-direct a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 1.05rem;
+}
+
+.lp-direct .lp-phone {
+    background-color: #ffffff;
+    color: #1A4231;
+}
+
+.lp-direct .lp-wa {
+    background-color: #25D366;
+    color: #ffffff;
+}
+
+.lp-form-card {
+    background-color: var(--white);
+    padding: 28px;
+    border-radius: 16px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22);
+}
+
+.lp-form-card h2 {
+    font-size: 1.4rem;
+    color: var(--secondary-color);
+    margin-bottom: 6px;
+}
+
+.lp-form-card .lp-form-note {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    margin-bottom: 18px;
+}
+
+/* רשימת המוצרים בפועל — מה שהלקוח בא לחפש */
+.lp-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px 26px;
+    margin-top: 18px;
+}
+
+.lp-list li {
+    list-style: none;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    color: var(--text-color);
+}
+
+.lp-block {
+    padding: 60px 0;
+}
+
+.lp-block h2 {
+    font-size: 1.9rem;
+    color: var(--secondary-color);
+    margin-bottom: 14px;
+}
+
+.lp-block p {
+    line-height: 1.8;
+    color: var(--text-light);
+    font-size: 1.05rem;
+}
+
+.lp-why {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 26px;
+    margin-top: 30px;
+}
+
+.lp-why div {
+    background-color: var(--white);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    border-radius: 14px;
+    padding: 26px;
+}
+
+.lp-why h3 {
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.lp-why p {
+    font-size: 1rem;
+}
+
+@media (max-width: 900px) {
+    .lp-hero-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .lp-hero {
+        padding: 32px 0 40px;
+    }
+
+    .lp-hero h1 {
+        font-size: 1.95rem;
+    }
+
+    .lp-hero .lp-sub {
+        font-size: 1.05rem;
+        margin-bottom: 20px;
+    }
+
+    /* במובייל הבר הדביק מטפל בחיוג/וואטסאפ — הכפתורים כאן מיותרים */
+    .lp-direct {
+        display: none;
+    }
+
+    .lp-points {
+        gap: 9px;
+        margin-bottom: 22px;
+    }
+}
+
+/* --- בר CTA דביק במובייל (דפי נחיתה ממומנים ודפי פלחים) ---
+   מוזרק מ-components.js לדפים עם data-cta-bar על ה-body.
+   מוצג במובייל בלבד: בדסקטופ הטופס ממילא נראה בלי גלילה. */
+.lp-cta-bar {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .lp-cta-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 1200;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+        background-color: var(--white);
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.10);
+    }
+
+    .lp-cta-bar a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+        padding: 12px 10px;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: none;
+        color: #ffffff;
+    }
+
+    /* צבעים קבועים בשני מצבי התצוגה: --secondary-color הופך ללבן במצב כהה */
+    .lp-cta-call {
+        background-color: #1A4231;
+    }
+
+    .lp-cta-wa {
+        background-color: #25D366;
+    }
+
+    /* הוואטסאפ הצף כפול לכפתור שבבר - מוסתר במובייל כשהבר קיים */
+    body.has-cta-bar .floating-whatsapp {
+        display: none;
+    }
+
+    body.has-cta-bar .scroll-top-btn {
+        bottom: 88px;
+    }
+
+    /* כדי שסוף התוכן והפוטר לא יישארו מתחת לבר */
+    body.has-cta-bar {
+        padding-bottom: 76px;
+    }
+}
