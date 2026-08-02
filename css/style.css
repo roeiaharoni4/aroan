@@ -839,29 +839,20 @@ body:has(.fab-container) .scroll-top-btn {
         gap: 1rem 1.75rem;
     }
 
-    /* הטבלה ומצב הסל הריק תופסים את הטור הראשון */
-    .cart-page .modal-body .table-responsive,
-    .cart-page .modal-body #cart-empty {
+    /* הכל נערם בטור הראשי: מוצרים, ואחריהם תאריך, אספקה ופרטי לקוח.
+       הטור הצדדי שמור לכרטיס הסיכום בלבד — כשהם חלקו טור, הכרטיס
+       הדביק היה מכסה את הטופס בזמן גלילה. */
+    .cart-page .modal-body > * {
         grid-column: 1;
     }
 
-    /* הטבלה מתחילה בשורה 1 — אחרת שורה 1 בטור הראשון נשארת ריקה
-       והטבלה נדחפת מתחת לכרטיס במקום לצדו */
-    .cart-page .modal-body .table-responsive,
-    .cart-page .modal-body #cart-empty {
-        grid-row: 1 / span 99;
-    }
-
-    /* כל השאר (נאדג', תאריך, אספקה, פרטי לקוח) נערם בטור השני */
-    .cart-page .modal-body > *:not(.table-responsive):not(#cart-empty) {
-        grid-column: 2;
-    }
-
-    /* כרטיס הסיכום ראשון בטור הצדדי, ונשאר גלוי בזמן גלילה.
-       ה-top קטן בכוונה: הגולל הוא .modal-body וההדר יושב מחוצה לו, כך
-       שאין מה "לפנות". ערך גדול היה מצמיד את הכרטיס כלפי מטה כבר בגלילה 0. */
+    /* הכרטיס לבדו בטור השני, ושטח הגריד שלו משתרע על גובה העמודה —
+       זה מה שמאפשר ל-sticky לעבוד בלי לדרוס שום דבר.
+       ה-top קטן בכוונה: הגולל הוא .modal-body וההדר יושב מחוצה לו. */
     .cart-page #cart-summary-card {
-        order: -1;
+        grid-column: 2;
+        grid-row: 1 / span 99;
+        align-self: start;
         position: sticky;
         top: 0.25rem;
     }
