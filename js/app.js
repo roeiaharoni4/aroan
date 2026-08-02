@@ -1184,7 +1184,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         orderModal.classList.add("open");
         if (CONFIG.cartView) {
             orderModal.classList.add("cart-page");
+            // שורות מוצר עשירות (תמונה גדולה) רק בקטלוג עם מחירים — קטלוג הטיפוח.
+            // בקטלוג העסקי הטבלה הקומפקטית עדיפה להזמנה של עשרות מק"טים.
+            if (CONFIG.showPrices) orderModal.classList.add("cart-rich");
             renderCartBackButton();
+            renderCartSummaryCard();
+            updateSummary();
             if (!cartStatePushed) {
                 try { history.pushState({ cartOpen: true }, '', cartUrl(true)); cartStatePushed = true; } catch (e) { }
             }
@@ -1213,6 +1218,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!orderModal) return;
         orderModal.classList.remove("open");
         orderModal.classList.remove("cart-page");
+        orderModal.classList.remove("cart-rich");
         syncModalScrollLock();
         if (!CONFIG.cartView || fromPopstate) { cartStatePushed = false; return; }
         if (cartStatePushed) {
@@ -1222,6 +1228,86 @@ document.addEventListener("DOMContentLoaded", async () => {
             // נכנסו ישירות עם ?cart=1 — מנקים את הפרמטר בלי להוסיף צעד להיסטוריה
             try { history.replaceState({}, '', cartUrl(false)); } catch (e) { }
         }
+    }
+
+    // כרטיס הסיכום — עוגן ויזואלי בטור הצדדי. בלי מחירים (הקטלוג העסקי)
+    // הוא מציג ספירת פריטים בלבד, כי אין מה לסכם.
+    function renderCartSummaryCard() {
+        const body = orderModal && orderModal.querySelector('.modal-body');
+        if (!body || document.getElementById('cart-summary-card')) return;
+
+        // מצב סל ריק, מוזרק פעם אחת מעל טבלת ההזמנה
+        const tableWrap = body.querySelector('.table-responsive');
+        if (tableWrap && !document.getElementById('cart-empty')) {
+            const empty = document.createElement('div');
+            empty.id = 'cart-empty';
+            empty.style.display = 'none';
+            empty.innerHTML = `
+                <strong>הסל ריק</strong>
+                <span>הוסיפו מוצרים מהקטלוג והם יופיעו כאן.</span>
+                <button type="button" class="btn btn-outline">→ חזרה לקטלוג</button>
+            `;
+            empty.querySelector('button').addEventListener('click', () => closeOrderView());
+            tableWrap.parentNode.insertBefore(empty, tableWrap);
+        }
+
+        const card = document.createElement('aside');
+        card.id = 'cart-summary-card';
+        card.innerHTML = `
+            <h3 class="cs-title">סיכום הזמנה</h3>
+            <dl class="cs-lines"></dl>
+            <div class="cs-total">
+                <span>${CONFIG.showPrices ? 'סה״כ לתשלום' : 'סה״כ פריטים'}</span>
+                <strong id="cs-total-value">—</strong>
+            </div>
+            <button type="button" id="cs-send-btn" class="btn btn-success">שלח הזמנה בוואטסאפ</button>
+            <div class="cs-secondary">
+                <button type="button" data-proxy="send-email">שליחה במייל</button>
+                <span aria-hidden="true">·</span>
+                <button type="button" data-proxy="clear-cart-btn">ניקוי הסל</button>
+            </div>
+            <p class="cs-note">ההזמנה נשלחת לאישור — נחזור אליכם בהקדם.</p>
+        `;
+        // הכפתורים בכרטיס מפעילים את הכפתורים הקיימים בפוטר — לוגיקת השליחה
+        // נשארת במקום אחד, והפוטר מוסתר בדסקטופ כדי שלא תהיה כפילות
+        card.querySelector('#cs-send-btn').addEventListener('click', () => {
+            document.getElementById('send-whatsapp')?.click();
+        });
+        card.querySelectorAll('[data-proxy]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById(btn.dataset.proxy)?.click();
+            });
+        });
+        body.appendChild(card);
+    }
+
+    function updateCartSummaryCard(totals) {
+        const lines = document.querySelector('#cart-summary-card .cs-lines');
+        const totalEl = document.getElementById('cs-total-value');
+        if (!lines || !totalEl) return;
+
+        const rows = [];
+        if (CONFIG.showPrices) {
+            rows.push(['סכום ביניים', `₪${totals.subtotal.toFixed(2)}`, '']);
+            if (totals.discount > 0) {
+                rows.push([`הנחת מבצע (${CART_PROMO.percent}%)`, `-₪${totals.discount.toFixed(2)}`, 'cs-save']);
+            }
+            const m = selectedShipping();
+            if (m) {
+                rows.push(['דמי משלוח', totals.shipping > 0 ? `₪${totals.shipping.toFixed(2)}` : 'ללא עלות', '']);
+            }
+            rows.push(['פריטים', String(totals.totalItems), '']);
+            totalEl.textContent = `₪${totals.total.toFixed(2)}`;
+        } else {
+            rows.push(['סוגי מוצרים', String(Object.keys(cart).length), '']);
+            totalEl.textContent = String(totals.totalItems);
+        }
+
+        lines.innerHTML = rows.map(([k, v, cls]) =>
+            `<div class="cs-line ${cls}"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+
+        const send = document.getElementById('cs-send-btn');
+        if (send) send.disabled = totals.totalItems === 0;
     }
 
     // "המשך בקנייה" — בתצוגת מסך מלא ה-× לבדו לא מספיק ברור
@@ -1482,6 +1568,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             fabTotalEl.textContent = finalTotal > 0 ? `· ₪${finalTotal.toFixed(2)}` : '';
         }
+
+        // כרטיס הסיכום בתצוגת הסל
+        updateCartSummaryCard({
+            subtotal: totalPrice, discount: cartDiscount,
+            shipping: shippingFee, total: finalTotal, totalItems: totalItems
+        });
+
+        // מצב סל ריק — עד היום התצוגה פשוט הייתה ריקה בלי הסבר
+        const emptyEl = document.getElementById('cart-empty');
+        if (emptyEl) emptyEl.style.display = totalItems === 0 ? 'flex' : 'none';
 
         // Update Mobile Nav Badge
         const mobileNavCountEl = document.getElementById("mobile-nav-count");
