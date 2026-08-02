@@ -1575,9 +1575,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             shipping: shippingFee, total: finalTotal, totalItems: totalItems
         });
 
-        // מצב סל ריק — עד היום התצוגה פשוט הייתה ריקה בלי הסבר
+        // מצב סל ריק — עד היום התצוגה פשוט הייתה ריקה בלי הסבר.
+        // הטבלה מוסתרת יחד איתו: היא חולקת את אותו תא בגריד, ושורת
+        // הכותרות שלה הייתה נערמת מעל ההודעה.
         const emptyEl = document.getElementById('cart-empty');
-        if (emptyEl) emptyEl.style.display = totalItems === 0 ? 'flex' : 'none';
+        if (emptyEl) {
+            const isEmpty = totalItems === 0;
+            emptyEl.style.display = isEmpty ? 'flex' : 'none';
+            const tableWrap = emptyEl.parentNode.querySelector('.table-responsive');
+            if (tableWrap) tableWrap.style.display = isEmpty ? 'none' : '';
+        }
 
         // Update Mobile Nav Badge
         const mobileNavCountEl = document.getElementById("mobile-nav-count");

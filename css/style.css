@@ -780,12 +780,11 @@ body:has(.fab-container) .scroll-top-btn {
         grid-column: 1;
     }
 
-    .cart-page .modal-body .table-responsive {
-        grid-row: 2 / span 98;
-    }
-
+    /* הטבלה מתחילה בשורה 1 — אחרת שורה 1 בטור הראשון נשארת ריקה
+       והטבלה נדחפת מתחת לכרטיס במקום לצדו */
+    .cart-page .modal-body .table-responsive,
     .cart-page .modal-body #cart-empty {
-        grid-row: 2;
+        grid-row: 1 / span 99;
     }
 
     /* כל השאר (נאדג', תאריך, אספקה, פרטי לקוח) נערם בטור השני */
@@ -793,11 +792,13 @@ body:has(.fab-container) .scroll-top-btn {
         grid-column: 2;
     }
 
-    /* כרטיס הסיכום ראשון בטור הצדדי, ונשאר גלוי בזמן גלילה */
+    /* כרטיס הסיכום ראשון בטור הצדדי, ונשאר גלוי בזמן גלילה.
+       ה-top קטן בכוונה: הגולל הוא .modal-body וההדר יושב מחוצה לו, כך
+       שאין מה "לפנות". ערך גדול היה מצמיד את הכרטיס כלפי מטה כבר בגלילה 0. */
     .cart-page #cart-summary-card {
         order: -1;
         position: sticky;
-        top: 5.5rem;
+        top: 0.25rem;
     }
 }
 
