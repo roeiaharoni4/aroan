@@ -3,7 +3,7 @@
   {
    "id": "route",
    "label": "משלוח עם מסלול החלוקה",
-   "enabled": true,
+   "enabled": false,
    "fee": 0.0,
    "free_above": 0.0,
    "note": "אור יהודה, בקעת אונו וגוש דן",
@@ -21,8 +21,8 @@
   {
    "id": "locker",
    "label": "איסוף מלוקר",
-   "enabled": false,
-   "fee": 0.0,
+   "enabled": true,
+   "fee": 15.0,
    "free_above": 0.0,
    "note": "",
    "needs_address": false
@@ -30,8 +30,8 @@
   {
    "id": "home",
    "label": "משלוח עד הבית",
-   "enabled": false,
-   "fee": 0.0,
+   "enabled": true,
+   "fee": 35.0,
    "free_above": 0.0,
    "note": "",
    "needs_address": true
