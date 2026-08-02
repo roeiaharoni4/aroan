@@ -15,6 +15,7 @@ IMAGES_DIR = 'images'
 PRICELIST_MASTER_FILE = 'data/pricelist-master.csv'
 PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
 PRICELIST_PROMO_FILE = 'data/pricelist-promo.json'
+CARE_SHIPPING_FILE = 'data/care-shipping.json'
 CARE_PAGE_FILE = 'care/index.html'
 MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
 SITE_BASE_URL = 'https://aroam.co.il'
@@ -48,6 +49,60 @@ def _clean_bundle(v):
     if buy < 1 or free < 1:
         return ''
     return f'{buy}+{free}'
+
+
+# שיטות האספקה של קטלוג הטיפוח. ברירת המחדל משקפת את המצב האמיתי היום —
+# מסלול החלוקה ואיסוף עצמי בלבד; לוקר ומשלוח עד הבית כבויים עד שרועי ימלא מחירים,
+# כדי שהאתר לא יבטיח שירות שעדיין לא קיים.
+SHIPPING_DEFAULTS = [
+    {'id': 'route', 'label': 'משלוח עם מסלול החלוקה', 'enabled': True, 'fee': 0.0,
+     'free_above': 0.0, 'note': 'אור יהודה, בקעת אונו וגוש דן', 'needs_address': True},
+    {'id': 'pickup', 'label': 'איסוף עצמי', 'enabled': True, 'fee': 0.0,
+     'free_above': 0.0, 'note': 'בתיאום טלפוני מראש', 'needs_address': False},
+    {'id': 'locker', 'label': 'איסוף מלוקר', 'enabled': False, 'fee': 0.0,
+     'free_above': 0.0, 'note': '', 'needs_address': False},
+    {'id': 'home', 'label': 'משלוח עד הבית', 'enabled': False, 'fee': 0.0,
+     'free_above': 0.0, 'note': '', 'needs_address': True},
+]
+
+
+def _clean_shipping_methods(raw):
+    """מנרמל רשימת שיטות אספקה. שומר על סדר ברירת המחדל ועל מזהים מהרשימה הסגורה בלבד."""
+    by_id = {}
+    for m in (raw or []):
+        if isinstance(m, dict) and m.get('id'):
+            by_id[str(m['id'])] = m
+
+    def to_num(v):
+        try:
+            return max(0.0, round(float(v), 2))
+        except (TypeError, ValueError):
+            return 0.0
+
+    methods = []
+    for default in SHIPPING_DEFAULTS:
+        src = by_id.get(default['id'], {})
+        methods.append({
+            'id': default['id'],
+            'label': (str(src.get('label', '')).strip() or default['label'])[:60],
+            'enabled': bool(src.get('enabled', default['enabled'])),
+            'fee': to_num(src.get('fee', default['fee'])),
+            'free_above': to_num(src.get('free_above', default['free_above'])),
+            'note': str(src.get('note', default['note']) or '')[:120],
+            # לא נלקח מהקלט: תלוי בשיטה עצמה ולא בהחלטת המשתמש
+            'needs_address': default['needs_address'],
+        })
+    return methods
+
+
+def _load_shipping():
+    """קונפיג שיטות האספקה. קובץ חסר או פגום → ברירת המחדל, כדי שהפיד והעמוד לא ייפלו."""
+    try:
+        with open(CARE_SHIPPING_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+        return _clean_shipping_methods(data.get('methods'))
+    except (FileNotFoundError, ValueError, AttributeError):
+        return _clean_shipping_methods(None)
 
 
 def _load_promo_window():
@@ -297,6 +352,21 @@ def update_merchant_feed():
     category_discounts = _load_category_discounts()
     window = _load_promo_window()
     slugs = _care_product_slugs(rows)
+
+    # g:shipping — חוסם מרכזי לאישור מוצרים ב-Merchant כשאין הגדרות משלוח בחשבון.
+    # רק שיטות שהן משלוח בפועל (needs_address); איסוף עצמי ולוקר אינם משלוח ואסור
+    # שיוצגו כמשלוח חינם. המחיר הוא דמי המשלוח המלאים ולא הסף המוזל — הצהרה נמוכה
+    # מהעלות בפועל היא הפרה של מדיניות גוגל, הצהרה גבוהה איננה.
+    shipping_xml = []
+    for m in _load_shipping():
+        if not m['enabled'] or not m['needs_address']:
+            continue
+        shipping_xml.append(
+            "<g:shipping><g:country>IL</g:country>"
+            f"<g:service>{escape(m['label'])}</g:service>"
+            f"<g:price>{m['fee']:.2f} ILS</g:price></g:shipping>"
+        )
+
     items_xml = []
     for r in rows:
         price = _effective_price(r, category_discounts, window)
@@ -344,6 +414,7 @@ def update_merchant_feed():
             parts.append(f"<g:product_type>{escape('טיפוח והיגיינה > ' + cat)}</g:product_type>")
         # אין ברקוד (GTIN) — מצהירים על כך כדי ש-Merchant לא ידחה
         parts.append("<g:identifier_exists>no</g:identifier_exists>")
+        parts.extend(shipping_xml)
         items_xml.append("    <item>\n      " + "\n      ".join(parts) + "\n    </item>")
 
     feed = (
@@ -1699,8 +1770,36 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_upload_image()
         elif parsed_path.path == '/api/promo':
             self.handle_save_promo()
+        elif parsed_path.path == '/api/shipping':
+            self.handle_save_shipping()
         else:
             self.send_error(404, "API endpoint not found")
+
+    def handle_save_shipping(self):
+        # שיטות האספקה ודמי המשלוח של קטלוג הטיפוח
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            methods = _clean_shipping_methods(data.get('methods'))
+
+            with open(CARE_SHIPPING_FILE, 'w', encoding='utf-8') as f:
+                json.dump({'methods': methods}, f, ensure_ascii=False, indent=1)
+
+            # הפיד נושא g:shipping — לרענן כדי שלא ייווצר פער מול המוצג באתר
+            try:
+                update_merchant_feed()
+            except Exception as feed_err:
+                print(f'אזהרה: עדכון הפיד אחרי שמירת משלוחים נכשל: {feed_err}')
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'methods': methods}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
 
     def handle_save_promo(self):
         # מבצעי קטלוג הטיפוח: באנר ידני, הנחת סל והנחות קטגוריה

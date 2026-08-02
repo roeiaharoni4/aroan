@@ -1637,6 +1637,41 @@
             color: #fff;
         }
 
+        /* רצועת אמון — תנאי ההזמנה שלקוח פרטי מחפש לפני שהוא קונה */
+        .care-trust {
+            list-style: none;
+            margin: 18px auto 0;
+            padding: 12px 16px;
+            max-width: 900px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px 22px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            background: rgba(99, 156, 125, 0.10);
+            border: 1px solid rgba(99, 156, 125, 0.35);
+            border-radius: 10px;
+        }
+
+        .care-trust strong {
+            font-weight: 700;
+        }
+
+        .care-trust a {
+            color: inherit;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .care-trust {
+                flex-direction: column;
+                align-items: flex-start;
+                text-align: right;
+                gap: 6px;
+            }
+        }
+
         /* נגישות: כפתור קטגוריה פעיל בירוק כהה (ניגודיות AA מול לבן; נשאר בפלטת המותג) */
         .cat-btn.active {
             background: var(--primary-dark, #1A4231);
@@ -1653,11 +1688,14 @@
             allowShare: true,
             showAddButton: true,
             dataSource: '/data/pricelist.csv?v=1',
-            promoSource: '/data/pricelist-promo.json'
+            promoSource: '/data/pricelist-promo.json',
+            // לקוח פרטי: שם מלא במקום שם עסק + בוררי אספקה ותשלום
+            customerMode: 'b2c',
+            shippingSource: '/data/care-shipping.json'
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=31" defer></script>
+    <script src="/js/app.js?v=32" defer></script>
 </head>
 
 <body>
@@ -1831,6 +1869,15 @@
             <a href="/care/men/">טיפוח לגבר</a>
             <a href="/care/general/">טיפוח כללי</a>
         </nav>
+
+        <!-- רצועת אמון: מה שלקוח פרטי צריך לדעת לפני שהוא מזמין -->
+        <ul class="care-trust" aria-label="תנאי הזמנה">
+            <li><strong>תשלום</strong> מזומן או אשראי במסירה, או ביט/פייבוקס מראש</li>
+            <li><strong>אספקה</strong> משלוח באזור, איסוף עצמי או לוקר — העלות מוצגת לפני השליחה</li>
+            <li><strong>מחירים</strong> כוללים מע״מ</li>
+            <li><strong>החזרות</strong> לפי חוק הגנת הצרכן — <a href="/terms/">פירוט בתקנון</a></li>
+            <li><strong>שאלות?</strong> <a href="tel:0526000158">052-6000158</a></li>
+        </ul>
     </section>
 
     <div class="app-container with-sidebar">
@@ -1963,21 +2010,22 @@
                     </div>
                 </div>
 
+                <!-- שיטת אספקה ואופן תשלום - נבנה מ-care-shipping.json ע"י app.js -->
+                <div id="fulfillment-options"
+                    style="display:none; margin-bottom:1rem; padding:0.8rem; background:rgba(99,156,125,0.06); border-radius:10px; gap:1.2rem; flex-wrap:wrap;">
+                </div>
+
                 <!-- Customer Details - פרטי הלקוח נשמרים במכשיר לביקור הבא -->
                 <div id="customer-details" style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(99,156,125,0.06); border-radius: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.6rem;">
                     <div>
-                        <label for="cust-business" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">שם העסק <span style="color:red;">*</span></label>
-                        <input type="text" id="cust-business" placeholder="שם העסק / המוסד" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
-                    </div>
-                    <div>
-                        <label for="cust-contact" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">איש קשר</label>
-                        <input type="text" id="cust-contact" placeholder="שם מלא" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        <label for="cust-contact" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">שם מלא <span style="color:red;">*</span></label>
+                        <input type="text" id="cust-contact" placeholder="שם פרטי ומשפחה" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
                     <div>
                         <label for="cust-phone" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">טלפון <span style="color:red;">*</span></label>
                         <input type="tel" id="cust-phone" placeholder="050-1234567" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
-                    <div>
+                    <div id="cust-address-field">
                         <label for="cust-address" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">כתובת למשלוח</label>
                         <input type="text" id="cust-address" placeholder="רחוב, מספר, עיר" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>

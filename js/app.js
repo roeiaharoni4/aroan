@@ -9,7 +9,12 @@ let PRODUCTS = [];
 const DEFAULT_CONFIG = {
     showPrices: true,
     allowPdf: true,
-    allowShare: true
+    allowShare: true,
+    // 'b2c' = לקוח פרטי: שם מלא במקום שם עסק, ובורר שיטת אספקה ואופן תשלום.
+    // כל השאר ('b2b') נשאר בהתנהגות הקיימת של קטלוג הלקוחות ודף הסוכן.
+    customerMode: 'b2b',
+    // כתובת קונפיג שיטות האספקה. null = בלי משלוח כלל (הקטלוג העסקי והסוכן).
+    shippingSource: null
 };
 let CONFIG = {};
 
@@ -136,6 +141,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Load Promotions (הנחות קטגוריה והנחת סל — רק כשמוגדר promoSource)
         await applyPromotions();
+
+        // שיטות אספקה ודמי משלוח (רק כשמוגדר shippingSource — קטלוג הטיפוח)
+        await loadShipping();
 
         // שחזור עגלה שמורה מהמכשיר (פרמטר cart ב-URL גובר עליה בהמשך)
         try {
@@ -474,6 +482,151 @@ document.addEventListener("DOMContentLoaded", async () => {
         return Math.round(total * CART_PROMO.percent / 100 * 10) / 10;
     }
 
+    // --- שיטות אספקה ואופן תשלום (קטלוג הטיפוח בלבד, דרך CONFIG.shippingSource) ---
+    let SHIPPING_METHODS = [];      // רק השיטות הפעילות, לפי הסדר בקובץ
+    let selectedShippingId = null;
+    let selectedPaymentId = null;
+    const SHIPPING_KEY = 'aroam_fulfillment_' + (window.location.pathname.split('/')[1] || 'root');
+    const PAYMENT_OPTIONS = [
+        { id: 'on_delivery', label: 'מזומן או אשראי במסירה' },
+        { id: 'prepaid', label: 'ביט / פייבוקס מראש' }
+    ];
+
+    // טעינת קונפיג האספקה. כשל טעינה משאיר את הרשימה ריקה — העמוד מתנהג
+    // בדיוק כמו לפני התוספת ולא נשבר.
+    async function loadShipping() {
+        if (!CONFIG.shippingSource) return;
+        try {
+            const res = await fetch(CONFIG.shippingSource + '?_t=' + Date.now());
+            if (!res.ok) return;
+            const cfg = await res.json();
+            SHIPPING_METHODS = (cfg.methods || []).filter(m => m && m.enabled);
+        } catch (e) {
+            console.warn('טעינת שיטות האספקה נכשלה — ההזמנה תמשיך בלי בורר משלוח', e);
+            return;
+        }
+        try {
+            const saved = JSON.parse(localStorage.getItem(SHIPPING_KEY) || 'null') || {};
+            if (SHIPPING_METHODS.some(m => m.id === saved.shipping)) selectedShippingId = saved.shipping;
+            if (PAYMENT_OPTIONS.some(p => p.id === saved.payment)) selectedPaymentId = saved.payment;
+        } catch (e) { }
+        if (!selectedShippingId && SHIPPING_METHODS.length) selectedShippingId = SHIPPING_METHODS[0].id;
+        if (!selectedPaymentId) selectedPaymentId = PAYMENT_OPTIONS[0].id;
+    }
+
+    function selectedShipping() {
+        return SHIPPING_METHODS.find(m => m.id === selectedShippingId) || null;
+    }
+
+    // דמי המשלוח בפועל. מחושבים על הסכום שאחרי הנחת הסל — כך "חינם מעל"
+    // מתייחס למה שהלקוח באמת משלם, ולא לסכום שלפני ההנחה.
+    function shippingFeeFor(totalAfterDiscount) {
+        const m = selectedShipping();
+        if (!m || !(m.fee > 0)) return 0;
+        if (m.free_above > 0 && totalAfterDiscount >= m.free_above) return 0;
+        return m.fee;
+    }
+
+    // פירוק הסכום להזמנה — מקור אמת יחיד להודעה, לגיליון ולסיכום בעמוד
+    function orderTotals() {
+        const { totalPrice, totalItems } = getCartItemsData();
+        const discount = cartDiscountFor(totalPrice, totalItems);
+        const shipping = totalItems > 0 ? shippingFeeFor(totalPrice - discount) : 0;
+        return {
+            subtotal: totalPrice,
+            discount: discount,
+            shipping: shipping,
+            total: totalPrice - discount + shipping,
+            totalItems: totalItems
+        };
+    }
+
+    // כמה חסר למשלוח חינם (0 = לא רלוונטי או שכבר הושג)
+    function freeShippingGap(totalAfterDiscount) {
+        const m = selectedShipping();
+        if (!m || !(m.fee > 0) || !(m.free_above > 0)) return 0;
+        const gap = m.free_above - totalAfterDiscount;
+        return gap > 0 ? gap : 0;
+    }
+
+    // בוררי האספקה והתשלום במודאל ההזמנה. נבנים דינמית כדי לא לחייב
+    // את אותם מזהי HTML בכל הקטלוגים.
+    function renderFulfillmentOptions() {
+        const host = document.getElementById('fulfillment-options');
+        if (!host) return;
+        if (!SHIPPING_METHODS.length) { host.style.display = 'none'; return; }
+        host.style.display = 'flex';
+        host.innerHTML = '';
+
+        const group = (title, options, currentId, onPick) => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex; flex-direction:column; gap:0.4rem;';
+            const h = document.createElement('strong');
+            h.textContent = title;
+            h.style.cssText = 'font-size:0.9rem; color:var(--text-secondary);';
+            wrap.appendChild(h);
+            options.forEach(opt => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.95rem;';
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = title;
+                radio.checked = opt.id === currentId;
+                radio.addEventListener('change', () => { onPick(opt.id); });
+                label.appendChild(radio);
+                const text = document.createElement('span');
+                text.textContent = opt.text;
+                label.appendChild(text);
+                wrap.appendChild(label);
+            });
+            host.appendChild(wrap);
+        };
+
+        group('שיטת אספקה', SHIPPING_METHODS.map(m => {
+            let text = m.label;
+            const extras = [];
+            if (m.fee > 0) {
+                extras.push(`₪${m.fee.toFixed(2)}`);
+                if (m.free_above > 0) extras.push(`חינם מעל ₪${m.free_above.toFixed(0)}`);
+            } else {
+                extras.push('ללא עלות');
+            }
+            if (m.note) extras.push(m.note);
+            return { id: m.id, text: `${text} — ${extras.join(' · ')}` };
+        }), selectedShippingId, (id) => {
+            selectedShippingId = id;
+            persistFulfillment();
+            syncAddressVisibility();
+            updateSummary();
+        });
+
+        group('אופן תשלום', PAYMENT_OPTIONS.map(p => ({ id: p.id, text: p.label })),
+            selectedPaymentId, (id) => { selectedPaymentId = id; persistFulfillment(); });
+
+        syncAddressVisibility();
+    }
+
+    function persistFulfillment() {
+        try {
+            localStorage.setItem(SHIPPING_KEY, JSON.stringify({
+                shipping: selectedShippingId, payment: selectedPaymentId
+            }));
+        } catch (e) { }
+    }
+
+    // כתובת נדרשת רק כשהשיטה היא משלוח בפועל; באיסוף עצמי/לוקר היא רק מבלבלת
+    function syncAddressVisibility() {
+        const field = document.getElementById('cust-address-field');
+        if (!field) return;
+        const m = selectedShipping();
+        field.style.display = (m && m.needs_address) ? '' : 'none';
+    }
+
+    function paymentLabel() {
+        const p = PAYMENT_OPTIONS.find(o => o.id === selectedPaymentId);
+        return p ? p.label : '';
+    }
+
     // נאדג': "עוד X ₪ / Y פריטים ותקבל הנחה" — מוצג כשמבצע סל פעיל והלקוח מתחת לרף.
     // מופיע בבר התחתון (מתחת לכפתור ההזמנה) ובראש מודאל ההזמנה.
     function updatePromoNudge(totalPrice, totalItems, cartDiscount) {
@@ -498,11 +651,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             msg = `✅ מזל טוב! קיבלתם ${pct}% הנחה על ההזמנה`;
         }
 
-        [barNudge, modalNudge].forEach(el => {
-            if (!el) return;
-            el.textContent = msg;
-            el.style.display = msg ? 'block' : 'none';
-        });
+        if (barNudge) {
+            barNudge.textContent = msg;
+            barNudge.style.display = msg ? 'block' : 'none';
+        }
+
+        // "עוד X ₪ למשלוח חינם" — רק במודאל, שם דמי המשלוח גלויים ממילא.
+        // הבר התחתון נשאר עם נאדג' הנחת הסל בלבד כדי לא להעמיס אותו.
+        if (modalNudge) {
+            const shipGap = totalItems > 0 ? freeShippingGap(totalPrice - cartDiscount) : 0;
+            const shipMsg = shipGap > 0 ? `עוד ${shipGap.toFixed(2)} ₪ ותקבלו משלוח חינם` : '';
+            const full = [msg, shipMsg].filter(Boolean).join('\n');
+            modalNudge.textContent = full;
+            modalNudge.style.whiteSpace = 'pre-line';
+            modalNudge.style.display = full ? 'block' : 'none';
+        }
     }
 
     // ניסוח מבצע הסל לתצוגה (באנר / קטגוריית מבצעים)
@@ -990,6 +1153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function openOrderModal() {
         if (!orderModal) return;
         fillOrderTable();
+        renderFulfillmentOptions();
         orderModal.classList.add("open");
         syncModalScrollLock();
         const items = Object.keys(cart).length;
@@ -1057,8 +1221,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // Save to recent orders history (הזמנות אחרונות)
                     if (items.length > 0) saveRecentOrder(items);
 
-                    // Send backup to Google Script in the background
-                    sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
+                    // Send backup to Google Script in the background.
+                    // נשלח הסכום הסופי (אחרי הנחת סל ודמי משלוח) ולא סכום הביניים.
+                    sendOrderBackupToGoogleScript(orderId, items, orderTotals(), totalItems);
                     
                     // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
                     window.dataLayer = window.dataLayer || [];
@@ -1085,8 +1250,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // Save to recent orders history (הזמנות אחרונות)
                     if (items.length > 0) saveRecentOrder(items);
 
-                    // Send backup to Google Script in the background
-                    sendOrderBackupToGoogleScript(orderId, items, totalPrice.toFixed(2), totalItems);
+                    // Send backup to Google Script in the background.
+                    // נשלח הסכום הסופי (אחרי הנחת סל ודמי משלוח) ולא סכום הביניים.
+                    sendOrderBackupToGoogleScript(orderId, items, orderTotals(), totalItems);
                     
                     // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
                     window.dataLayer = window.dataLayer || [];
@@ -1170,7 +1336,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // הנחת סל (מבצע "קנייה מעל X") — מוצגת כשורה נפרדת לפני הסה"כ
         const cartDiscount = cartDiscountFor(totalPrice, totalItems);
-        const finalTotal = totalPrice - cartDiscount;
+        // דמי משלוח מתווספים אחרי ההנחה. בעגלה ריקה אין משלוח.
+        const shippingFee = totalItems > 0 ? shippingFeeFor(totalPrice - cartDiscount) : 0;
+        const finalTotal = totalPrice - cartDiscount + shippingFee;
         if (summaryTotalEl) {
             let discountEl = document.getElementById('summary-discount');
             if (cartDiscount > 0 && CONFIG.showPrices) {
@@ -1183,6 +1351,21 @@ document.addEventListener("DOMContentLoaded", async () => {
                 discountEl.textContent = `הנחת מבצע (${CART_PROMO.percent}%): ‎-₪${cartDiscount.toFixed(2)}`;
             } else if (discountEl) {
                 discountEl.remove();
+            }
+
+            // שורת דמי משלוח — רק כשיש חיוב בפועל
+            let shipEl = document.getElementById('summary-shipping');
+            if (shippingFee > 0 && CONFIG.showPrices) {
+                if (!shipEl) {
+                    shipEl = document.createElement('div');
+                    shipEl.id = 'summary-shipping';
+                    shipEl.style.cssText = 'font-size:0.9rem; color:var(--text-secondary);';
+                    summaryTotalEl.parentNode.parentNode.insertBefore(shipEl, summaryTotalEl.parentNode);
+                }
+                const m = selectedShipping();
+                shipEl.textContent = `דמי משלוח (${m ? m.label : ''}): ₪${shippingFee.toFixed(2)}`;
+            } else if (shipEl) {
+                shipEl.remove();
             }
         }
 
@@ -1258,22 +1441,34 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Customer Details (פרטי לקוח בהזמנה) ---
     function getCustomerDetails() {
+        // עיגון כפול: בקטלוג העסקי יש cust-business, בקטלוג הטיפוח (B2C) רק cust-contact.
+        // null רק כששניהם חסרים — כלומר בדף הסוכן, שאין בו טופס פרטי לקוח.
         const businessEl = document.getElementById("cust-business");
-        if (!businessEl) return null; // גרסת סוכן - אין טופס פרטי לקוח
+        const contactEl = document.getElementById("cust-contact");
+        if (!businessEl && !contactEl) return null;
         const val = (id) => (document.getElementById(id)?.value || "").trim();
         return {
-            business: businessEl.value.trim(),
+            business: businessEl ? businessEl.value.trim() : "",
             contact: val("cust-contact"),
             phone: val("cust-phone"),
             address: val("cust-address"),
-            notes: val("cust-notes")
+            notes: val("cust-notes"),
+            // אספקה ותשלום — קיימים רק כשנטען קונפיג משלוחים
+            shipping: selectedShipping() ? selectedShipping().label : "",
+            payment: SHIPPING_METHODS.length ? paymentLabel() : ""
         };
     }
 
     function validateCustomerDetails(customer) {
-        if (!customer.business || !customer.phone) {
-            showToast("נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
-            const el = document.getElementById(!customer.business ? "cust-business" : "cust-phone");
+        const isB2C = CONFIG.customerMode === 'b2c';
+        // בלקוח פרטי אין "שם עסק" — הזיהוי הוא שם מלא
+        const nameField = isB2C ? "cust-contact" : "cust-business";
+        const nameValue = isB2C ? customer.contact : customer.business;
+        if (!nameValue || !customer.phone) {
+            showToast(isB2C
+                ? "נא למלא שם מלא וטלפון לפני שליחת ההזמנה"
+                : "נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
+            const el = document.getElementById(!nameValue ? nameField : "cust-phone");
             if (el) {
                 el.focus();
                 el.style.borderColor = "red";
@@ -1431,12 +1626,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             lines.push(`מספר הזמנה: #${orderId}`, "");
         }
         // פרטי הלקוח (אם קיים טופס בדף)
+        // התנאי בודק גם contact: בקטלוג הטיפוח (B2C) אין שם עסק, ובדיקה על business
+        // בלבד הייתה משמיטה את כל פרטי הלקוח מההודעה.
         const customer = getCustomerDetails();
-        if (customer && customer.business) {
-            lines.push(`שם העסק: ${customer.business}`);
-            if (customer.contact) lines.push(`איש קשר: ${customer.contact}`);
+        if (customer && (customer.business || customer.contact)) {
+            if (customer.business) lines.push(`שם העסק: ${customer.business}`);
+            if (customer.contact) lines.push(customer.business ? `איש קשר: ${customer.contact}` : `שם: ${customer.contact}`);
             if (customer.phone) lines.push(`טלפון: ${customer.phone}`);
+            if (customer.shipping) lines.push(`שיטת אספקה: ${customer.shipping}`);
             if (customer.address) lines.push(`כתובת למשלוח: ${customer.address}`);
+            if (customer.payment) lines.push(`אופן תשלום: ${customer.payment}`);
             if (customer.notes) lines.push(`הערות: ${customer.notes}`);
             lines.push("");
         }
@@ -1456,16 +1655,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         // סיכום מחירים והנחת סל (רק בקטלוגים שמציגים מחירים)
         if (CONFIG.showPrices) {
-            const { totalPrice, totalItems } = getCartItemsData();
-            const discount = cartDiscountFor(totalPrice, totalItems);
+            const t = orderTotals();
             lines.push("");
-            if (discount > 0) {
-                lines.push(`סה״כ ביניים: ${totalPrice.toFixed(2)} ₪`);
-                lines.push(`הנחת מבצע (${CART_PROMO.percent}%): -${discount.toFixed(2)} ₪`);
-                lines.push(`סה״כ לתשלום: ${(totalPrice - discount).toFixed(2)} ₪`);
-            } else {
-                lines.push(`סה״כ לתשלום: ${totalPrice.toFixed(2)} ₪`);
+            if (t.discount > 0 || t.shipping > 0) {
+                lines.push(`סה״כ ביניים: ${t.subtotal.toFixed(2)} ₪`);
+                if (t.discount > 0) lines.push(`הנחת מבצע (${CART_PROMO.percent}%): -${t.discount.toFixed(2)} ₪`);
+                if (t.shipping > 0) lines.push(`דמי משלוח: ${t.shipping.toFixed(2)} ₪`);
             }
+            lines.push(`סה״כ לתשלום: ${t.total.toFixed(2)} ₪`);
         }
         lines.push("", "תודה");
         return lines.join("\n");
@@ -1508,7 +1705,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return { items, totalItems, totalPrice };
     }
 
-    async function sendOrderBackupToGoogleScript(orderId, items, totalPrice, totalItems) {
+    async function sendOrderBackupToGoogleScript(orderId, items, totals, totalItems) {
         if (!GOOGLE_SCRIPT_WEBHOOK_URL) {
             console.log("Google Script Webhook URL is not set. Skipping backup email.");
             return;
@@ -1520,7 +1717,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 orderId: orderId,
                 date: orderDate,
                 items: items,
-                totalPrice: totalPrice,
+                // totalPrice = הסכום הסופי לתשלום; הפירוק נשלח לצדו כדי שבגיליון
+                // יהיה ברור מה מקורו (הסקריפט הישן קורא רק את totalPrice)
+                totalPrice: totals.total.toFixed(2),
+                subtotal: totals.subtotal.toFixed(2),
+                discount: totals.discount.toFixed(2),
+                shipping: totals.shipping.toFixed(2),
                 totalItems: totalItems,
                 customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
             };

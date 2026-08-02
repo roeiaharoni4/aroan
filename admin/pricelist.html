@@ -98,6 +98,20 @@
                     </div>
                 </div>
 
+                <!-- שיטות אספקה ודמי משלוח (נשמר ל-care-shipping.json) -->
+                <div class="table-card" style="margin-bottom:16px; padding:14px 16px; display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <strong style="font-size:1.05rem;">שיטות אספקה ודמי משלוח</strong>
+                        <span style="font-size:0.82rem; color:#888;">רק שיטות מסומנות מוצגות ללקוח בעמוד ההזמנה. "חינם מעל" — 0 או ריק = תמיד בתשלום.</span>
+                        <button id="save-shipping-btn" class="btn btn-primary" style="margin-right:auto;">שמור משלוחים</button>
+                    </div>
+                    <div id="shipping-rows" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    <span style="font-size:0.82rem; color:#888;">
+                        דמי המשלוח מתווספים לסכום ההזמנה אחרי הנחת הסל. שיטות שאין להן מחיר עדיין —
+                        השאר לא מסומנות, כדי שהאתר לא יבטיח שירות שלא קיים.
+                    </span>
+                </div>
+
                 <div class="table-card">
                     <table class="products-table">
                         <thead>

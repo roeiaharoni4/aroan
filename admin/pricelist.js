@@ -963,6 +963,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- שיטות אספקה ודמי משלוח (care-shipping.json) ---
+    const shippingRowsEl = document.getElementById('shipping-rows');
+    const saveShippingBtn = document.getElementById('save-shipping-btn');
+    // ברירת המחדל תואמת ל-SHIPPING_DEFAULTS ב-server.py — מוצגת גם כשהקובץ עוד לא נוצר
+    let shippingMethods = [
+        { id: 'route', label: 'משלוח עם מסלול החלוקה', enabled: true, fee: 0, free_above: 0, note: 'אור יהודה, בקעת אונו וגוש דן' },
+        { id: 'pickup', label: 'איסוף עצמי', enabled: true, fee: 0, free_above: 0, note: 'בתיאום טלפוני מראש' },
+        { id: 'locker', label: 'איסוף מלוקר', enabled: false, fee: 0, free_above: 0, note: '' },
+        { id: 'home', label: 'משלוח עד הבית', enabled: false, fee: 0, free_above: 0, note: '' }
+    ];
+
+    function renderShippingRows() {
+        shippingRowsEl.innerHTML = '';
+        shippingMethods.forEach((m, idx) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;';
+            row.innerHTML = `
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; min-width:190px;">
+                    <input type="checkbox" data-ship="enabled" data-idx="${idx}"${m.enabled ? ' checked' : ''}>
+                    <strong>${m.label}</strong>
+                </label>
+                <span>דמי משלוח</span>
+                <input type="number" data-ship="fee" data-idx="${idx}" min="0" step="0.5" value="${m.fee || ''}"
+                    placeholder="0" style="width:80px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                <span>₪ · חינם מעל</span>
+                <input type="number" data-ship="free_above" data-idx="${idx}" min="0" step="1" value="${m.free_above || ''}"
+                    placeholder="ללא" style="width:90px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                <span>₪</span>
+                <input type="text" data-ship="note" data-idx="${idx}" maxlength="120" value="${(m.note || '').replace(/"/g, '&quot;')}"
+                    placeholder="הערה שתוצג ללקוח (אופציונלי)"
+                    style="flex:1; min-width:180px; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+            `;
+            shippingRowsEl.appendChild(row);
+        });
+    }
+
+    shippingRowsEl.addEventListener('input', (e) => {
+        const field = e.target.dataset.ship;
+        if (!field) return;
+        const m = shippingMethods[Number(e.target.dataset.idx)];
+        if (!m) return;
+        if (field === 'enabled') m.enabled = e.target.checked;
+        else if (field === 'note') m.note = e.target.value;
+        else m[field] = toNum(e.target.value) || 0;
+    });
+
+    fetch('/data/care-shipping.json?_t=' + Date.now())
+        .then(r => r.ok ? r.json() : null)
+        .then(cfg => {
+            const byId = new Map((cfg && cfg.methods || []).map(m => [m.id, m]));
+            shippingMethods = shippingMethods.map(def => Object.assign({}, def, byId.get(def.id) || {}));
+        })
+        .catch(() => { })
+        .finally(renderShippingRows);
+
+    saveShippingBtn.onclick = async () => {
+        const bad = shippingMethods.find(m => m.enabled && m.free_above > 0 && m.fee <= 0);
+        if (bad) {
+            alert(`ב"${bad.label}" הוגדר "חינם מעל" אבל דמי המשלוח הם 0 — הסף חסר משמעות.`);
+            return;
+        }
+        saveShippingBtn.disabled = true;
+        try {
+            const res = await fetch('/api/shipping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ methods: shippingMethods })
+            });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
+            if (result.methods) { shippingMethods = result.methods; renderShippingRows(); }
+            showToast('שיטות האספקה נשמרו. (פרסום לאתר דורש git push)', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('שגיאה בשמירת שיטות האספקה: ' + e.message, 'error');
+        } finally {
+            saveShippingBtn.disabled = false;
+        }
+    };
+
     // --- התאמת תמונות אוטומטית: קובץ בתיקיית images ששמו = שם המוצר (או המק"ט) ---
     function normKey(s) {
         return String(s || '').toLowerCase().replace(/["'׳״`_\-–]/g, ' ').replace(/\s+/g, ' ').trim();

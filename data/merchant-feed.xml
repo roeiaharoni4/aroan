@@ -14,11 +14,12 @@
       <g:condition>new</g:condition>
       <g:price>19.90 ILS</g:price>
       <g:sale_price>16.90 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>פלמוליב</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400027</g:id>
@@ -30,11 +31,12 @@
       <g:condition>new</g:condition>
       <g:price>39.90 ILS</g:price>
       <g:sale_price>36.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400020</g:id>
@@ -46,11 +48,12 @@
       <g:condition>new</g:condition>
       <g:price>39.90 ILS</g:price>
       <g:sale_price>36.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400029</g:id>
@@ -62,11 +65,12 @@
       <g:condition>new</g:condition>
       <g:price>39.90 ILS</g:price>
       <g:sale_price>36.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400028</g:id>
@@ -78,11 +82,12 @@
       <g:condition>new</g:condition>
       <g:price>39.90 ILS</g:price>
       <g:sale_price>36.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400031</g:id>
@@ -94,11 +99,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400024</g:id>
@@ -110,11 +116,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400032</g:id>
@@ -126,11 +133,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400034</g:id>
@@ -142,11 +150,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400087</g:id>
@@ -158,11 +167,12 @@
       <g:condition>new</g:condition>
       <g:price>39.90 ILS</g:price>
       <g:sale_price>36.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400036</g:id>
@@ -174,11 +184,12 @@
       <g:condition>new</g:condition>
       <g:price>39.90 ILS</g:price>
       <g:sale_price>36.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400042</g:id>
@@ -190,11 +201,12 @@
       <g:condition>new</g:condition>
       <g:price>19.90 ILS</g:price>
       <g:sale_price>18.30 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400045</g:id>
@@ -206,11 +218,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400023</g:id>
@@ -222,11 +235,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400044</g:id>
@@ -238,11 +252,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>8400053</g:id>
@@ -254,11 +269,12 @@
       <g:condition>new</g:condition>
       <g:price>29.90 ILS</g:price>
       <g:sale_price>27.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>ARGANIA</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1500821</g:id>
@@ -273,6 +289,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1501015</g:id>
@@ -287,6 +304,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1501001</g:id>
@@ -301,6 +319,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1501019</g:id>
@@ -315,6 +334,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1500887</g:id>
@@ -329,6 +349,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1501142</g:id>
@@ -343,6 +364,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1501147</g:id>
@@ -357,6 +379,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Feminine Sanitary Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; נשים</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600370</g:id>
@@ -371,6 +394,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600372</g:id>
@@ -385,6 +409,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600369</g:id>
@@ -399,6 +424,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600623</g:id>
@@ -413,6 +439,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600665</g:id>
@@ -427,6 +454,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600125</g:id>
@@ -441,6 +469,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600690</g:id>
@@ -455,6 +484,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600020</g:id>
@@ -469,6 +499,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600271</g:id>
@@ -483,6 +514,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600688</g:id>
@@ -497,6 +529,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1600157</g:id>
@@ -511,6 +544,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Oral Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; היגיינת פה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101704</g:id>
@@ -525,6 +559,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101671</g:id>
@@ -539,6 +574,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101674</g:id>
@@ -553,6 +589,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101673</g:id>
@@ -567,6 +604,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101527</g:id>
@@ -581,6 +619,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101686</g:id>
@@ -595,6 +634,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>3101685</g:id>
@@ -609,6 +649,7 @@
       <g:google_product_category>Home &amp; Garden &gt; Household Supplies &gt; Laundry Supplies</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כביסה</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>2600631</g:id>
@@ -623,6 +664,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>2600800</g:id>
@@ -637,6 +679,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>4400827</g:id>
@@ -651,6 +694,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>4400841</g:id>
@@ -665,6 +709,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; כללי</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>4400831</g:id>
@@ -679,6 +724,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Shaving &amp; Grooming</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; גבר</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>2200250</g:id>
@@ -693,6 +739,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Shaving &amp; Grooming</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; גבר</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>2200342</g:id>
@@ -707,6 +754,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Shaving &amp; Grooming</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; גבר</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>2200338</g:id>
@@ -721,6 +769,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Shaving &amp; Grooming</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; גבר</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1501041</g:id>
@@ -735,6 +784,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Shaving &amp; Grooming</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; גבר</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>2200374</g:id>
@@ -749,6 +799,7 @@
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Shaving &amp; Grooming</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; גבר</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020007</g:id>
@@ -760,11 +811,12 @@
       <g:condition>new</g:condition>
       <g:price>64.90 ILS</g:price>
       <g:sale_price>59.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020016</g:id>
@@ -776,11 +828,12 @@
       <g:condition>new</g:condition>
       <g:price>64.90 ILS</g:price>
       <g:sale_price>59.70 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020080</g:id>
@@ -792,11 +845,12 @@
       <g:condition>new</g:condition>
       <g:price>69.90 ILS</g:price>
       <g:sale_price>64.30 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020072</g:id>
@@ -808,11 +862,12 @@
       <g:condition>new</g:condition>
       <g:price>69.90 ILS</g:price>
       <g:sale_price>64.30 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020015</g:id>
@@ -824,11 +879,12 @@
       <g:condition>new</g:condition>
       <g:price>69.90 ILS</g:price>
       <g:sale_price>64.30 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020030</g:id>
@@ -840,11 +896,12 @@
       <g:condition>new</g:condition>
       <g:price>69.90 ILS</g:price>
       <g:sale_price>64.30 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020073</g:id>
@@ -856,11 +913,12 @@
       <g:condition>new</g:condition>
       <g:price>69.90 ILS</g:price>
       <g:sale_price>64.30 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020002</g:id>
@@ -872,11 +930,12 @@
       <g:condition>new</g:condition>
       <g:price>54.90 ILS</g:price>
       <g:sale_price>50.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020019</g:id>
@@ -888,11 +947,12 @@
       <g:condition>new</g:condition>
       <g:price>54.90 ILS</g:price>
       <g:sale_price>50.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020011</g:id>
@@ -904,11 +964,12 @@
       <g:condition>new</g:condition>
       <g:price>54.90 ILS</g:price>
       <g:sale_price>50.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
     <item>
       <g:id>1020026</g:id>
@@ -920,11 +981,12 @@
       <g:condition>new</g:condition>
       <g:price>54.90 ILS</g:price>
       <g:sale_price>50.50 ILS</g:sale_price>
-      <g:sale_price_effective_date>2026-08-01T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
+      <g:sale_price_effective_date>2026-08-02T00:00:00Z/2026-09-01T23:59:59Z</g:sale_price_effective_date>
       <g:brand>LA BEAUTE</g:brand>
       <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Hair Care</g:google_product_category>
       <g:product_type>טיפוח והיגיינה &gt; שיער</g:product_type>
       <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping><g:country>IL</g:country><g:service>משלוח עם מסלול החלוקה</g:service><g:price>0.00 ILS</g:price></g:shipping>
     </item>
   </channel>
 </rss>
