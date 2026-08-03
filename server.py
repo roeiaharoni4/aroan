@@ -595,7 +595,7 @@ def _care_faq(label):
          'כן. המחירים המוצגים הם מחירים לצרכן וכוללים מע"מ.'),
         ('אפשר להחזיר או לבטל הזמנה?',
          'בהתאם לחוק הגנת הצרכן ניתן לבטל עסקה ולהחזיר מוצר, למעט מוצרי היגיינה שנפתחו. '
-         'ליצירת קשר: 052-6000158.'),
+         'ליצירת קשר: 03-6346236.'),
         ('יש מבצעים?',
          'כן — קטגוריית "מבצעים" בקטלוג מרכזת את המוצרים שנמכרים כעת במחיר מוזל.'),
     ]
@@ -704,7 +704,7 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
     </main>
     <footer class="cc-footer">
         <div><strong>אהרוני שיווק והפצה</strong></div>
-        <div><a href="tel:0526000158">052-6000158</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
+        <div><a href="tel:036346236">03-6346236</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
         <div>משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
         <div style="margin-top:8px;"><a href="{escape(catalog_url)}">חזרה לקטלוג המלא</a></div>
     </footer>
@@ -965,7 +965,7 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
     </main>
     <footer class="cc-footer">
         <div><strong>אהרוני שיווק והפצה</strong></div>
-        <div><a href="tel:0526000158">052-6000158</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
+        <div><a href="tel:036346236">03-6346236</a> · <a href="https://wa.me/972526000158">WhatsApp</a></div>
         <div>משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
         <div style="margin-top:8px;"><a href="{escape(cat_link)}">חזרה לקטגוריה</a> · <a href="/care/">חזרה לקטלוג המלא</a></div>
     </footer>
@@ -1263,7 +1263,7 @@ def generate_catalog_subcategory_pages():
                 {'@type': 'ListItem', 'position': 4, 'name': cfg['h1'], 'item': page_url},
             ]},
             'publisher': {'@type': 'WholesaleStore', 'name': 'אהרוני שיווק והפצה',
-                          'url': f'{SITE_BASE_URL}/', 'telephone': '+972526000158'},
+                          'url': f'{SITE_BASE_URL}/', 'telephone': '+97236346236'},
             'mainEntity': {'@type': 'ItemList', 'numberOfItems': len(items), 'itemListElement': [
                 {'@type': 'ListItem', 'position': i, 'name': r['name'],
                  'url': f'{SITE_BASE_URL}/catalog/product/{quote(slugs[r["id"]])}/'}
@@ -1331,7 +1331,7 @@ def generate_catalog_subcategory_pages():
     <header class="site">
         <div class="wrap">
             <a href="/">אהרוני שיווק והפצה</a>
-            <a href="tel:0526000158">052-6000158</a>
+            <a href="tel:036346236">03-6346236</a>
         </div>
     </header>
 
@@ -1367,7 +1367,6 @@ def generate_catalog_subcategory_pages():
     <footer class="site">
         <div class="wrap">
             <div>אהרוני שיווק והפצה &middot; אור יהודה &middot;
-                <a href="tel:0526000158">052-6000158</a> &middot;
                 <a href="tel:036346236">03-6346236</a></div>
             <div><a href="/catalog/">קטלוג מוצרים</a> &middot; <a href="/about/">אודות</a> &middot;
                 <a href="/contact/">צור קשר</a></div>
@@ -1656,7 +1655,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
     <header class="site">
         <div class="wrap">
             <a href="/">אהרוני שיווק והפצה</a>
-            <a href="tel:0526000158">052-6000158</a>
+            <a href="tel:036346236">03-6346236</a>
         </div>
     </header>
 
@@ -1687,7 +1686,6 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
     <footer class="site">
         <div class="wrap">
             <div>אהרוני שיווק והפצה &middot; אור יהודה &middot;
-                <a href="tel:0526000158">052-6000158</a> &middot;
                 <a href="tel:036346236">03-6346236</a></div>
             <div><a href="/catalog/">קטלוג מוצרים</a> &middot; <a href="/about/">אודות</a> &middot;
                 <a href="/contact/">צור קשר</a></div>
