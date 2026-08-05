@@ -426,3 +426,12 @@ body {
 
 .toast.success { background-color: var(--success); }
 .toast.error { background-color: var(--danger); }
+
+/* הסבר קצר מתחת לשדה — לשדות שקל למלא לא נכון (מותג, יחידות בקרטון) */
+.field-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #6B6B6B);
+    line-height: 1.4;
+}

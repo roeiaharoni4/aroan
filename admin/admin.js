@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const unitInput = document.getElementById('prod-unit');
     const priceInput = document.getElementById('prod-price');
     const packagingInput = document.getElementById('prod-packaging');
+    const brandInput = document.getElementById('prod-brand');
+    const cartonQtyInput = document.getElementById('prod-carton-qty');
     const subcatInput = document.getElementById('prod-subcategory');
     const descInput = document.getElementById('prod-description');
     
@@ -58,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     unit: item.unit || 'יחידה',
                     image: item.image || '',
                     price: item.price || 0,
+                    brand: item.brand || '',
+                    carton_qty: item.carton_qty || '',
                     packaging: item.packaging || '',
                     description: item.description || ''
                 })).filter(p => p.id && p.name);
@@ -150,6 +154,19 @@ document.addEventListener('DOMContentLoaded', () => {
             categoryList.appendChild(opt);
         });
 
+        // רשימת המותגים נבנית ממה שכבר הוזן — מונע וריאציות כתיב של אותו מותג
+        const brandList = document.getElementById('brand-list');
+        if (brandList) {
+            const brands = [...new Set(products.map(p => (p.brand || '').trim()))]
+                .filter(b => b).sort((a, b) => a.localeCompare(b, 'he'));
+            brandList.innerHTML = '';
+            brands.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                brandList.appendChild(opt);
+            });
+        }
+
         // עדכון תפריט הסינון לפי קטגוריה (שומר על הבחירה הנוכחית)
         if (categoryFilter) {
             const current = categoryFilter.value;
@@ -193,6 +210,8 @@ document.addEventListener('DOMContentLoaded', () => {
         unitInput.value = p.unit;
         priceInput.value = p.price;
         packagingInput.value = p.packaging || '';
+        brandInput.value = p.brand || '';
+        cartonQtyInput.value = p.carton_qty || '';
         subcatInput.value = p.subcategory || '';
         descInput.value = p.description || '';
         urlInput.value = p.image;
@@ -275,6 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
             unit: unitInput.value.trim() || 'יחידה',
             image: urlInput.value.trim(),
             price: parseFloat(priceInput.value) || 0,
+            brand: brandInput.value.trim(),
+            carton_qty: cartonQtyInput.value.trim(),
             packaging: packagingInput.value.trim(),
             description: descInput.value.trim()
         };

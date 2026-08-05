@@ -44,7 +44,7 @@ PRICELIST_CATALOGS = {
 # עמודות הקטלוג העסקי (data/products.csv). מקור אמת יחיד לכתיבה מהעורך —
 # packaging = מידע אריזה/קרטון, subcategory = שיוך לדף תת-קטגוריה (שניהם אופציונליים).
 PRODUCT_FIELDS = ['id', 'name', 'category', 'subcategory', 'unit', 'image',
-                  'price', 'packaging', 'description']
+                  'price', 'brand', 'carton_qty', 'packaging', 'description']
 
 
 def _clean_date(v):

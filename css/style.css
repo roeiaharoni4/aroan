@@ -13,6 +13,8 @@
     --text-main: #212121;
     --text-secondary: #6B6B6B;
     --border-color: #e0e0e0;
+    /* רקע אריח התמונה — נפרד מ---bg-surface כדי שיתחלף גם במצב כהה */
+    --card-img-bg: #ffffff;
 
     /* Functional */
     --danger: #d32f2f;
@@ -113,6 +115,8 @@
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
     --primary-light: #1A4231;
     /* Darker tint for hover states */
+    --card-img-bg: #1E1E1E;
+    /* היה לבן קשיח — יצר ריבועים זוהרים במצב כהה */
 }
 
 * {
@@ -257,10 +261,40 @@ button {
     box-shadow: var(--shadow-sm);
 }
 
+/* שורת "X מוצרים" + מיון */
+.results-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.results-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.results-sort select {
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+}
+
 /* Product Grid */
 .products-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    /* היה minmax(240px) — במסך 1440 יצאו 3 עמודות בלבד. עם 205px נכנסות 4
+       ברוחב הגריד בפועל (948px אחרי הסרגל והריפוד), בלי לצמצם מתחת לזה. */
+    grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
     gap: 1.5rem;
     padding: 1.5rem 1rem;
 }
@@ -283,13 +317,15 @@ button {
 }
 
 .card-img-container {
-    height: 200px;
+    /* היה 200px עם ריפוד 1rem — התמונה נצבעה ב-167px בתוך 266px פנויים.
+       220px עם ריפוד קטן נותן ~203px באותו רוחב כרטיס. */
+    height: 220px;
     width: 100%;
-    background-color: #fff;
+    background-color: var(--card-img-bg);
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 1rem;
+    padding: 0.5rem;
     border-bottom: 1px solid var(--bg-body);
     position: relative;
 }
@@ -356,6 +392,9 @@ button {
 }
 
 .product-img {
+    /* רוחב/גובה מלאים כדי שה-layout box לא ייתקע על מידות ה-attributes */
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -374,6 +413,50 @@ button {
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* צ'יפ המותג — מוצג רק כשיש מותג. אין placeholder ואין מקום שמור,
+   כי לרוב המוצרים בקטלוג אין מותג והשורה פשוט לא נוצרת. */
+.product-brand {
+    align-self: flex-start;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+[data-theme="dark"] .product-brand {
+    color: var(--primary-pastel);
+}
+
+/* שורת מטא: אריזה + מק״ט. האריזה היא המידע שקונה עסקי מחפש,
+   ולכן היא מודגשת והמק״ט מושתק לצדה. */
+.product-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.meta-pack {
+    font-weight: 600;
+    color: var(--text-main);
+    background: var(--bg-body);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.meta-sku {
+    color: var(--text-secondary);
+}
+
+.meta-pack + .meta-sku::before {
+    content: "·";
+    margin-left: 0.35rem;
 }
 
 .product-title {
@@ -403,18 +486,31 @@ button {
     color: #fff;
 }
 
-/* כפתור "הוסף לסל" בולט בכרטיס (קטלוג הטיפוח) */
+/* כפתור ההוספה יושב עכשיו בשורת הפעולה לצד בקר הכמות (לא מתחתיו),
+   כדי שאפשר יהיה לקבוע כמות ולהוסיף בלי לפתוח את המוצר. */
 .add-to-cart-btn {
-    margin: 0 1rem 1rem;
-    padding: 0.65rem 1rem;
-    background: var(--primary);
+    flex: 1;
+    min-height: 44px;
+    padding: 0.6rem 1rem;
+    background: var(--primary-dark);
     color: #fff;
     border: none;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.2s ease;
+}
+
+/* כשהמוצר כבר בסל הכפתור נרגע לתצוגת מתאר — מסמן מצב בלי לצעוק */
+.product-card.in-cart .add-to-cart-btn {
+    background: transparent;
+    color: var(--primary-dark);
+    border: 1px solid var(--primary);
+}
+
+[data-theme="dark"] .product-card.in-cart .add-to-cart-btn {
+    color: var(--primary-pastel);
 }
 
 .add-to-cart-btn:hover {
@@ -506,9 +602,15 @@ button {
 
 .card-footer {
     margin-top: 0.75rem;
+    padding: 0 1rem 1rem;
     display: flex;
-    justify-content: space-between;
+    gap: 0.5rem;
     align-items: center;
+}
+
+/* יחידת המידה מוצגת רק כשהיא שונה מ"יחידה" — אחרת התגית ריקה ולא תופסת מקום */
+.card-footer .unit-tag:empty {
+    display: none;
 }
 
 /* Quantity Controls */
@@ -521,8 +623,9 @@ button {
 }
 
 .qty-btn {
-    width: 32px;
-    height: 32px;
+    /* 44px = תקן מטרת המגע. היה 32px. */
+    width: 44px;
+    height: 44px;
     border: none;
     border-radius: 50%;
     background: #fff;
@@ -621,6 +724,16 @@ body:has(.fab-container) .floating-whatsapp {
 
 body:has(.fab-container) .scroll-top-btn {
     bottom: 148px;
+}
+
+/* במובייל הוואטסאפ הצף כיסה כרטיס מוצר — שלושה אלמנטים צפים התחרו על
+   אותה פינה (נגישות משמאל, וואטסאפ מימין, בר ההזמנה לרוחב).
+   בדפי הקטלוג הוא מוסתר: בר ההזמנה הוא הפעולה הרלוונטית שם, והוואטסאפ
+   נשאר זמין בכל שאר דפי האתר. */
+@media (max-width: 600px) {
+    body:has(.fab-container) .floating-whatsapp {
+        display: none;
+    }
 }
 
 /* Modal */
@@ -1311,7 +1424,73 @@ body:has(.fab-container) .scroll-top-btn {
     }
 
     .card-img-container {
-        height: 140px;
+        /* היה 140px עם ריפוד 1rem — המוצר נצבע ב-108px בלבד.
+           150 עם ריפוד קטן נותן ~138px בלי להאריך את הכרטיס. */
+        height: 150px;
+        padding: 0.35rem;
+    }
+
+    .results-bar {
+        padding: 0.25rem 0.5rem 0;
+        font-size: 0.75rem;
+    }
+
+    .results-sort select {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.75rem;
+    }
+
+    /* דחיסת גוף הכרטיס — כל פיקסל כאן מוכפל במספר השורות שנראות במסך */
+    .card-body {
+        padding: 0.5rem 0.6rem;
+        gap: 0.2rem;
+    }
+
+    .product-title {
+        font-size: 0.88rem;
+        line-height: 1.25;
+    }
+
+    .product-meta {
+        margin-top: 0.2rem;
+        font-size: 0.72rem;
+    }
+
+    /* הבקר נשאר נגיש למגע (44px גובה) אבל צר יותר,
+       כדי שיישאר מקום לכפתור ההוספה באותה שורה */
+    .qty-btn {
+        width: 38px;
+        height: 44px;
+    }
+
+    .qty-input {
+        width: 26px;
+    }
+
+    .add-to-cart-btn {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.4rem;
+    }
+
+    /* צמצום הכותרות במובייל: היו 256px של כרום לפני המוצר הראשון —
+       30% מהמסך — ורק 2 מוצרים נראו בו-זמנית. */
+    .main-header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .header-content {
+        margin-bottom: 0.5rem;
+    }
+
+    .categories-nav {
+        padding: 0.25rem 0;
+        margin-top: 0.25rem;
+    }
+
+    .card-footer {
+        margin-top: 0.4rem;
+        padding: 0 0.6rem 0.6rem;
+        gap: 0.35rem;
     }
 
     .card-body {
@@ -1424,49 +1603,134 @@ body:has(.fab-container) .scroll-top-btn {
     gap: 0.6rem;
 }
 
+/* תצוגת רשימה — שורת הזמנה מהירה.
+   קודם זו הייתה שורת flex שבה שלוש שורות הטקסט נערמו אנכית בעמודה של 674px,
+   ונשארו כ-400px ריקים באמצע כל שורה. עכשיו זה גריד עם עמודות קבועות,
+   כך שמותג ואריזה מתיישרים אנכית בין השורות ואפשר לסרוק אותם מלמעלה למטה. */
 .list-view .product-card {
-    flex-direction: row;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
 }
 
 .list-view .card-img-container {
-    width: 96px;
-    min-width: 96px;
-    height: 96px;
-    padding: 0.4rem;
+    width: 56px;
+    min-width: 56px;
+    height: 56px;
+    padding: 0.2rem;
     border-bottom: none;
-    border-left: 1px solid var(--bg-body);
+    border-left: none;
+    border-radius: 4px;
 }
 
 .list-view .card-img-container .qv-btn-trigger,
-.list-view .card-img-container .share-btn,
-.list-view .card-img-container .fav-btn {
+.list-view .card-img-container .share-btn {
     display: none;
 }
 
+/* המועדפים היו מוסתרים לגמרי בתצוגת הרשימה — עכשיו גלויים ככפתור קטן בפינה */
+.list-view .card-img-container .fav-btn {
+    display: flex;
+    opacity: 1;
+    transform: none;
+    top: -4px;
+    left: -4px;
+    width: 22px;
+    height: 22px;
+    box-shadow: none;
+    background: transparent;
+}
+
+/* גוף הכרטיס הוא עצמו גריד — כך שם/מותג/אריזה מקבלים עמודות משלהם.
+   grid-column על הצ'יפים לבדם לא היה עובד: הם ילדים של .card-body ולא של
+   .product-card, ו-grid-column חל רק על ילד ישיר של גריד. */
 .list-view .card-body {
-    padding: 0.5rem 0.9rem;
-    gap: 0.15rem;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px 116px;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0;
+    min-width: 0;
+}
+
+.list-view .product-title {
+    grid-column: 1;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+.list-view .product-price {
+    grid-column: 1;
+}
+
+.list-view .product-brand {
+    grid-column: 2;
+    justify-self: start;
+    align-self: center;
+}
+
+.list-view .product-meta {
+    grid-column: 3;
+    margin-top: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    font-size: 0.75rem;
+}
+
+.list-view .meta-pack {
+    background: none;
+    padding: 0;
+    font-weight: 600;
+}
+
+.list-view .meta-pack + .meta-sku::before {
+    content: none;
 }
 
 .list-view .card-footer {
+    grid-column: 3;
     margin-top: 0;
+    padding: 0;
     align-self: center;
-    padding-left: 0.9rem;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-shrink: 0;
 }
 
-@media (max-width: 600px) {
-    .list-view .card-img-container {
-        width: 76px;
-        min-width: 76px;
-        height: 76px;
+.list-view .add-to-cart-btn {
+    flex: 0 0 auto;
+    min-width: 78px;
+}
+
+/* מתחת ל-900px אין מקום לשלוש עמודות בגוף הכרטיס — המותג והאריזה
+   נערמים מתחת לשם, והשורה נשארת קריאה במקום להידחס. */
+@media (max-width: 900px) {
+    .list-view .card-body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
     }
 
-    .list-view .card-footer {
-        padding-left: 0.5rem;
+    .list-view .product-meta {
+        flex-direction: row;
+        gap: 0.35rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .list-view .product-card {
+        grid-template-columns: 48px minmax(0, 1fr) auto;
+        gap: 0.5rem;
+    }
+
+    .list-view .card-img-container {
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
     }
 }
 

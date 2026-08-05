@@ -115,6 +115,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         return "";
     }
 
+    // תווית האריזה שמוצגת לקונה. סדר הכרעה: טקסט חופשי מהעורך גובר, אחריו
+    // מספר היחידות בקרטון, ורק אם שניהם ריקים — יחידת המידה.
+    // הרוב המכריע של המוצרים היום הם "יחידה" בלבד, ולכן הפונקציה מחזירה
+    // מחרוזת ריקה במקרה הזה — אין טעם להציג שורה שכתוב בה אותו דבר בכל כרטיס.
+    function packLabel(product) {
+        if (product.packaging) return product.packaging;
+        const qty = parseInt(product.carton_qty, 10);
+        if (qty > 0) {
+            // "יחידה" מתקצר ל"יח׳" — "קרטון 12 יחידה" לא נקרא נכון בעברית
+            const unit = (product.unit || "").trim();
+            return "קרטון " + qty + " " + (!unit || unit === "יחידה" ? "יח׳" : unit);
+        }
+        return "";
+    }
+
     // Recent orders key - היסטוריית הזמנות אחרונות (נשמר בנפרד לקטלוג לקוחות ולגרסת הסוכן)
     const RECENT_KEY = 'aroam_recent_orders_' + (window.location.pathname.split('/')[1] || 'root');
     // עגלה שמורה במכשיר — הלקוח ממשיך מאיפה שהפסיק (מפתח נפרד לכל קטלוג)
@@ -325,8 +340,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // מבצע: original_price קיים רק בקובץ המחירון הנסתר — כשהוא גבוה מהמחיר מוצג "מבצע"
                             original_price: parseFloat(item.original_price) || 0,
                             description: item.description || "", // Optional description
-                            // מידע אריזה/קרטון — עמודה אופציונלית בקטלוג העסקי, מוצגת רק כשמולאה
+                            // מידע אריזה/קרטון — עמודות אופציונליות, מוצגות רק כשמולאו
                             packaging: (item.packaging || "").trim(),
+                            carton_qty: (item.carton_qty || "").toString().trim(),
                             brand: (item.brand || "").trim() || detectBrand(item.name), // עמודת brand בקובץ גוברת על זיהוי אוטומטי
                             // מבצע חבילה ותוקף — קיימים רק בקובץ המחירון (בקטלוג הרגיל העמודות לא קיימות)
                             bundle: (item.bundle || "").trim(),
@@ -810,6 +826,40 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // שורת "X מוצרים" + מיון מעל הרשת. נבנית פעם אחת ומתעדכנת בכל רינדור.
+    // עד כה לא היה שום סימן כמה מוצרים יש בקטגוריה ולא הייתה אפשרות מיון.
+    let sortMode = (() => {
+        try { return localStorage.getItem('aroam_catalog_sort') || 'default'; } catch (e) { return 'default'; }
+    })();
+
+    function renderResultsBar(count) {
+        if (!productsEl || !productsEl.parentNode) return;
+        let bar = document.getElementById('results-bar');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'results-bar';
+            bar.className = 'results-bar';
+            bar.innerHTML =
+                '<span class="results-count"></span>' +
+                '<label class="results-sort">מיון' +
+                '<select id="sort-select" aria-label="מיון מוצרים">' +
+                '<option value="default">ברירת מחדל</option>' +
+                '<option value="name">לפי שם</option>' +
+                '<option value="brand">לפי מותג</option>' +
+                '</select></label>';
+            productsEl.parentNode.insertBefore(bar, productsEl);
+            const sel = bar.querySelector('#sort-select');
+            sel.value = sortMode;
+            sel.addEventListener('change', () => {
+                sortMode = sel.value;
+                try { localStorage.setItem('aroam_catalog_sort', sortMode); } catch (e) { }
+                renderProducts();
+            });
+        }
+        bar.querySelector('.results-count').textContent =
+            count === 1 ? "מוצר אחד" : count + " מוצרים";
+    }
+
     function renderProducts() {
         if (!productsEl) return;
         const searchQuery = (searchInput?.value || "").trim();
@@ -843,6 +893,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else if (activeCategory) {
             filtered = PRODUCTS.filter(p => p.category === activeCategory);
         }
+
+        // מיון — ברירת המחדל היא סדר הקובץ, כדי לא לשנות התנהגות קיימת.
+        // "לפי מותג" מקבץ יחד את מוצרי אותו יצרן, וזה מה שקונה עסקי סורק.
+        // מוצרים בלי מותג יורדים לסוף במקום להתפזר בין המקובצים.
+        if (sortMode === 'name') {
+            filtered = filtered.slice().sort((a, b) => a.name.localeCompare(b.name, 'he'));
+        } else if (sortMode === 'brand') {
+            filtered = filtered.slice().sort((a, b) => {
+                const ab = a.brand || "￿", bb = b.brand || "￿";
+                return ab === bb ? a.name.localeCompare(b.name, 'he') : ab.localeCompare(bb, 'he');
+            });
+        }
+
+        renderResultsBar(filtered.length);
 
         if (filtered.length === 0) {
             productsEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;">לא נמצאו מוצרים.</div>';
@@ -1046,15 +1110,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             const body = document.createElement("div");
             body.className = "card-body";
 
-            const categoryLabel = document.createElement("div");
-            categoryLabel.className = "product-cat-label";
-            categoryLabel.textContent = product.category;
+            // המותג במקום שם הקטגוריה: הקטגוריה חזרה זהה בכל כרטיס באותה
+            // קטגוריה ולא הוסיפה מידע. למותג יש ערך אמיתי לקונה — אבל הוא קיים
+            // רק לחלק מהמוצרים, ולכן כשאין מותג לא מוצג כלום (בלי מקף, בלי מקום שמור).
+            if (product.brand) {
+                const brandChip = document.createElement("span");
+                brandChip.className = "product-brand";
+                brandChip.textContent = product.brand;
+                body.appendChild(brandChip);
+            }
 
             const title = document.createElement("div");
             title.className = "product-title";
             title.textContent = product.name;
 
-            body.appendChild(categoryLabel);
             body.appendChild(title);
 
             // Price - Conditional
@@ -1077,26 +1146,34 @@ document.addEventListener("DOMContentLoaded", async () => {
                 body.appendChild(price);
             }
 
-            const sku = document.createElement("div");
-            sku.className = "product-sku";
-            sku.textContent = "מק״ט: " + product.id;
-            body.appendChild(sku);
-
-            // מידע אריזה/קרטון — מוצג רק כשהשדה מולא ב-CSV
-            if (product.packaging) {
-                const pack = document.createElement("div");
-                pack.className = "product-packaging";
-                pack.textContent = product.packaging;
-                body.appendChild(pack);
+            // שורת מטא אחת: אריזה + מק״ט. קודם הם תפסו שתי שורות נפרדות,
+            // והמק״ט קיבל אותו משקל ויזואלי כמו האריזה — שהיא המידע שהקונה
+            // העסקי באמת צריך. כשאין מידע אריזה מוצג המק״ט לבדו.
+            const meta = document.createElement("div");
+            meta.className = "product-meta";
+            const packText = packLabel(product);
+            if (packText) {
+                const pack = document.createElement("span");
+                pack.className = "meta-pack";
+                pack.textContent = packText;
+                meta.appendChild(pack);
             }
+            const sku = document.createElement("span");
+            sku.className = "meta-sku";
+            sku.textContent = product.id;
+            meta.appendChild(sku);
+            body.appendChild(meta);
 
             // Footer / Controls
             const footer = document.createElement("div");
             footer.className = "card-footer";
 
+            // יחידת המידה זהה ב-175 מתוך 176 המוצרים ("יחידה"), ולכן היא לא
+            // מוסרת מידע ומוצגת רק כשהיא באמת שונה. המידע השימושי עבר לשורת המטא.
             const unitTag = document.createElement("span");
             unitTag.className = "unit-tag";
-            unitTag.textContent = product.unit || "יחידה";
+            const unitText = (product.unit || "").trim();
+            unitTag.textContent = (unitText && unitText !== "יחידה") ? unitText : "";
 
             const qtyControl = document.createElement("div");
             qtyControl.className = "qty-control";
@@ -1135,17 +1212,20 @@ document.addEventListener("DOMContentLoaded", async () => {
                 addBtn = document.createElement("button");
                 addBtn.className = "add-to-cart-btn";
                 addBtn.type = "button";
-                addBtn.textContent = "הוסף לסל";
+                addBtn.textContent = "הוסף";
                 addBtn.onclick = (e) => { changeQty(product.id, 1, input, e); syncAddState(); };
-                card.appendChild(addBtn);
+                footer.appendChild(addBtn);
             }
 
-            // מסנכרן את התצוגה בין כפתור ההוספה לבקר הכמות
+            // בקר הכמות וכפתור ההוספה מוצגים יחד ולא מתחלפים.
+            // קודם הכמות הופיעה רק אחרי לחיצה על "הוסף", כך שהזמנה של 6 קרטונים
+            // דרשה 7 קליקים; הקונה החוזר יודע מראש כמה הוא רוצה.
+            // הכפתור משנה מראה בלבד — מלא כשיש כמות בסל, מתאר כשאין.
             const syncAddState = () => {
                 if (!CONFIG.showAddButton) return;
                 const has = (cart[product.id] || 0) > 0;
-                qtyControl.style.display = has ? "" : "none";
-                if (addBtn) addBtn.style.display = has ? "none" : "";
+                card.classList.toggle("in-cart", has);
+                if (addBtn) addBtn.textContent = has ? "בסל" : "הוסף";
             };
             syncAddState();
 

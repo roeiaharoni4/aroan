@@ -106,8 +106,25 @@
                             <input type="number" id="prod-price" step="0.01" required>
                         </div>
                         <div class="form-group">
-                            <label for="prod-packaging">אריזה / כמות בקרטון</label>
-                            <input type="text" id="prod-packaging" placeholder="למשל: 12 יח׳ בקרטון">
+                            <label for="prod-brand">מותג</label>
+                            <input type="text" id="prod-brand" list="brand-list" placeholder="אפשר להשאיר ריק">
+                            <datalist id="brand-list">
+                                <!-- Populated dynamically -->
+                            </datalist>
+                            <small class="field-hint">לרוב המוצרים אין מותג — משאירים ריק ולא מוצג כלום.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="prod-carton-qty">יחידות בקרטון</label>
+                            <input type="number" id="prod-carton-qty" min="0" step="1" placeholder="למשל: 12">
+                            <small class="field-hint">מספר בלבד. מוצג כ״קרטון 12 יח׳״.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="prod-packaging">תיאור אריזה חופשי</label>
+                            <input type="text" id="prod-packaging" placeholder="רק אם לא מתאים לתבנית">
+                            <small class="field-hint">אם מולא — גובר על ״יחידות בקרטון״.</small>
                         </div>
                     </div>
 
