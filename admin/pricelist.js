@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const costInput = document.getElementById('prod-cost');
     const priceInput = document.getElementById('prod-price');
     const marginInput = document.getElementById('prod-margin');
+    const netMarginInput = document.getElementById('prod-net-margin');
     const salePriceInput = document.getElementById('prod-sale-price');
     const bundleInput = document.getElementById('prod-bundle');
     const promoStartInput = document.getElementById('prod-promo-start');
@@ -122,6 +123,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // רווח מהעלות: (מכירה - עלות) / עלות. בלי מחיר מכירה (0) אין רווח להציג
         if (!(cost > 0) || !(price > 0)) return NaN;
         return (price - cost) / cost * 100;
+    }
+
+    // מע"מ בישראל (18% מ-1.1.2025). לעדכן כאן אם השיעור משתנה.
+    const VAT_RATE = 0.18;
+
+    // הרווח בפועל: מחירי המכירה באתר כוללים מע"מ, ולכן מנכים אותו לפני
+    // ההשוואה לעלות. תקף כשהעלות שהוזנה היא לפני מע"מ (כמו בחשבונית ספק);
+    // אם גם העלות כוללת מע"מ — המע"מ מתקזז והתוצאה זהה ל-marginOf.
+    function netMarginOf(cost, price) {
+        if (!(cost > 0) || !(price > 0)) return NaN;
+        return (price / (1 + VAT_RATE) - cost) / cost * 100;
     }
 
     // Load Data
@@ -197,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cost = toNum(p.cost);
             const price = toNum(p.price);
             const m = marginOf(cost, price);
+            const nm = netMarginOf(cost, price);
 
             // תגי מבצע חבילה ותוקף בעמודת "מחיר מבצע" — כדי לראות במבט מה מוגדר
             const bundleTag = cleanBundle(p.bundle)
@@ -216,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${isNaN(cost) ? '—' : cost.toFixed(2)}</td>
                 <td>${price > 0 ? price.toFixed(2) : '<span style="background:#fff4e5;color:#7a4a00;border-radius:4px;padding:1px 6px;font-size:0.75rem;" title="מוצר בלי מחיר מכירה לא נכתב לקובץ הציבורי ולא יופיע בעמוד">חסר מחיר</span>'}</td>
                 <td>${isNaN(m) ? '—' : m.toFixed(1) + '%'}</td>
+                <td title="הרווח בפועל, אחרי ניכוי מע״מ ממחיר המכירה">${isNaN(nm) ? '—' : '<b style="color:' + (nm < 0 ? '#c0554d' : '#2e7d52') + ';">' + nm.toFixed(1) + '%</b>'}</td>
                 <td>${isNaN(toNum(p.sale_price)) ? (bundleTag || endTag ? '' : '—') : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}${bundleTag}${endTag}</td>
                 <td class="action-btns">
                     <button class="toggle-btn" title="${hidden ? 'הצג באתר' : 'הסתר מהאתר (נגמר במלאי)'}" data-id="${esc(p.id)}">${hidden ? '🚫' : '👁️'}</button>
@@ -352,6 +366,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // שדה "רווח נטו" הוא לקריאה בלבד ומתעדכן מכל שינוי בטופס. מאזין אחד על
+    // הטופס במקום שלושה — הוא רץ אחרי המאזינים של עלות/מכירה/רווח לאותו אירוע.
+    function syncNetMargin() {
+        if (!netMarginInput) return;
+        const nm = netMarginOf(toNum(costInput.value), toNum(priceInput.value));
+        netMarginInput.value = isNaN(nm) ? '' : nm.toFixed(1) + '%';
+        netMarginInput.style.color = (!isNaN(nm) && nm < 0) ? '#c0554d' : '#555';
+    }
+    form.addEventListener('input', syncNetMargin);
+
     // Modal logic
     addBtn.onclick = () => openAddModal();
     closeBtn.onclick = () => modal.classList.remove('active');
@@ -372,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         idInput.value = nextAutoId();
         imgPreview.style.display = 'none';
         imgPreview.src = '';
+        syncNetMargin();
         document.getElementById('modal-title').textContent = 'הוספת מוצר חדש';
         modal.classList.add('active');
     }
@@ -390,6 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
         priceInput.value = p.price;
         const m = marginOf(toNum(p.cost), toNum(p.price));
         marginInput.value = isNaN(m) ? '' : m.toFixed(1);
+        syncNetMargin();
         salePriceInput.value = isNaN(toNum(p.sale_price)) ? '' : toNum(p.sale_price);
         bundleInput.value = cleanBundle(p.bundle);
         promoStartInput.value = cleanDate(p.promo_start);
