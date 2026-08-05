@@ -1161,6 +1161,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.title = CATALOG.label + ' | ניהול';
 
+    // סימון המחירון הפעיל בתפריט הצד
+    const activeNav = document.getElementById('nav-' + CATALOG_KEY);
+    if (activeNav) activeNav.classList.add('active');
+
     // הקישור לצפייה בקטלוג מצביע על העמוד של המחירון הפעיל
     const viewLink = document.getElementById('view-catalog-link');
     if (viewLink) {
