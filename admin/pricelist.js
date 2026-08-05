@@ -125,6 +125,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return (price - cost) / cost * 100;
     }
 
+    // הנחות הקטגוריה של המחירון — נטענות מקובץ המבצעים ומשפיעות על המחיר בפועל
+    let categoryDiscounts = []; // [{category, percent, starts, ends}]
+
     // מע"מ בישראל (18% מ-1.1.2025). לעדכן כאן אם השיעור משתנה.
     const VAT_RATE = 0.18;
 
@@ -134,6 +137,36 @@ document.addEventListener('DOMContentLoaded', () => {
     function netMarginOf(cost, price) {
         if (!(cost > 0) || !(price > 0)) return NaN;
         return (price / (1 + VAT_RATE) - cost) / cost * 100;
+    }
+
+    // המחיר שהלקוח באמת משלם ליחידה, אחרי כל המבצעים שחלים על המוצר עצמו:
+    // מחיר מבצע פרטני, הנחת קטגוריה ומבצע חבילה (ב-1+1 מקבלים תשלום על
+    // מחצית מהיחידות). הנחת סל לא נכללת — היא תלויה בכל ההזמנה ולא במוצר.
+    // אותם כללים ואותו עיגול כמו ב-app.js, כדי שהמספר יתאים למה שרואים בעמוד.
+    function effectivePriceOf(p) {
+        const regular = toNum(p.price);
+        if (!(regular > 0)) return { price: NaN, reasons: [] };
+
+        const reasons = [];
+        let price = regular;
+
+        const sale = toNum(p.sale_price);
+        if (sale > 0 && sale < regular) { price = sale; reasons.push('מחיר מבצע'); }
+
+        const rule = categoryDiscounts.find(r => r.category === p.category && r.percent > 0);
+        if (rule) {
+            price = Math.round(price * (1 - rule.percent / 100) * 10) / 10;
+            reasons.push(`הנחת קטגוריה ${rule.percent}%`);
+        }
+
+        const b = /^(\d+)\+(\d+)$/.exec(cleanBundle(p.bundle));
+        if (b) {
+            const buy = +b[1], free = +b[2];
+            price = price * buy / (buy + free);
+            reasons.push(`חבילה ${buy}+${free}`);
+        }
+
+        return { price, reasons };
     }
 
     // Load Data
@@ -208,8 +241,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const cost = toNum(p.cost);
             const price = toNum(p.price);
-            const m = marginOf(cost, price);
-            const nm = netMarginOf(cost, price);
+            // הרווח מחושב על המחיר שהלקוח באמת משלם — אחרת מוצר במבצע היה
+            // מציג רווח גבוה ממה שהוא מכניס בפועל
+            const eff = effectivePriceOf(p);
+            const onPromo = eff.reasons.length > 0 && eff.price < price;
+            const m = marginOf(cost, onPromo ? eff.price : price);
+            const nm = netMarginOf(cost, onPromo ? eff.price : price);
+            const promoTip = onPromo ? ` title="הרווח מחושב על ${eff.price.toFixed(2)} ₪ — ${eff.reasons.join(' + ')}"` : '';
+            const beforeTag = (onPromo && !isNaN(marginOf(cost, price)))
+                ? `<div style="color:#999; font-size:0.72rem;">לפני המבצע ${marginOf(cost, price).toFixed(0)}%</div>` : '';
 
             // תגי מבצע חבילה ותוקף בעמודת "מחיר מבצע" — כדי לראות במבט מה מוגדר
             const bundleTag = cleanBundle(p.bundle)
@@ -228,8 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${esc(p.unit)}</td>
                 <td>${isNaN(cost) ? '—' : cost.toFixed(2)}</td>
                 <td>${price > 0 ? price.toFixed(2) : '<span style="background:#fff4e5;color:#7a4a00;border-radius:4px;padding:1px 6px;font-size:0.75rem;" title="מוצר בלי מחיר מכירה לא נכתב לקובץ הציבורי ולא יופיע בעמוד">חסר מחיר</span>'}</td>
-                <td>${isNaN(m) ? '—' : m.toFixed(1) + '%'}</td>
-                <td title="הרווח בפועל, אחרי ניכוי מע״מ ממחיר המכירה">${isNaN(nm) ? '—' : '<b style="color:' + (nm < 0 ? '#c0554d' : '#2e7d52') + ';">' + nm.toFixed(1) + '%</b>'}</td>
+                <td${promoTip}>${isNaN(m) ? '—' : m.toFixed(1) + '%'}${beforeTag}</td>
+                <td${promoTip || ' title="הרווח בפועל, אחרי ניכוי מע״מ ממחיר המכירה"'}>${isNaN(nm) ? '—' : '<b style="color:' + (nm < 0 ? '#c0554d' : '#2e7d52') + ';">' + nm.toFixed(1) + '%</b>'}</td>
                 <td>${isNaN(toNum(p.sale_price)) ? (bundleTag || endTag ? '' : '—') : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}${bundleTag}${endTag}</td>
                 <td class="action-btns">
                     <button class="toggle-btn" title="${hidden ? 'הצג באתר' : 'הסתר מהאתר (נגמר במלאי)'}" data-id="${esc(p.id)}">${hidden ? '🚫' : '👁️'}</button>
@@ -373,8 +413,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const nm = netMarginOf(toNum(costInput.value), toNum(priceInput.value));
         netMarginInput.value = isNaN(nm) ? '' : nm.toFixed(1) + '%';
         netMarginInput.style.color = (!isNaN(nm) && nm < 0) ? '#c0554d' : '#555';
+        syncEffectiveNote();
     }
     form.addEventListener('input', syncNetMargin);
+
+    // שדות הרווח שלמעלה מתייחסים למחיר הרגיל. כשחל על המוצר מבצע, מוסיפים
+    // כאן את הרווח על המחיר שהלקוח באמת ישלם — זה המספר שקובע.
+    const effectiveNote = document.getElementById('effective-margin-note');
+    function syncEffectiveNote() {
+        if (!effectiveNote) return;
+        const cost = toNum(costInput.value);
+        const eff = effectivePriceOf({
+            price: priceInput.value,
+            sale_price: salePriceInput.value,
+            bundle: bundleInput.value,
+            category: catInput.value
+        });
+        const regular = toNum(priceInput.value);
+        if (!(cost > 0) || isNaN(eff.price) || !eff.reasons.length || !(eff.price < regular)) {
+            effectiveNote.style.display = 'none';
+            return;
+        }
+        const m = marginOf(cost, eff.price), nm = netMarginOf(cost, eff.price);
+        effectiveNote.style.display = 'block';
+        effectiveNote.innerHTML = `בפועל הלקוח משלם <b>${eff.price.toFixed(2)} ₪</b> (${eff.reasons.join(' + ')}) — ` +
+            `רווח <b>${m.toFixed(1)}%</b> · רווח נטו <b>${nm.toFixed(1)}%</b>`;
+    }
 
     // Modal logic
     addBtn.onclick = () => openAddModal();
@@ -415,13 +479,14 @@ document.addEventListener('DOMContentLoaded', () => {
         priceInput.value = p.price;
         const m = marginOf(toNum(p.cost), toNum(p.price));
         marginInput.value = isNaN(m) ? '' : m.toFixed(1);
-        syncNetMargin();
         salePriceInput.value = isNaN(toNum(p.sale_price)) ? '' : toNum(p.sale_price);
         bundleInput.value = cleanBundle(p.bundle);
         promoStartInput.value = cleanDate(p.promo_start);
         promoEndInput.value = cleanDate(p.promo_end);
         descInput.value = p.description || '';
         urlInput.value = p.image;
+        // אחרי שכל השדות מלאים — אחרת חישוב הרווח בפועל רץ בלי מחיר המבצע
+        syncNetMargin();
 
         if (p.image) {
             imgPreview.src = imgPath(p.image);
@@ -907,7 +972,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const catDiscountEnd = document.getElementById('cat-discount-end');
     const catDiscountsListEl = document.getElementById('cat-discounts-list');
     const savePromoBtn = document.getElementById('save-promo-btn');
-    let categoryDiscounts = []; // [{category, percent}]
 
     function renderCatDiscounts() {
         catDiscountsListEl.innerHTML = '';
@@ -947,6 +1011,9 @@ document.addEventListener('DOMContentLoaded', () => {
             bannerEnd.value = cleanDate((p.banner || {}).ends);
             cartDiscountEnd.value = cleanDate(cd.ends);
             renderCatDiscounts();
+            // הנחות הקטגוריה משפיעות על עמודות הרווח — לרנדר מחדש עכשיו
+            // שהן ידועות (הטבלה נבנתה לפני שהבקשה חזרה)
+            if (categoryDiscounts.length) renderTable(searchInput.value);
         })
         .catch(() => { });
 
