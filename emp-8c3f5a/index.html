@@ -388,7 +388,29 @@
             overflow: hidden;
         }
 
-        /* הבהרה על אופן הגבייה — מופיעה בפתיח וגם במודאל ההזמנה */
+        /* תנאי ההזמנה מתחת לקטלוג */
+        .emp-terms {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 8px 16px 24px;
+            text-align: center;
+        }
+
+        /* בר ההזמנה הקבוע מכסה את תחתית העמוד — מפנים לו מקום כדי ששורת
+           התקנון והנגישות בפוטר תישאר קריאה בגלילה מלאה */
+        body:has(.fab-container) .care-footer {
+            padding-bottom: 90px;
+        }
+
+        /* במובייל הוואטסאפ הצף וכפתור החזרה למעלה יושבים בשוליים —
+           מרחיקים מהם את שורת ההבהרה כדי שלא תיחתך */
+        @media (max-width: 600px) {
+            .emp-terms .emp-payment-note {
+                padding-inline: 56px;
+            }
+        }
+
+        /* הבהרה על אופן הגבייה — מופיעה מתחת לקטלוג וגם במודאל ההזמנה */
         .emp-payment-note {
             max-width: 900px;
             margin: 10px auto 0;
@@ -647,18 +669,6 @@
         <h1>מבצע לעובדים</h1>
         <p>קטלוג מוצרים במחירים מיוחדים לעובדי החברה. מוסיפים לסל, שולחים את ההזמנה בוואטסאפ,
             ואנחנו חוזרים אליכם לתיאום ולתשלום.</p>
-
-        <!-- רצועת אמון: תנאי ההזמנה של הוועד -->
-        <ul class="care-trust" aria-label="תנאי הזמנה">
-            <li><strong>תשלום</strong> באשראי או בביט/פייבוקס — נגבה טלפונית לאחר ההזמנה</li>
-            <li><strong>משלוח</strong> עד הבית ₪30 · לוקר ₪20 · <strong>חינם בהזמנה מעל ₪300</strong></li>
-            <li><strong>מחירים</strong> כוללים מע״מ</li>
-            <li><strong>החזרות</strong> לפי חוק הגנת הצרכן — <a href="/terms/">פירוט בתקנון</a></li>
-            <li><strong>שאלות?</strong> <a href="tel:036346236">03-6346236</a></li>
-        </ul>
-
-        <p class="emp-payment-note">התשלום נגבה בשיחה טלפונית מאיתנו לאחר קבלת ההזמנה.
-            <strong>אין לשלוח פרטי אשראי בהודעת וואטסאפ.</strong></p>
     </section>
 
     <div class="app-container with-sidebar">
@@ -700,6 +710,20 @@
         </div>
 
     </div>
+
+    <!-- תנאי ההזמנה — מתחת לקטלוג, כדי שהמוצרים יהיו הדבר הראשון שרואים -->
+    <section class="emp-terms">
+        <ul class="care-trust" aria-label="תנאי הזמנה">
+            <li><strong>תשלום</strong> באשראי או בביט/פייבוקס — נגבה טלפונית לאחר ההזמנה</li>
+            <li><strong>משלוח</strong> עד הבית ₪30 · לוקר ₪20 · <strong>חינם בהזמנה מעל ₪300</strong></li>
+            <li><strong>מחירים</strong> כוללים מע״מ</li>
+            <li><strong>החזרות</strong> לפי חוק הגנת הצרכן — <a href="/terms/">פירוט בתקנון</a></li>
+            <li><strong>שאלות?</strong> <a href="tel:036346236">03-6346236</a></li>
+        </ul>
+
+        <p class="emp-payment-note">התשלום נגבה בשיחה טלפונית מאיתנו לאחר קבלת ההזמנה.
+            <strong>אין לשלוח פרטי אשראי בהודעת וואטסאפ.</strong></p>
+    </section>
 
     <!-- Order Modal -->
     <div class="modal-overlay" id="order-modal">
