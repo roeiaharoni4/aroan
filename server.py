@@ -20,6 +20,27 @@ CARE_PAGE_FILE = 'care/index.html'
 MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
 SITE_BASE_URL = 'https://aroam.co.il'
 
+# שני מחירונים חיים על אותו עורך ועל אותם endpoints, ונבדלים רק בקבצים
+# ובגנרטורים שרצים אחרי השמירה. 'care' הוא קטלוג הטיפוח הציבורי (SEO, פיד,
+# דפי מוצר); 'committee' הוא עמוד ועד העובדים הסגור — noindex, ולכן שמירה שם
+# לא מריצה שום גנרטור. הקטלוג נבחר דרך ?catalog= בבקשה, ברירת המחדל care.
+PRICELIST_CATALOGS = {
+    'care': {
+        'master': PRICELIST_MASTER_FILE,
+        'public': PRICELIST_PUBLIC_FILE,
+        'promo': PRICELIST_PROMO_FILE,
+        'shipping': CARE_SHIPPING_FILE,
+        'generators': True,
+    },
+    'committee': {
+        'master': 'data/committee-master.csv',
+        'public': 'data/committee.csv',
+        'promo': 'data/committee-promo.json',
+        'shipping': 'data/committee-shipping.json',
+        'generators': False,
+    },
+}
+
 # עמודות הקטלוג העסקי (data/products.csv). מקור אמת יחיד לכתיבה מהעורך —
 # packaging = מידע אריזה/קרטון, subcategory = שיוך לדף תת-קטגוריה (שניהם אופציונליים).
 PRODUCT_FIELDS = ['id', 'name', 'category', 'subcategory', 'unit', 'image',
@@ -1777,19 +1798,26 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self.send_error(404, "API endpoint not found")
 
+    def catalog_cfg(self):
+        """הקטלוג שאליו מכוונת הבקשה (?catalog=care|committee), ברירת מחדל care."""
+        key = (parse_qs(urlparse(self.path).query).get('catalog') or ['care'])[0]
+        return PRICELIST_CATALOGS.get(key, PRICELIST_CATALOGS['care'])
+
     def handle_save_shipping(self):
-        # שיטות האספקה ודמי המשלוח של קטלוג הטיפוח
+        # שיטות האספקה ודמי המשלוח של הקטלוג שנבחר
         try:
+            cfg = self.catalog_cfg()
             content_length = int(self.headers.get('Content-Length', 0))
             data = json.loads(self.rfile.read(content_length).decode('utf-8'))
             methods = _clean_shipping_methods(data.get('methods'))
 
-            with open(CARE_SHIPPING_FILE, 'w', encoding='utf-8') as f:
+            with open(cfg['shipping'], 'w', encoding='utf-8') as f:
                 json.dump({'methods': methods}, f, ensure_ascii=False, indent=1)
 
             # הפיד נושא g:shipping — לרענן כדי שלא ייווצר פער מול המוצג באתר
             try:
-                update_merchant_feed()
+                if cfg['generators']:
+                    update_merchant_feed()
             except Exception as feed_err:
                 print(f'אזהרה: עדכון הפיד אחרי שמירת משלוחים נכשל: {feed_err}')
 
@@ -1804,8 +1832,9 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
 
     def handle_save_promo(self):
-        # מבצעי קטלוג הטיפוח: באנר ידני, הנחת סל והנחות קטגוריה
+        # מבצעי המחירון: באנר ידני, הנחת סל והנחות קטגוריה
         try:
+            cfg = self.catalog_cfg()
             content_length = int(self.headers.get('Content-Length', 0))
             data = json.loads(self.rfile.read(content_length).decode('utf-8'))
 
@@ -1842,16 +1871,17 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     'ends': _clean_date((data.get('window') or {}).get('ends')),
                 },
             }
-            with open(PRICELIST_PROMO_FILE, 'w', encoding='utf-8') as f:
+            with open(cfg['promo'], 'w', encoding='utf-8') as f:
                 json.dump(promo, f, ensure_ascii=False, indent=1)
 
             # הסכמה, הפיד ודפי הקטגוריה משקפים גם הנחות קטגוריה — מעדכנים
             try:
-                update_care_schema()
-                bake_care_products()
-                update_merchant_feed()
-                generate_care_category_pages()
-                generate_care_product_pages()
+                if cfg['generators']:
+                    update_care_schema()
+                    bake_care_products()
+                    update_merchant_feed()
+                    generate_care_category_pages()
+                    generate_care_product_pages()
             except Exception as schema_err:
                 print(f'אזהרה: עדכון סכמת care/פיד/דפי קטגוריה נכשל: {schema_err}')
 
@@ -1901,6 +1931,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def handle_save_pricelist(self):
         # כותב את המחירון פעמיים: קובץ מלא מקומי (עם עלות) + קובץ ציבורי לאתר (בלי עלות)
         try:
+            cfg = self.catalog_cfg()
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             products = json.loads(post_data.decode('utf-8'))
@@ -1921,7 +1952,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             def is_hidden(p):
                 return str(p.get('active', '')).strip() == '0'
 
-            with open(PRICELIST_MASTER_FILE, 'w', newline='', encoding='utf-8') as f:
+            with open(cfg['master'], 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=master_fields, extrasaction='ignore')
                 writer.writeheader()
                 for p in products:
@@ -1934,12 +1965,16 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     writer.writerow(row)
 
             # בקובץ הציבורי: כשיש מבצע — price = מחיר המבצע, original_price = המחיר הרגיל (לתצוגת "מבצע")
-            with open(PRICELIST_PUBLIC_FILE, 'w', newline='', encoding='utf-8') as f:
+            with open(cfg['public'], 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=public_fields, extrasaction='ignore')
                 writer.writeheader()
                 for p in products:
                     if is_hidden(p):
                         continue  # מוצר מוסתר — לא עולה לאתר
+                    # רשת ביטחון: אלה קטלוגים שמציגים מחירים, ולכן מוצר בלי מחיר
+                    # היה מוצג כ-0.00 ₪ וניתן להזמנה. נשאר במאסטר עד שיוזן מחיר.
+                    if not ((to_float(p.get('price')) or 0) > 0):
+                        continue
                     row = {k: p.get(k, '') for k in public_fields}
                     sale = to_float(p.get('sale_price'))
                     regular = to_float(p.get('price'))
@@ -1953,13 +1988,15 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     row['promo_end'] = _clean_date(p.get('promo_end'))
                     writer.writerow(row)
 
-            # עדכון סכמה, פיד ודפי קטגוריה (SEO + שופינג ללקוחות פרטיים)
+            # עדכון סכמה, פיד ודפי קטגוריה (SEO + שופינג ללקוחות פרטיים).
+            # מחירון הוועד הוא noindex ואין לו פיד/דפי מוצר — ולכן מדלגים.
             try:
-                update_care_schema()
-                bake_care_products()
-                update_merchant_feed()
-                generate_care_category_pages()
-                generate_care_product_pages()
+                if cfg['generators']:
+                    update_care_schema()
+                    bake_care_products()
+                    update_merchant_feed()
+                    generate_care_category_pages()
+                    generate_care_product_pages()
             except Exception as schema_err:
                 print(f'אזהרה: עדכון סכמת care/פיד/דפי קטגוריה נכשל: {schema_err}')
 

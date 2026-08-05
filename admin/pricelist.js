@@ -7,9 +7,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let products = [];
+
+    // אותו עורך משרת שני מחירונים נפרדים לחלוטין. הקטלוג נבחר מ-?catalog= בכתובת
+    // ומועבר לשרת באותו פרמטר, כדי ששמירה תיכתב תמיד לקבצים הנכונים.
+    const CATALOGS = {
+        care: {
+            label: 'מחירון טיפוח',
+            master: '/data/pricelist-master.csv',
+            public: '/data/pricelist.csv',
+            promo: '/data/pricelist-promo.json',
+            shipping: '/data/care-shipping.json',
+            sheetKey: 'aroam_pricelist_sheet_url',
+            site: '/care/'
+        },
+        committee: {
+            label: 'מחירון ועד עובדים',
+            master: '/data/committee-master.csv',
+            public: '/data/committee.csv',
+            promo: '/data/committee-promo.json',
+            shipping: '/data/committee-shipping.json',
+            sheetKey: 'aroam_committee_sheet_url',
+            site: '/emp-8c3f5a/'
+        }
+    };
+    const CATALOG_KEY = CATALOGS[new URLSearchParams(location.search).get('catalog')] ? new URLSearchParams(location.search).get('catalog') : 'care';
+    const CATALOG = CATALOGS[CATALOG_KEY];
+    const API_SUFFIX = '?catalog=' + CATALOG_KEY;
+
     // הקובץ המלא (עם עלות) קיים רק מקומית; אם חסר — נופלים לקובץ הציבורי בלי עלויות
-    const MASTER_URL = '/data/pricelist-master.csv?v=' + Date.now();
-    const PUBLIC_URL = '/data/pricelist.csv?v=' + Date.now();
+    const MASTER_URL = CATALOG.master + '?v=' + Date.now();
+    const PUBLIC_URL = CATALOG.public + '?v=' + Date.now();
 
     // UI Elements
     const tbody = document.getElementById('products-tbody');
@@ -187,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${esc(p.category)}</td>
                 <td>${esc(p.unit)}</td>
                 <td>${isNaN(cost) ? '—' : cost.toFixed(2)}</td>
-                <td>${isNaN(price) ? '—' : price.toFixed(2)}</td>
+                <td>${price > 0 ? price.toFixed(2) : '<span style="background:#fff4e5;color:#7a4a00;border-radius:4px;padding:1px 6px;font-size:0.75rem;" title="מוצר בלי מחיר מכירה לא נכתב לקובץ הציבורי ולא יופיע בעמוד">חסר מחיר</span>'}</td>
                 <td>${isNaN(m) ? '—' : m.toFixed(1) + '%'}</td>
                 <td>${isNaN(toNum(p.sale_price)) ? (bundleTag || endTag ? '' : '—') : '<b style="color:#c0554d;">' + toNum(p.sale_price).toFixed(2) + '</b>'}${bundleTag}${endTag}</td>
                 <td class="action-btns">
@@ -561,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- משיכה מגוגל שיטס: אותו מסלול מיזוג כמו העלאת קובץ, דרך proxy מקומי ב-server.py ---
     const sheetBtn = document.getElementById('sheet-import-btn');
-    const SHEET_URL_KEY = 'aroam_pricelist_sheet_url';
+    const SHEET_URL_KEY = CATALOG.sheetKey;
     const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Qklkzyyg0REk0MubDNRuI0Idju523et807rxi4MSwac/edit';
 
     sheetBtn.onclick = async (e) => {
@@ -874,7 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    fetch('/data/pricelist-promo.json?_t=' + Date.now())
+    fetch(CATALOG.promo + '?_t=' + Date.now())
         .then(r => r.ok ? r.json() : null)
         .then(p => {
             if (!p) return;
@@ -930,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         savePromoBtn.disabled = true;
         try {
-            const res = await fetch('/api/promo', {
+            const res = await fetch('/api/promo' + API_SUFFIX, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1009,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else m[field] = toNum(e.target.value) || 0;
     });
 
-    fetch('/data/care-shipping.json?_t=' + Date.now())
+    fetch(CATALOG.shipping + '?_t=' + Date.now())
         .then(r => r.ok ? r.json() : null)
         .then(cfg => {
             const byId = new Map((cfg && cfg.methods || []).map(m => [m.id, m]));
@@ -1026,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         saveShippingBtn.disabled = true;
         try {
-            const res = await fetch('/api/shipping', {
+            const res = await fetch('/api/shipping' + API_SUFFIX, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ methods: shippingMethods })
@@ -1097,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveAllBtn.textContent = 'שומר...';
 
         try {
-            const res = await fetch('/api/pricelist', {
+            const res = await fetch('/api/pricelist' + API_SUFFIX, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(products)
@@ -1122,5 +1149,145 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.textContent = msg;
         toast.className = 'toast ' + type + ' show';
         setTimeout(() => toast.className = 'toast', 3500);
+    }
+
+    // --- מתג המחירון ---
+    const catalogSwitch = document.getElementById('catalog-switch');
+    if (catalogSwitch) {
+        catalogSwitch.value = CATALOG_KEY;
+        catalogSwitch.addEventListener('change', () => {
+            location.search = catalogSwitch.value === 'care' ? '' : '?catalog=' + catalogSwitch.value;
+        });
+    }
+    document.title = CATALOG.label + ' | ניהול';
+
+    // הקישור לצפייה בקטלוג מצביע על העמוד של המחירון הפעיל
+    const viewLink = document.getElementById('view-catalog-link');
+    if (viewLink) {
+        viewLink.href = CATALOG.site;
+        const label = document.getElementById('view-catalog-label');
+        if (label) label.textContent = CATALOG_KEY === 'care' ? 'צפייה בקטלוג הטיפוח' : 'צפייה בעמוד הוועד';
+    }
+
+    // --- ייבוא מוצרים מהקטלוג העסקי הראשי (מחירון הוועד בלבד) ---
+    // מחירון הטיפוח נבנה מגיליון נפרד ולא מהקטלוג העסקי, ולכן הכפתור מוסתר שם.
+    const importCatalogBtn = document.getElementById('import-catalog-btn');
+    if (importCatalogBtn && CATALOG_KEY === 'committee') {
+        importCatalogBtn.style.display = '';
+        importCatalogBtn.addEventListener('click', openCatalogImport);
+    }
+
+    let catalogRows = null;   // נטען פעם אחת בלחיצה הראשונה
+
+    function openCatalogImport() {
+        if (catalogRows) return showCatalogPicker();
+        importCatalogBtn.disabled = true;
+        importCatalogBtn.textContent = 'טוען...';
+        parseCsvUrl('/data/products.csv?v=' + Date.now(), (rows) => {
+            importCatalogBtn.disabled = false;
+            importCatalogBtn.textContent = '📦 ייבוא מהקטלוג הראשי';
+            if (!rows || !rows.length) return showToast('טעינת הקטלוג הראשי נכשלה', 'error');
+            catalogRows = rows.filter(r => (r.id || '').trim() && (r.name || '').trim());
+            showCatalogPicker();
+        });
+    }
+
+    function showCatalogPicker() {
+        const existing = new Set(products.map(p => p.id));
+        let overlay = document.getElementById('catalog-import-modal');
+        if (overlay) overlay.remove();
+
+        overlay = document.createElement('div');
+        overlay.id = 'catalog-import-modal';
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = 'display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:16px;';
+        overlay.innerHTML = `
+            <div class="modal-content" style="background:#fff; border-radius:10px; max-width:760px; width:100%; max-height:88vh; display:flex; flex-direction:column;">
+                <div class="modal-header" style="padding:14px 18px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="margin:0; font-size:1.1rem;">ייבוא מהקטלוג הראשי</h2>
+                    <button type="button" id="ci-close" class="btn btn-outline">סגור</button>
+                </div>
+                <div style="padding:12px 18px; border-bottom:1px solid #eee; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <input type="text" id="ci-search" placeholder="חיפוש מוצר או קטגוריה..." style="flex:1; min-width:200px; padding:9px 10px; border:1px solid #ddd; border-radius:6px;">
+                    <span id="ci-count" style="font-weight:700;">0 נבחרו</span>
+                </div>
+                <div id="ci-list" style="overflow-y:auto; padding:8px 18px; flex:1;"></div>
+                <div style="padding:12px 18px; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:0.85rem; color:#666;">המוצרים נוספים בלי מחיר — יש להשלים מחיר עלות ומכירה בכל אחד.</span>
+                    <button type="button" id="ci-add" class="btn btn-primary">הוסף למחירון</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const listEl = overlay.querySelector('#ci-list');
+        const searchEl = overlay.querySelector('#ci-search');
+        const countEl = overlay.querySelector('#ci-count');
+        const picked = new Set();
+
+        function renderList() {
+            const q = searchEl.value.trim().toLowerCase();
+            const rows = catalogRows.filter(r => {
+                if (!q) return true;
+                return (r.name + ' ' + (r.category || '')).toLowerCase().includes(q);
+            });
+            listEl.innerHTML = rows.map(r => {
+                const id = (r.id || '').trim();
+                const already = existing.has(id);
+                return `<label style="display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid #f2f2f2; ${already ? 'opacity:0.45;' : ''}">
+                    <input type="checkbox" value="${esc(id)}" ${already ? 'disabled' : ''} ${picked.has(id) ? 'checked' : ''}>
+                    <img src="${esc(imgPath(r.image))}" alt="" width="34" height="34" style="object-fit:contain; background:#fafafa; border-radius:4px;" onerror="this.style.visibility='hidden'">
+                    <span style="flex:1;">${esc(r.name)}</span>
+                    <span style="color:#888; font-size:0.85rem;">${esc(r.category || '')}</span>
+                    ${already ? '<span style="color:#c0554d; font-size:0.8rem;">כבר במחירון</span>' : ''}
+                </label>`;
+            }).join('') || '<p style="padding:20px; text-align:center; color:#888;">אין תוצאות</p>';
+        }
+
+        function syncCount() { countEl.textContent = picked.size + ' נבחרו'; }
+
+        listEl.addEventListener('change', (e) => {
+            const cb = e.target;
+            if (cb.tagName !== 'INPUT') return;
+            cb.checked ? picked.add(cb.value) : picked.delete(cb.value);
+            syncCount();
+        });
+        searchEl.addEventListener('input', renderList);
+        overlay.querySelector('#ci-close').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        overlay.querySelector('#ci-add').addEventListener('click', () => {
+            if (!picked.size) return showToast('לא נבחרו מוצרים', 'error');
+            let added = 0;
+            catalogRows.forEach(r => {
+                const id = (r.id || '').trim();
+                if (!picked.has(id) || existing.has(id)) return;
+                products.push({
+                    id: id,
+                    name: (r.name || '').trim(),
+                    category: (r.category || '').trim(),
+                    unit: (r.unit || 'יחידה').trim(),
+                    brand: '',
+                    image: (r.image || '').trim(),
+                    // המחירים נשארים ריקים במכוון — מחירי הקטלוג העסקי אינם מחירי הוועד
+                    cost: '',
+                    price: 0,
+                    sale_price: '',
+                    bundle: '',
+                    promo_start: '',
+                    promo_end: '',
+                    active: '1',
+                    description: (r.description || '').trim()
+                });
+                added++;
+            });
+            overlay.remove();
+            renderTable();
+            updateCategoryDatalist();
+            showToast(`נוספו ${added} מוצרים — עד שיוזן מחיר הם לא יעלו לעמוד`, 'success');
+        });
+
+        renderList();
+        syncCount();
+        searchEl.focus();
     }
 });

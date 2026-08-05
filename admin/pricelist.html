@@ -19,7 +19,7 @@
             <nav class="sidebar-nav">
                 <a href="#" class="active"><span class="icon">💰</span> ניהול מחירון</a>
                 <a href="index.html"><span class="icon">📦</span> ניהול מוצרים (קטלוג ראשי)</a>
-                <a href="/care/" target="_blank"><span class="icon">🌐</span> צפייה בקטלוג הטיפוח</a>
+                <a href="/care/" id="view-catalog-link" target="_blank"><span class="icon">🌐</span> <span id="view-catalog-label">צפייה בקטלוג הטיפוח</span></a>
             </nav>
             <div class="sidebar-footer">
                 <button id="save-all-btn" class="btn btn-primary btn-block">שמור שינויים</button>
@@ -29,6 +29,12 @@
         <main class="main-content">
             <header class="topbar">
                 <div class="search-box" style="display:flex; gap:10px; align-items:center;">
+                    <!-- מתג המחירון — שני קבצים נפרדים לגמרי; חשוב לראות תמיד באיזה עורכים -->
+                    <select id="catalog-switch" title="בחירת המחירון שנערך"
+                        style="padding:9px 10px; border:1px solid #ddd; border-radius:6px; background:#fff; font-weight:700; max-width:190px;">
+                        <option value="care">מחירון טיפוח</option>
+                        <option value="committee">מחירון ועד עובדים</option>
+                    </select>
                     <input type="text" id="search-input" placeholder="חיפוש מוצר...">
                     <select id="category-filter" title="סינון המוצרים בטבלה לפי קטגוריה"
                         style="padding:9px 10px; border:1px solid #ddd; border-radius:6px; background:#fff; max-width:200px;">
@@ -41,6 +47,7 @@
                     <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;">
                     <button id="match-images-btn" class="btn btn-outline" title="ממלא תמונות למוצרים בלי תמונה: מחפש בתיקיית images קובץ ששמו זהה לשם המוצר או למק&quot;ט">🖼 התאמת תמונות אוטומטית</button>
                     <button id="bulk-sale-btn" class="btn btn-outline" title="החלת מבצע על כל המוצרים המסומנים בטבלה">🏷 מבצע לנבחרים (<span id="selected-count">0</span>)</button>
+                    <button id="import-catalog-btn" class="btn btn-outline" style="display:none;" title="בחירת מוצרים מהקטלוג העסקי הראשי והוספתם למחירון הזה">📦 ייבוא מהקטלוג הראשי</button>
                     <button id="add-product-btn" class="btn btn-primary"><span class="icon">+</span> הוסף מוצר חדש</button>
                 </div>
             </header>

@@ -19,7 +19,12 @@ const DEFAULT_CONFIG = {
     // דף הסוכן משאיר false — שם המודאל משרת גם הצעות מחיר, PDF והיסטוריה.
     cartView: false,
     // עריכת מחיר היחידה בטבלת ההזמנה — כלי של הסוכן להצעות מחיר בלבד
-    editablePrices: false
+    editablePrices: false,
+    // קידומת מספר ההזמנה. עמוד ועד העובדים משתמש בקידומת משלו כדי שאפשר
+    // יהיה לסנן את ההזמנות שלו בגיליון בלי לגעת בסקריפט Apps Script.
+    orderPrefix: 'AR',
+    // אופני התשלום המוצגים בבורר. null = ברירת המחדל (מזומן/אשראי במסירה + ביט מראש).
+    paymentOptions: null
 };
 let CONFIG = {};
 
@@ -499,10 +504,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     let selectedShippingId = null;
     let selectedPaymentId = null;
     const SHIPPING_KEY = 'aroam_fulfillment_' + (window.location.pathname.split('/')[1] || 'root');
-    const PAYMENT_OPTIONS = [
+    const DEFAULT_PAYMENT_OPTIONS = [
         { id: 'on_delivery', label: 'מזומן או אשראי במסירה' },
         { id: 'prepaid', label: 'ביט / פייבוקס מראש' }
     ];
+    // נקרא כפונקציה ולא כקבוע, כי CONFIG נטען בתוך init() — קבוע היה תלוי
+    // בסדר ההערכה של הקובץ. עמוד ועד העובדים גובה טלפונית ולכן מציג אפשרות אחת.
+    function paymentOptions() {
+        return (Array.isArray(CONFIG.paymentOptions) && CONFIG.paymentOptions.length)
+            ? CONFIG.paymentOptions
+            : DEFAULT_PAYMENT_OPTIONS;
+    }
 
     // טעינת קונפיג האספקה. כשל טעינה משאיר את הרשימה ריקה — העמוד מתנהג
     // בדיוק כמו לפני התוספת ולא נשבר.
@@ -520,10 +532,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const saved = JSON.parse(localStorage.getItem(SHIPPING_KEY) || 'null') || {};
             if (SHIPPING_METHODS.some(m => m.id === saved.shipping)) selectedShippingId = saved.shipping;
-            if (PAYMENT_OPTIONS.some(p => p.id === saved.payment)) selectedPaymentId = saved.payment;
+            if (paymentOptions().some(p => p.id === saved.payment)) selectedPaymentId = saved.payment;
         } catch (e) { }
         if (!selectedShippingId && SHIPPING_METHODS.length) selectedShippingId = SHIPPING_METHODS[0].id;
-        if (!selectedPaymentId) selectedPaymentId = PAYMENT_OPTIONS[0].id;
+        if (!selectedPaymentId) selectedPaymentId = paymentOptions()[0].id;
     }
 
     function selectedShipping() {
@@ -612,7 +624,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             updateSummary();
         });
 
-        group('אופן תשלום', PAYMENT_OPTIONS.map(p => ({ id: p.id, text: p.label })),
+        group('אופן תשלום', paymentOptions().map(p => ({ id: p.id, text: p.label })),
             selectedPaymentId, (id) => { selectedPaymentId = id; persistFulfillment(); });
 
         syncAddressVisibility();
@@ -635,7 +647,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function paymentLabel() {
-        const p = PAYMENT_OPTIONS.find(o => o.id === selectedPaymentId);
+        const p = paymentOptions().find(o => o.id === selectedPaymentId);
         return p ? p.label : '';
     }
 
@@ -1894,7 +1906,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             String(today.getMonth() + 1).padStart(2, '0') +
             String(today.getDate()).padStart(2, '0');
         const rand = Math.floor(1000 + Math.random() * 9000);
-        return `AR-${yyyymmdd}-${rand}`;
+        return `${CONFIG.orderPrefix || 'AR'}-${yyyymmdd}-${rand}`;
     }
 
     function getCartItemsData() {

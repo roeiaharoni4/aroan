@@ -1,0 +1,21 @@
+{
+ "banner": {
+  "enabled": false,
+  "text": "",
+  "starts": "",
+  "ends": ""
+ },
+ "cart_discount": {
+  "enabled": false,
+  "min_total": 0.0,
+  "min_items": 0,
+  "percent": 0.0,
+  "starts": "",
+  "ends": ""
+ },
+ "category_discounts": [],
+ "window": {
+  "starts": "",
+  "ends": ""
+ }
+}

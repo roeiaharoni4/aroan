@@ -1,0 +1,40 @@
+{
+ "methods": [
+  {
+   "id": "home",
+   "label": "משלוח עד הבית",
+   "enabled": true,
+   "fee": 30.0,
+   "free_above": 300.0,
+   "note": "",
+   "needs_address": true
+  },
+  {
+   "id": "locker",
+   "label": "איסוף מלוקר",
+   "enabled": true,
+   "fee": 20.0,
+   "free_above": 300.0,
+   "note": "",
+   "needs_address": false
+  },
+  {
+   "id": "route",
+   "label": "משלוח עם מסלול החלוקה",
+   "enabled": false,
+   "fee": 0.0,
+   "free_above": 0.0,
+   "note": "",
+   "needs_address": true
+  },
+  {
+   "id": "pickup",
+   "label": "איסוף עצמי",
+   "enabled": false,
+   "fee": 0.0,
+   "free_above": 0.0,
+   "note": "בתיאום טלפוני מראש",
+   "needs_address": false
+  }
+ ]
+}
