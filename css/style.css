@@ -1419,15 +1419,18 @@ body:has(.fab-container) .scroll-top-btn {
 @media (max-width: 600px) {
     .products-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-        padding: 1rem 0.5rem;
+        /* המרווח בין השורות נספר גם הוא בתקציב הגובה: עם 0.75rem
+           השורה השנייה נדחפה 8px מתחת לקפל */
+        gap: 0.5rem;
+        padding: 0.75rem 0.5rem;
     }
 
     .card-img-container {
         /* היה 140px עם ריפוד 1rem — המוצר נצבע ב-108px בלבד.
-           150 עם ריפוד קטן נותן ~138px בלי להאריך את הכרטיס. */
-        height: 150px;
-        padding: 0.35rem;
+           140 עם ריפוד קטן נותן ~128px, וזה הגובה שמאפשר שתי שורות
+           כרטיסים מלאות במסך. רועי העדיף 4 מוצרים על פני תמונה גדולה יותר. */
+        height: 140px;
+        padding: 0.3rem;
     }
 
     .results-bar {
@@ -1440,20 +1443,48 @@ body:has(.fab-container) .scroll-top-btn {
         font-size: 0.75rem;
     }
 
-    /* דחיסת גוף הכרטיס — כל פיקסל כאן מוכפל במספר השורות שנראות במסך */
+    /* דחיסת גוף הכרטיס — כל פיקסל כאן מוכפל במספר השורות שנראות במסך.
+       גריד עם אזורים קבועים: המותג והאריזה חולקים שורה אחת, ולכן כרטיס
+       עם מותג וכרטיס בלעדיו יוצאים באותו גובה בדיוק. בלי זה הכרטיסים
+       יצאו 269 ו-286, ושורה שלמה לא נכנסה למסך. */
     .card-body {
-        padding: 0.5rem 0.6rem;
-        gap: 0.2rem;
+        display: grid;
+        grid-template-areas: "title title" "brand meta";
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        padding: 0.4rem 0.5rem;
+        gap: 0.15rem 0.35rem;
     }
 
+    .card-body .product-title {
+        grid-area: title;
+    }
+
+    .card-body .product-brand {
+        grid-area: brand;
+    }
+
+    .card-body .product-meta {
+        grid-area: meta;
+        justify-self: end;
+    }
+
+    /* שם המוצר נעול לשתי שורות בדיוק — לא פחות ולא יותר.
+       בלי min-height כרטיס עם שם קצר יצא 270px ועם שם ארוך 287px,
+       ושתי שורות של הגבוה כבר לא נכנסו למסך. */
     .product-title {
-        font-size: 0.88rem;
-        line-height: 1.25;
+        font-size: 0.85rem;
+        line-height: 1.22;
+        min-height: 2.44em;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .product-meta {
-        margin-top: 0.2rem;
-        font-size: 0.72rem;
+        margin-top: 0.1rem;
+        font-size: 0.7rem;
     }
 
     /* הבקר נשאר נגיש למגע (44px גובה) אבל צר יותר,
@@ -1472,8 +1503,28 @@ body:has(.fab-container) .scroll-top-btn {
         padding: 0.5rem 0.4rem;
     }
 
-    /* צמצום הכותרות במובייל: היו 256px של כרום לפני המוצר הראשון —
-       30% מהמסך — ורק 2 מוצרים נראו בו-זמנית. */
+    /* צמצום הכותרות במובייל: היו 257px של כרום לפני המוצר הראשון —
+       30% מהמסך — ורק 2 מוצרים נראו בו-זמנית.
+       הכרום נחתך לפני התמונה: כל 2px שנחסכים כאן שווים 1px לכל כרטיס,
+       כי שתי שורות כרטיסים נכנסות למסך. עדיף לקצץ כאן מאשר להקטין את המוצר.
+       מגודר ל-body:has(.fab-container) — כלומר דפי הקטלוג בלבד,
+       שאר האתר שומר על הלוגו והרצועה במידות המלאות. */
+    body:has(.fab-container) .site-header {
+        height: auto;
+    }
+
+    /* !important נדרש כאן: components.js מייצר את הלוגו עם style="height:60px"
+       inline, וסגנון inline גובר על כל בורר. לא משנים שם כדי לא להשפיע
+       על כל דפי האתר — הקיצור נחוץ רק בקטלוג במובייל. */
+    body:has(.fab-container) .logo img {
+        height: 42px !important;
+    }
+
+    body:has(.fab-container) .utility-bar {
+        padding: 3px 0;
+        font-size: 0.78rem;
+    }
+
     .main-header {
         padding: 0.5rem 0.75rem;
     }
@@ -1488,9 +1539,17 @@ body:has(.fab-container) .scroll-top-btn {
     }
 
     .card-footer {
-        margin-top: 0.4rem;
-        padding: 0 0.6rem 0.6rem;
-        gap: 0.35rem;
+        margin-top: 0.25rem;
+        padding: 0 0.45rem 0.45rem;
+        gap: 0.3rem;
+    }
+
+    .qty-btn {
+        height: 40px;
+    }
+
+    .add-to-cart-btn {
+        min-height: 40px;
     }
 
     .card-body {
