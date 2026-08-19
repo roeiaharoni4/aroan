@@ -69,6 +69,9 @@ function orderColumns_(data) {
     var it = items[i];
 
     var name = clean_(it.name, 120);
+    if (it.category) {
+      name += '\n' + clean_(it.category, 60);
+    }
     if (Number(it.free) > 0) {
       name += '\nמבצע ' + clean_(it.bundle, 10) + ' — ' + clean_(it.free, 10) + ' חינם';
     }
@@ -189,34 +192,18 @@ function buildOrderDoc_(data) {
 
   tight_(body.appendParagraph('')).editAsText().setFontSize(4);
 
-  // ----- כרטיסי פרטי לקוח / פרטי הזמנה, כל אחד עם פס ירוק עליון משלו -----
-  // (גבולות טבלה ב-Docs אחידים לכל הטבלה, ולכן פס עליון צבעוני = טבלה דקה
-  // נפרדת שמוצמדת מעל כרטיס משלה, בתוך אותו תא-עטיפה)
-  var cardsWrap = body.appendTable([['', '']]);
-  cardsWrap.setBorderWidth(0);
-  cardsWrap.setColumnWidth(0, 267); cardsWrap.setColumnWidth(1, 268);
-  var wCustomer = cardsWrap.getCell(0, 0), wOrder = cardsWrap.getCell(0, 1);
-  wCustomer.setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
-  wOrder.setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
+  // ----- כרטיסי פרטי לקוח / פרטי הזמנה -----
+  // ניסיון קודם צייר פס ירוק עליון על כל כרטיס בנפרד (טבלת "strip" דקה
+  // מעל טבלת כרטיס, בתוך תא-עטיפה משותף), אבל זה רינדר כרצועה ירוקה אחת
+  // ברוחב מלא ומנותקת מהכרטיסים. ויתרנו על הפס וחזרנו למבנה הפשוט שכבר
+  // אומת בספייק: טבלה אחת בת שני תאים עם מסגרת ורקע אחידים.
+  var cards = body.appendTable([['', '']]);
+  cards.setBorderColor(OD_L).setBorderWidth(1);
+  cards.setColumnWidth(0, 267); cards.setColumnWidth(1, 268);
+  var custCell = cards.getCell(0, 0), ordCell = cards.getCell(0, 1);
+  custCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+  ordCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
 
-  function cardStrip_(wrapCell) {
-    var strip = wrapCell.appendTable([['']]);
-    strip.setBorderWidth(0);
-    var sc = strip.getCell(0, 0);
-    sc.setBackgroundColor(OD_M).setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(0).setPaddingRight(0);
-    tight_(sc.getChild(0).asParagraph());
-    return strip;
-  }
-  function cardBody_(wrapCell) {
-    var card = wrapCell.appendTable([['']]);
-    card.setBorderColor(OD_L).setBorderWidth(1);
-    var cc = card.getCell(0, 0);
-    cc.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
-    return cc;
-  }
-
-  cardStrip_(wCustomer);
-  var custCell = cardBody_(wCustomer);
   var tCust = tight_(custCell.getChild(0).asParagraph()); tCust.setAlignment(RIGHT); tCust.setText('פרטי הלקוח');
   tCust.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
   if (customer.business) kv_(custCell, 'שם העסק', clean_(customer.business, 100));
@@ -224,8 +211,6 @@ function buildOrderDoc_(data) {
   if (customer.phone) kv_(custCell, 'טלפון', clean_(customer.phone, 30));
   if (customer.address) kv_(custCell, 'כתובת', clean_(customer.address, 200));
 
-  cardStrip_(wOrder);
-  var ordCell = cardBody_(wOrder);
   var tOrd = tight_(ordCell.getChild(0).asParagraph()); tOrd.setAlignment(RIGHT); tOrd.setText('פרטי ההזמנה');
   tOrd.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
   if (data.date) kv_(ordCell, 'אספקה מבוקשת', clean_(data.date, 20));
@@ -233,10 +218,6 @@ function buildOrderDoc_(data) {
   if (customer.payment) kv_(ordCell, 'אופן תשלום', clean_(customer.payment, 60));
   kv_(ordCell, 'סה״כ פריטים', clean_(data.totalItems, 10));
   kv_(ordCell, 'סטטוס', 'חדשה');
-
-  // הסרת הפסקה הריקה שכל תא מקבל כברירת מחדל, לפני שהוספנו לתוכו טבלאות
-  wCustomer.removeChild(wCustomer.getChild(0));
-  wOrder.removeChild(wOrder.getChild(0));
 
   tight_(body.appendParagraph('')).editAsText().setFontSize(4);
 
@@ -266,14 +247,25 @@ function buildOrderDoc_(data) {
       cell.setPaddingTop(5).setPaddingBottom(5);
 
       if (c === cols.nameCol) {
+        // appendTable(tableData) כבר מפצל '\n' בתוך התא לפסקאות נפרדות —
+        // רק מעצבים את הפסקאות הקיימות, לא מוסיפים חדשות (אחרת הטקסט
+        // מוכפל: פעם מהפיצול האוטומטי ופעם מה-appendParagraph הידני).
         var lines = String(rows[r - 1][c] || '').split('\n');
-        var firstP = tight_(cell.getChild(0).asParagraph());
-        firstP.setAlignment(RIGHT); firstP.setText(lines[0]);
-        firstP.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(true).setFontSize(10);
-        var li;
-        for (li = 1; li < lines.length; li++) {
-          var subP = tight_(cell.appendParagraph(lines[li])); subP.setAlignment(RIGHT);
-          subP.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(8);
+        var nChildren = cell.getNumChildren();
+        var li, lp;
+        for (li = 0; li < lines.length; li++) {
+          if (li < nChildren) {
+            lp = tight_(cell.getChild(li).asParagraph());
+          } else {
+            // בטיחות: משלימים פסקה רק אם היא בפועל חסרה בתא
+            lp = tight_(cell.appendParagraph(lines[li]));
+          }
+          lp.setAlignment(RIGHT);
+          if (li === 0) {
+            lp.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(true).setFontSize(10);
+          } else {
+            lp.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(8);
+          }
         }
       } else if (c === cols.imageCol) {
         tight_(cell.getChild(0).asParagraph()).setAlignment(CENTER);
@@ -346,13 +338,13 @@ function buildOrderDoc_(data) {
   var ft = body.appendTable([['הזמנה זו נוצרה אוטומטית מהאתר aroam.co.il',
     '052-6000158 · 03-6346236 · meiraroam@gmail.com']]);
   ft.setBorderWidth(0);
-  ft.setColumnWidth(0, 260); ft.setColumnWidth(1, 275);
+  ft.setColumnWidth(0, 235); ft.setColumnWidth(1, 300);
   var f0 = ft.getCell(0, 0), f1 = ft.getCell(0, 1);
   f0.setPaddingLeft(0).setPaddingRight(0); f1.setPaddingLeft(0).setPaddingRight(0);
   tight_(f0.getChild(0).asParagraph()).setAlignment(RIGHT);
-  f0.editAsText().setFontFamily('Arial').setForegroundColor('#7A8A81').setBold(false).setFontSize(8);
+  f0.editAsText().setFontFamily('Arial').setForegroundColor('#7A8A81').setBold(false).setFontSize(7.5);
   tight_(f1.getChild(0).asParagraph()).setAlignment(LEFT);
-  f1.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(8);
+  f1.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(7.5);
 
   first.removeFromParent();
   doc.saveAndClose();

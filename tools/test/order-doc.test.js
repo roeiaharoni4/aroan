@@ -92,6 +92,23 @@ test('מבצע חבילה מופיע בשורה', () => {
   assert.ok(cell.indexOf('1 חינם') > -1, 'מספר היחידות החינם חסר');
 });
 
+test('תא המוצר כולל קטגוריה כשורה נפרדת (בלי מבצע)', () => {
+  const c = gs.orderColumns_(B2B);
+  const lines = c.rows[0][c.nameCol].split('\n');
+  assert.strictEqual(lines.length, 2, 'אמורות להיות בדיוק שתי שורות: שם וקטגוריה');
+  assert.strictEqual(lines[0], 'אקונומיקה 4 ליטר', 'השורה הראשונה אמורה להיות שם המוצר');
+  assert.strictEqual(lines[1], 'ניקיון', 'השורה השנייה אמורה להיות הקטגוריה');
+});
+
+test('תא המוצר: שם, קטגוריה ואז מבצע (בסדר הזה)', () => {
+  const c = gs.orderColumns_(CARE);
+  const lines = c.rows[0][c.nameCol].split('\n');
+  assert.strictEqual(lines.length, 3, 'אמורות להיות שלוש שורות: שם, קטגוריה, מבצע');
+  assert.strictEqual(lines[0], 'ARGANIA מסיכה טיפולית', 'השורה הראשונה אמורה להיות שם המוצר');
+  assert.strictEqual(lines[1], 'שיער', 'השורה השנייה אמורה להיות הקטגוריה');
+  assert.ok(lines[2].indexOf('2+1') > -1, 'השורה השלישית אמורה להכיל את תג המבצע');
+});
+
 test('כתובת התמונה הממוזערת נגזרת מהמזהה', () => {
   assert.strictEqual(gs.thumbUrl_('ניק001'),
     'https://aroam.co.il/images/thumbs/' + encodeURIComponent('ניק001') + '.jpg');
