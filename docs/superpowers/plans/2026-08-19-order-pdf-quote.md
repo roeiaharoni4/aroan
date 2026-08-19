@@ -316,32 +316,35 @@ git commit -m "הזמנות: נתיב תמונת המוצר נשלח בפייל�
 
 ---
 
-### Task 4: מחולל ה-HTML + רתמת בדיקה ב-Node
-
-זו המשימה הכבדה. המחולל הוא פונקציה טהורה שבונה מחרוזת — ולכן אפשר לבדוק אותה אוטומטית ב-Node בלי להעלות דבר לענן.
+### Task 4: מבנה הטבלה + מחולל מסמך ה-Docs
 
 **Files:**
-- Modify: `tools/google-apps-script-orders.gs` (הוספת `escapeHtml_`, `thumbUrl_`, `buildOrderHtml_`)
-- Create: `tools/test/order-pdf.test.js`
-- Create: `tools/test/render-sample.js`
+- Modify: `tools/google-apps-script-orders.gs`
+- Create: `tools/test/order-doc.test.js`
 
 **Interfaces:**
-- Consumes: `data.items[i].image` ממשימה 3; מוסכמת `images/thumbs/<id>.jpg` ממשימה 2.
+- Consumes: `data.items[i].image` ממשימה 3; `images/thumbs/<id>.jpg` ממשימה 2.
 - Produces:
-  - `escapeHtml_(value) -> string`
-  - `thumbUrl_(id) -> string`
-  - `buildOrderHtml_(data) -> string` — `data` הוא אובייקט ההזמנה המפוענח מהפיילוד (`orderId`, `date`, `items[]`, `customer{}`, `subtotal`, `discount`, `shipping`, `totalPrice`, `totalItems`).
+  - `thumbUrl_(id) -> String`
+  - `orderColumns_(data) -> { headers: String[], rows: String[][], hasPrices: Boolean, imageCol: Number, nameCol: Number, qtyCol: Number }`
+  - `buildOrderDoc_(data) -> Blob` (PDF)
+
+**חלוקת האחריות, והסיבה לה:** `orderColumns_` היא פונקציה טהורה שמחזירה
+מערכים — אותה אפשר לבדוק אוטומטית ב-Node. `buildOrderDoc_` מציירת בפועל דרך
+`DocumentApp`, ואותה אי אפשר להריץ מחוץ לגוגל; היא נבדקת בהרצה אמיתית בענן
+(צעד 6). אל תנסה לדמות את `DocumentApp` בבדיקות — זה מבחן של הדמות, לא של הקוד.
 
 - [ ] **Step 1: כתוב את מבחני הכישלון**
 
-צור `tools/test/order-pdf.test.js`:
+צור `tools/test/order-doc.test.js`:
 
 ```javascript
 /**
- * בדיקות למחולל ה-HTML של תעודת ההזמנה.
- * הקובץ .gs נטען כטקסט ומורץ עם דמויות (stubs) של שירותי גוגל,
- * כדי שהבדיקה תרוץ על אותו קוד בדיוק שרץ בענן — בלי שכפול.
- * להרצה: node tools/test/order-pdf.test.js
+ * בדיקות למבנה טבלת תעודת ההזמנה.
+ * הקובץ .gs נטען כטקסט ומורץ עם דמויות של שירותי גוגל, כדי שהבדיקה תרוץ
+ * על אותו קוד שרץ בענן. נבדקת רק הלוגיקה הטהורה (orderColumns_) —
+ * הציור עצמו נבדק בהרצה אמיתית.
+ * להרצה: node tools/test/order-doc.test.js
  */
 const fs = require('fs');
 const path = require('path');
@@ -352,40 +355,36 @@ function loadGs() {
     path.join(__dirname, '..', 'google-apps-script-orders.gs'), 'utf8');
   const stubs = `
     var SpreadsheetApp = {}, MailApp = {}, CacheService = {}, DriveApp = {},
-        ContentService = {}, Utilities = {}, MimeType = {}, Logger = { log: function () {} };
+        ContentService = {}, Utilities = {}, MimeType = {}, UrlFetchApp = {},
+        DocumentApp = { HorizontalAlignment: { LEFT: 'L', RIGHT: 'R', CENTER: 'C' } },
+        Logger = { log: function () {} };
   `;
-  const factory = new Function(
+  return new Function(
     stubs + src +
-    '; return { buildOrderHtml_: buildOrderHtml_, escapeHtml_: escapeHtml_, thumbUrl_: thumbUrl_ };'
-  );
-  return factory();
+    '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_ };'
+  )();
 }
 
 const gs = loadGs();
 
 const B2B = {
-  orderId: 'AR-20260819-4821',
-  date: '21.08.2026',
-  totalItems: 10,
+  orderId: 'AR-20260819-4821', date: '21.08.2026', totalItems: 18,
   totalPrice: '', subtotal: '', discount: '', shipping: '',
   customer: { business: 'מסעדת הגן הירוק בע״מ', contact: 'דנה לוי',
-              phone: '054-1234567', address: 'המלאכה 8, אור יהודה', notes: 'לתאם טלפונית' },
+              phone: '054-1234567', address: 'המלאכה 8, אור יהודה' },
   items: [
     { id: 'ניק001', name: 'אקונומיקה 4 ליטר', category: 'ניקיון', qty: 6,
-      unit: 'יחידה', image: 'images/ניקיון/אקונומיקה 4 ליטר.webp', price: 0, total: 0 },
-    { id: 'מוצ001', name: 'גליל נייר תעשייתי 5004', category: 'מוצרי נייר', qty: 4,
-      unit: 'יחידה', image: '', price: 0, total: 0 }
+      unit: 'יחידה', image: 'images/ניקיון/אקונומיקה.webp' },
+    { id: 'מוצ001', name: 'גליל נייר תעשייתי 5004', category: 'מוצרי נייר',
+      qty: 12, unit: 'יחידה', image: '' }
   ]
 };
 
 const CARE = {
-  orderId: 'AR-20260819-5507',
-  date: '20.08.2026',
-  totalItems: 5,
-  subtotal: '273.20', discount: '27.32', shipping: '30.00', totalPrice: '275.88',
+  orderId: 'AR-20260819-5507', date: '20.08.2026', totalItems: 3,
+  subtotal: '233.30', discount: '23.33', shipping: '30.00', totalPrice: '239.97',
   customer: { business: '', contact: 'מיכל ברקוביץ׳', phone: '052-7654321',
-              address: 'הרצל 41, קריית אונו', notes: '',
-              shipping: 'משלוח עד הבית', payment: 'אשראי במסירה' },
+              address: 'הרצל 41, קריית אונו' },
   items: [
     { id: '8400027', name: 'ARGANIA מסיכה טיפולית', category: 'שיער', qty: 3,
       unit: 'יחידה', image: 'images/מחירון/arg.jpg', price: 39.9, total: 79.8,
@@ -396,314 +395,170 @@ const CARE = {
 const tests = [];
 function test(name, fn) { tests.push([name, fn]); }
 
-test('הזמנה עסקית: בלי עמודות מחיר ובלי בלוק סיכום', () => {
-  const html = gs.buildOrderHtml_(B2B);
-  assert.ok(!html.includes('מחיר ליח'), 'לא אמורה להיות עמודת מחיר');
-  assert.ok(!html.includes('סה״כ לתשלום'), 'לא אמור להיות בלוק סיכום');
-  assert.ok(html.includes('אקונומיקה 4 ליטר'), 'שם המוצר חסר');
-  assert.ok(html.includes('AR-20260819-4821'), 'מספר ההזמנה חסר');
-  assert.ok(html.includes('מסעדת הגן הירוק'), 'שם הלקוח חסר');
+test('סדר העמודות: תמונה בימין, כמות בשמאל', () => {
+  const c = gs.orderColumns_(B2B);
+  // ב-Docs עמודה 0 מרונדרת בצד שמאל, ולכן התמונה חייבת להיות האחרונה
+  assert.strictEqual(c.headers[c.headers.length - 1], 'תמונה',
+    'התמונה אינה העמודה האחרונה: ' + JSON.stringify(c.headers));
+  assert.strictEqual(c.headers[0], 'כמות',
+    'הכמות אינה העמודה הראשונה: ' + JSON.stringify(c.headers));
+  assert.strictEqual(c.imageCol, c.headers.length - 1);
+  assert.strictEqual(c.qtyCol, 0);
 });
 
-test('הזמנה עסקית: תמונה ממוזערת לפי מזהה, ותא ריק כשאין תמונה', () => {
-  const html = gs.buildOrderHtml_(B2B);
-  assert.ok(html.includes('images/thumbs/' + encodeURIComponent('ניק001') + '.jpg'),
-    'כתובת התמונה הממוזערת שגויה');
-  assert.ok(html.includes('אין תמונה'), 'חסר תא חלופי למוצר בלי תמונה');
+test('הזמנה עסקית: חמש עמודות, בלי מחירים', () => {
+  const c = gs.orderColumns_(B2B);
+  assert.strictEqual(c.hasPrices, false);
+  assert.strictEqual(c.headers.length, 5, 'מספר עמודות שגוי: ' + c.headers.length);
+  assert.ok(c.headers.indexOf('מחיר ליח׳') === -1, 'לא אמורה להיות עמודת מחיר');
+  assert.strictEqual(c.rows.length, 2);
+  assert.ok(c.rows[0][c.nameCol].indexOf('אקונומיקה 4 ליטר') > -1, 'שם המוצר חסר');
+  assert.strictEqual(c.rows[0][c.qtyCol], '6');
 });
 
-test('הזמנת טיפוח: מחירים, סיכום ותג מבצע', () => {
-  const html = gs.buildOrderHtml_(CARE);
-  assert.ok(html.includes('מחיר ליח'), 'חסרה עמודת מחיר');
-  assert.ok(html.includes('סה״כ לתשלום'), 'חסר בלוק סיכום');
-  assert.ok(html.includes('275.88'), 'הסכום הסופי חסר');
-  assert.ok(html.includes('27.32'), 'ההנחה חסרה');
-  assert.ok(html.includes('2+1'), 'תג המבצע חסר');
-  assert.ok(html.includes('1 חינם'), 'מספר היחידות החינם חסר');
+test('הזמנת טיפוח: שבע עמודות עם מחירים', () => {
+  const c = gs.orderColumns_(CARE);
+  assert.strictEqual(c.hasPrices, true);
+  assert.strictEqual(c.headers.length, 7, 'מספר עמודות שגוי: ' + c.headers.length);
+  assert.strictEqual(c.headers[c.headers.length - 1], 'תמונה',
+    'התמונה חייבת להישאר אחרונה גם עם מחירים');
+  assert.ok(c.rows[0].join(' ').indexOf('39.90') > -1, 'מחיר היחידה חסר');
+  assert.ok(c.rows[0].join(' ').indexOf('79.80') > -1, 'סכום השורה חסר');
 });
 
-test('בריחת תווים: שם מוצר עוין אינו הופך לתגית', () => {
-  const evil = JSON.parse(JSON.stringify(B2B));
-  evil.items[0].name = '<script>alert(1)</script>';
-  const html = gs.buildOrderHtml_(evil);
-  assert.ok(!html.includes('<script>alert'), 'לא בוצעה בריחת תווים');
-  assert.ok(html.includes('&lt;script&gt;'), 'הבריחה לא בפורמט הצפוי');
+test('מבצע חבילה מופיע בשורה', () => {
+  const c = gs.orderColumns_(CARE);
+  const cell = c.rows[0][c.nameCol];
+  assert.ok(cell.indexOf('2+1') > -1, 'תג המבצע חסר');
+  assert.ok(cell.indexOf('1 חינם') > -1, 'מספר היחידות החינם חסר');
 });
 
-test('המסמך תקין מבנית', () => {
-  const html = gs.buildOrderHtml_(B2B);
-  assert.ok(html.startsWith('<!doctype html>'), 'חסר doctype');
-  assert.ok(html.includes('dir="rtl"'), 'המסמך אינו RTL');
-  assert.ok(html.trim().endsWith('</html>'), 'המסמך אינו סגור');
+test('כתובת התמונה הממוזערת נגזרת מהמזהה', () => {
+  assert.strictEqual(gs.thumbUrl_('ניק001'),
+    'https://aroam.co.il/images/thumbs/' + encodeURIComponent('ניק001') + '.jpg');
+});
+
+test('מוצר בלי תמונה מסומן ככזה', () => {
+  const c = gs.orderColumns_(B2B);
+  assert.strictEqual(c.rows[1][c.imageCol], '', 'תא התמונה אמור להיות ריק');
+  assert.strictEqual(c.rows[0][c.imageCol], '', 'תא התמונה נטען בציור, לא במחרוזת');
+  assert.strictEqual(c.images[1], null, 'למוצר בלי image לא אמורה להיות כתובת');
+  assert.ok(String(c.images[0]).indexOf('thumbs') > -1, 'למוצר עם image חסרה כתובת');
 });
 
 let failed = 0;
 tests.forEach(([name, fn]) => {
-  try { fn(); console.log('  ✓ ' + name); }
-  catch (e) { failed++; console.log('  ✗ ' + name + '\n      ' + e.message); }
+  try { fn(); console.log('  V ' + name); }
+  catch (e) { failed++; console.log('  X ' + name + '\n      ' + e.message); }
 });
-console.log(failed ? '\nנכשלו ' + failed + ' מתוך ' + tests.length : '\nכל ' + tests.length + ' הבדיקות עברו');
+console.log(failed ? '\nנכשלו ' + failed + ' מתוך ' + tests.length
+                   : '\nכל ' + tests.length + ' הבדיקות עברו');
 process.exit(failed ? 1 : 0);
 ```
 
 - [ ] **Step 2: הרץ ותאמת כישלון**
 
 ```bash
-node tools/test/order-pdf.test.js
+node tools/test/order-doc.test.js
 ```
 
-צפוי: קריסה עם `buildOrderHtml_ is not defined` — הפונקציה עוד לא קיימת.
+צפוי: קריסה עם `orderColumns_ is not defined`.
 
-- [ ] **Step 3: כתוב את המחולל**
+- [ ] **Step 3: ממש את `thumbUrl_` ואת `orderColumns_`**
 
-הוסף ל-`tools/google-apps-script-orders.gs`, אחרי `clean_` (שורה 41):
+הוסף ל-`tools/google-apps-script-orders.gs` אחרי `clean_`:
 
 ```javascript
-// בריחת תווים ל-HTML. שמות מוצרים והערות לקוח מגיעים מקלט חיצוני.
-function escapeHtml_(value) {
-  return String(value == null ? '' : value)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-// כתובת התמונה הממוזערת. הקבצים נוצרים ב-tools/make_pdf_thumbs.py
-// ונקראים לפי מזהה המוצר, בתיקייה שטוחה אחת.
+// כתובת התמונה הממוזערת. הקבצים נוצרים ב-tools/make_pdf_thumbs.py.
+// חובה JPEG — appendInlineImage של Docs אינו מקבל WebP, ו-155 מ-176
+// תמונות המוצר באתר הן webp.
 function thumbUrl_(id) {
   return 'https://aroam.co.il/images/thumbs/' + encodeURIComponent(String(id || '')) + '.jpg';
 }
 
-// שורת פרט בכרטיסי הכותרת
-function infoRow_(k, v) {
-  if (!v) return '';
-  return '<div class="row"><span class="k">' + escapeHtml_(k) + '</span>' +
-         '<span class="v">' + escapeHtml_(v) + '</span></div>';
-}
-
 /**
- * בונה את ה-HTML של תעודת ההזמנה.
- * כשאין מחירים (הקטלוג העסקי) — עמודות המחיר ובלוק הסיכום נשמטים לגמרי.
+ * מבנה טבלת המוצרים.
+ * ב-Docs עמודה 0 מרונדרת בצד שמאל, ולכן הסדר הפוך לסדר הקריאה:
+ * העמודה הראשונה היא הכמות (שמאל) והאחרונה היא התמונה (ימין).
+ * תא התמונה נשאר ריק כאן — התמונה מצוירת בשלב הציור לפי images[].
  */
-function buildOrderHtml_(data) {
+function orderColumns_(data) {
   var items = data.items || [];
-  var cust = data.customer || {};
   var hasPrices = Number(data.totalPrice) > 0;
 
-  var rows = '';
+  var headers = hasPrices
+    ? ['סה\u05f4כ', 'מחיר ליח\u05f3', 'כמות', 'יחידה', 'מק\u05f4ט', 'מוצר', 'תמונה']
+    : ['כמות', 'יחידה', 'מק\u05f4ט', 'מוצר', 'תמונה'];
+
+  var qtyCol = hasPrices ? 2 : 0;
+  var nameCol = headers.length - 2;
+  var imageCol = headers.length - 1;
+
+  var rows = [], images = [];
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
-    // תמונה מוצגת רק כשלמוצר יש מזהה וגם נתיב תמונה במקור —
-    // אחרת נקבל ריבוע שבור במסמך שנשלח ללקוח.
-    var cell = (it.id && it.image)
-      ? '<img src="' + thumbUrl_(it.id) + '" alt="">'
-      : '<div class="none">אין תמונה</div>';
 
-    var bundle = '';
+    var name = clean_(it.name, 120);
     if (Number(it.free) > 0) {
-      bundle = '<div class="bundle">מבצע ' + escapeHtml_(it.bundle) + ' — ' +
-               escapeHtml_(it.free) + ' חינם</div>';
+      name += '\nמבצע ' + clean_(it.bundle, 10) + ' \u2014 ' + clean_(it.free, 10) + ' חינם';
     }
 
-    var money = '';
-    if (hasPrices) {
-      money = '<td class="money">' + Number(it.price || 0).toFixed(2) + ' &#8362;</td>' +
-              '<td class="money"><strong>' + Number(it.total || 0).toFixed(2) + ' &#8362;</strong></td>';
-    }
+    var row = hasPrices
+      ? [Number(it.total || 0).toFixed(2) + ' \u20aa',
+         Number(it.price || 0).toFixed(2) + ' \u20aa',
+         String(it.qty), clean_(it.unit, 20), clean_(it.id, 30), name, '']
+      : [String(it.qty), clean_(it.unit, 20), clean_(it.id, 30), name, ''];
 
-    rows += '<tr>' +
-      '<td class="img">' + cell + '</td>' +
-      '<td><div class="pname">' + escapeHtml_(it.name) + '</div>' +
-          '<div class="pcat">' + escapeHtml_(it.category) + '</div>' + bundle + '</td>' +
-      '<td class="c sku">' + escapeHtml_(it.id) + '</td>' +
-      '<td class="c">' + escapeHtml_(it.unit) + '</td>' +
-      '<td class="c"><span class="qty">' + escapeHtml_(it.qty) + '</span></td>' +
-      money + '</tr>';
+    rows.push(row);
+    images.push(it.image && it.id ? thumbUrl_(it.id) : null);
   }
 
-  var priceHeads = hasPrices
-    ? '<th class="c">מחיר ליח&#1523;</th><th class="c">סה&#1524;כ</th>' : '';
-
-  var totals = '';
-  if (hasPrices) {
-    var line = function (label, value, cls) {
-      return '<div class="l ' + cls + '"><span>' + label + '</span><span>' + value + '</span></div>';
-    };
-    totals = '<div class="totals"><div class="totals-box">' +
-      line('סכום ביניים', Number(data.subtotal || data.totalPrice).toFixed(2) + ' &#8362;', '') +
-      (Number(data.discount) > 0 ? line('הנחת מבצע', '-' + Number(data.discount).toFixed(2) + ' &#8362;', 'disc') : '') +
-      (Number(data.shipping) > 0 ? line('דמי משלוח', Number(data.shipping).toFixed(2) + ' &#8362;', '') : '') +
-      line('סה&#1524;כ לתשלום', Number(data.totalPrice).toFixed(2) + ' &#8362;', 'grand') +
-      '</div></div>';
-  }
-
-  var notes = cust.notes
-    ? '<div class="notes"><strong>הערות הלקוח:</strong> ' + escapeHtml_(cust.notes) + '</div>' : '';
-
-  var custCard = infoRow_(cust.business ? 'שם העסק' : 'שם מלא', cust.business || cust.contact) +
-    (cust.business ? infoRow_('איש קשר', cust.contact) : '') +
-    infoRow_('טלפון', cust.phone) + infoRow_('כתובת', cust.address);
-
-  var orderCard = infoRow_('אספקה מבוקשת', data.date) +
-    infoRow_('שיטת אספקה', cust.shipping) + infoRow_('אופן תשלום', cust.payment) +
-    infoRow_('סה&#1524;כ פריטים', data.totalItems) + infoRow_('סטטוס', 'חדשה');
-
-  return '<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">' +
-    '<title>' + escapeHtml_(data.orderId) + '</title><style>' + ORDER_PDF_CSS + '</style></head><body>' +
-    '<div class="doc-head">' +
-      '<div class="brand">' +
-        '<img src="https://aroam.co.il/images/logo.png" alt="">' +
-        '<div class="brand-txt"><strong>אהרוני שיווק והפצה</strong>' +
-        '<span>חומרי ניקוי &#183; נייר &#183; חד פעמי &#183; ציוד משרדי</span></div>' +
-      '</div>' +
-      '<div class="meta"><div class="kind">תעודת הזמנה</div>' +
-      '<div class="num">' + escapeHtml_(data.orderId) + '</div>' +
-      '<div class="date">התקבלה ' + Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'dd.MM.yyyy HH:mm') + '</div></div>' +
-    '</div>' +
-    '<div class="cards">' +
-      '<div class="card"><h3>פרטי הלקוח</h3>' + custCard + '</div>' +
-      '<div class="card"><h3>פרטי ההזמנה</h3>' + orderCard + '</div>' +
-    '</div>' +
-    '<table><thead><tr><th class="c">תמונה</th><th>מוצר</th><th class="c">מק&#1524;ט</th>' +
-    '<th class="c">יחידה</th><th class="c">כמות</th>' + priceHeads + '</tr></thead>' +
-    '<tbody>' + rows + '</tbody></table>' + totals + notes +
-    '<div class="foot"><span>הזמנה זו נוצרה אוטומטית מהאתר aroam.co.il</span>' +
-    '<span class="c">052-6000158 &#183; 03-6346236 &#183; meiraroam@gmail.com</span></div>' +
-    '</body></html>';
+  return {
+    headers: headers, rows: rows, images: images,
+    hasPrices: hasPrices, qtyCol: qtyCol, nameCol: nameCol, imageCol: imageCol
+  };
 }
 ```
 
-הערה: הבדיקה `test('בריחת תווים')` בודקת שהתוצאה מכילה `&lt;script&gt;` — כלומר `escapeHtml_` חייב לרוץ על שם המוצר, כפי שנעשה למעלה.
+שים לב: שם המוצר והקטגוריה/תג המבצע מופרדים ב-`\n` בתוך אותו תא. בשלב הציור
+כל שורה כזו הופכת לפסקה נפרדת בתא, עם עיצוב משלה.
 
-- [ ] **Step 4: הוסף את גיליון הסגנון**
-
-הוסף לקובץ ה-`.gs`, מיד לפני `buildOrderHtml_`, את הקבוע הבא. זהו בדיוק ה-CSS של הדוגמה שאושרה, עם שינוי אחד מכוון: `font-family` צומצם ל-`Arial, "Arial Hebrew", sans-serif`, כי הממיר של גוגל אינו טוען גופני רשת ורשימה ארוכה רק מסתירה מה באמת ירונדר.
-
-```javascript
-var ORDER_PDF_CSS =
-  '@page { size: A4; margin: 12mm 10mm;}' +
-  '* { box-sizing: border-box; margin: 0; padding: 0;}' +
-  'body { font-family: Arial, "Arial Hebrew", sans-serif; direction: rtl; color: #22312A; font-size: 11pt; line-height: 1.45; background: #fff;}' +
-  '.doc-head { display: flex; align-items: center; justify-content: space-between; background: #1A4231; color: #fff; border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;}' +
-  '.doc-head .brand { display: flex; align-items: center; gap: 12px;}' +
-  '.doc-head img { height: 46px; background: #fff; border-radius: 6px; padding: 4px 6px;}' +
-  '.doc-head .brand-txt strong { display: block; font-size: 14pt; letter-spacing: .2px;}' +
-  '.doc-head .brand-txt span { font-size: 9pt; color: #BFD9CB;}' +
-  '.doc-head .meta { text-align: left;}' +
-  '.doc-head .meta .kind { font-size: 12pt; font-weight: 700;}' +
-  '.doc-head .meta .num { font-size: 15pt; font-weight: 800; color: #8FD6A3; letter-spacing: .5px;}' +
-  '.doc-head .meta .date { font-size: 9pt; color: #BFD9CB;}' +
-  '.cards { display: flex; gap: 10px; margin-bottom: 14px;}' +
-  '.card { flex: 1; border: 1px solid #D6E3DB; border-radius: 8px; background: #F7FBF8; padding: 10px 12px;}' +
-  '.card h3 { font-size: 9pt; color: #639C7D; text-transform: none; font-weight: 700; border-bottom: 1px solid #D6E3DB; padding-bottom: 5px; margin-bottom: 6px;}' +
-  '.row { display: flex; gap: 6px; font-size: 10pt; padding: 1.5px 0;}' +
-  '.row .k { color: #6B7B72; min-width: 74px;}' +
-  '.row .v { font-weight: 600;}' +
-  'table { width: 100%; border-collapse: collapse;}' +
-  'thead th { background: #639C7D; color: #fff; font-size: 9.5pt; font-weight: 700; padding: 7px 8px; text-align: right; border: 1px solid #58896e;}' +
-  'thead th.c, tbody td.c { text-align: center;}' +
-  'tbody td.money { white-space: nowrap; text-align: center;}' +
-  'tbody td { border: 1px solid #DFE9E3; padding: 6px 8px; font-size: 10pt; vertical-align: middle;}' +
-  'tbody tr:nth-child(even) td { background: #F7FBF8;}' +
-  'tbody tr { page-break-inside: avoid;}' +
-  'thead { display: table-header-group;}' +
-  'td.img { width: 58px; padding: 4px;}' +
-  'td.img img { width: 50px; height: 50px; object-fit: contain; background: #fff; border: 1px solid #EAF0EC; border-radius: 5px; display: block;}' +
-  'td.img .none { width: 50px; height: 50px; border: 1px dashed #D6E3DB; border-radius: 5px; font-size: 7pt; color: #A9B8B0; display: flex; align-items: center; justify-content: center; text-align: center;}' +
-  '.pname { font-weight: 700;}' +
-  '.pcat { font-size: 8.5pt; color: #7A8A81;}' +
-  '.sku { font-size: 9pt; color: #6B7B72; letter-spacing: .3px; white-space: nowrap;}' +
-  '.qty { font-size: 13pt; font-weight: 800; color: #1A4231;}' +
-  '.bundle { display: inline-block; background: #FDEDEC; color: #B4342A; border: 1px solid #F3C5C0; border-radius: 4px; font-size: 8pt; font-weight: 700; padding: 1px 5px; margin-top: 2px;}' +
-  '.totals { display: flex; justify-content: flex-start; margin-top: 12px;}' +
-  '.totals-box { min-width: 230px; border: 1px solid #D6E3DB; border-radius: 8px; overflow: hidden;}' +
-  '.totals-box .l { display: flex; justify-content: space-between; gap: 20px; padding: 6px 12px; font-size: 10pt; background: #F7FBF8; border-bottom: 1px solid #E6EEE9;}' +
-  '.totals-box .l.disc { color: #B4342A;}' +
-  '.totals-box .l.grand { background: #1A4231; color: #fff; font-size: 12.5pt; font-weight: 800; border-bottom: 0;}' +
-  '.notes { margin-top: 12px; border-inline-start: 4px solid #8FD6A3; background: #F2F8F4; border-radius: 0 6px 6px 0; padding: 8px 12px; font-size: 10pt;}' +
-  '.notes strong { color: #1A4231;}' +
-  '.foot { margin-top: 16px; border-top: 1px solid #DFE9E3; padding-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 9pt; color: #7A8A81;}' +
-  '.foot .c { color: #1A4231; font-weight: 700;}';
-```
-
-**שני כללים שאסור להשמיט:** `thead { display: table-header-group; }` ו-`tbody tr { page-break-inside: avoid; }` — הם מה שמחזיר את שורת הכותרות בכל עמוד ומונע שורה שנחתכת באמצע בהזמנה ארוכה.
-
-- [ ] **Step 5: הרץ את הבדיקות עד ירוק**
+- [ ] **Step 4: הרץ עד ירוק**
 
 ```bash
-node tools/test/order-pdf.test.js
+node tools/test/order-doc.test.js
 ```
 
-צפוי: `כל 5 הבדיקות עברו`, קוד יציאה 0.
+צפוי: `כל 6 הבדיקות עברו`, קוד יציאה 0.
 
-- [ ] **Step 6: רנדר דוגמה ובדוק ויזואלית**
+- [ ] **Step 5: ממש את `buildOrderDoc_`**
 
-צור `tools/test/render-sample.js`:
+הבסיס המאומת נמצא ב-`.superpowers/sdd/order-doc-reference.gs` — הקוד שהופק
+בספייק ואושר על ידי רועי. העתק ממנו את הפריסה והתאם:
 
-```javascript
-/**
- * מרנדר דוגמת תעודת הזמנה ל-HTML מקומי, לבדיקה ויזואלית לפני העלאה לענן.
- * להרצה: node tools/test/render-sample.js && open /tmp/order-sample.html
- */
-const fs = require('fs');
-const path = require('path');
+1. **סדר העמודות מגיע מ-`orderColumns_`**, לא קשיח בקוד.
+2. תמונות נטענות מ-`images[i]`, ומדלגים על `null` בלי לזרוק שגיאה.
+3. בלוק הסיכום (סכום ביניים / הנחה / משלוח / סה״כ) נבנה **רק כש-`hasPrices`**,
+   כטבלה נפרדת שבה שורת הסה״כ היא תא ברקע `#1A4231` עם טקסט לבן.
+4. בסוף: `doc.saveAndClose()`, ייצוא ל-PDF, ואז
+   **`DriveApp.getFileById(doc.getId()).setTrashed(true)`** — מסמך הביניים
+   נמחק. בלי זה כל הזמנה משאירה Doc זבל ב-Drive של רועי.
+5. שני תיקונים שרועי ביקש על גבי הספייק: **הלוגו צמוד לשם העסק** ולא מעליו
+   (תא נפרד בתוך אותה רצועה), ו**פס ירוק עליון לכרטיסים** (שורת טבלה דקה
+   ברקע `#639C7D` מעל כל כרטיס — גבולות ב-Docs אחידים לכל הטבלה ולכן זו הדרך).
 
-const src = fs.readFileSync(path.join(__dirname, '..', 'google-apps-script-orders.gs'), 'utf8');
-const stubs = `
-  var SpreadsheetApp = {}, MailApp = {}, CacheService = {}, DriveApp = {},
-      ContentService = {}, MimeType = {}, Logger = { log: function () {} };
-  var Utilities = { formatDate: function () { return '19.08.2026 09:42'; } };
-`;
-const gs = new Function(stubs + src + '; return { buildOrderHtml_: buildOrderHtml_ };')();
+- [ ] **Step 6: הרץ בענן ואמת ויזואלית**
 
-const data = {
-  orderId: 'AR-20260819-4821', date: '21.08.2026', totalItems: 10,
-  totalPrice: '', subtotal: '', discount: '', shipping: '',
-  customer: { business: 'מסעדת הגן הירוק בע״מ', contact: 'דנה לוי',
-              phone: '054-1234567', address: 'המלאכה 8, אור יהודה',
-              notes: 'נא לתאם טלפונית לפני ההגעה.' },
-  items: [
-    { id: 'ניק001', name: 'אקונומיקה 4 ליטר', category: 'ניקיון', qty: 6, unit: 'יחידה', image: 'x.webp' },
-    { id: 'מוצ001', name: 'גליל נייר תעשייתי 5004', category: 'מוצרי נייר', qty: 10, unit: 'יחידה', image: 'x.webp' },
-    { id: 'חדפ017', name: 'צלחות פלסטיק גדולות - 100 יח׳', category: 'חד פעמי ואריזות', qty: 12, unit: 'יחידה', image: 'x.webp' }
-  ]
-};
-fs.writeFileSync('/tmp/order-sample.html', gs.buildOrderHtml_(data), 'utf8');
-console.log('נכתב /tmp/order-sample.html');
-```
+הדבק את הקובץ בפרויקט Apps Script של ההזמנות, הרץ `testOrder`, ופתח את ה-PDF.
+בדוק אחת-אחת: התמונה בעמודה הימנית והכמות בשמאלית · רצועת הכותרת ירוקה כהה ·
+שורת הכותרות ירוקה עם טקסט לבן · פסים לסירוגין · הלוגו צמוד לשם · פס ירוק מעל
+הכרטיסים · הערות עם פס פסטל · **מסמך הביניים אינו נשאר ב-Drive**.
 
-הרץ ובדוק:
-
-```bash
-node tools/test/render-sample.js && "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=/tmp/order-sample.pdf file:///tmp/order-sample.html
-```
-
-**הערה:** התמונות ייטענו מ-`aroam.co.il` ולכן יופיעו רק אחרי שמשימה 2 נדחפה. אם עוד לא — צפה לתאי תמונה ריקים, וזו אינה תקלה. השווה את הפריסה מול `order-b2b.pdf` המאושר.
-
-- [ ] **Step 7: בדוק הזמנה רב-עמודית**
-
-זה התרחיש היחיד שהבדיקות ב-Node לא יכולות לתפוס — התנהגות שבירת עמודים היא של מנוע הרינדור.
-
-```bash
-node -e "
-const fs=require('fs'),path=require('path');
-const src=fs.readFileSync('tools/google-apps-script-orders.gs','utf8');
-const stubs='var SpreadsheetApp={},MailApp={},CacheService={},DriveApp={},ContentService={},MimeType={},Logger={log:function(){}};var Utilities={formatDate:function(){return \'19.08.2026 09:42\';}};';
-const gs=new Function(stubs+src+'; return {buildOrderHtml_:buildOrderHtml_};')();
-const items=[];
-for(let i=1;i<=40;i++) items.push({id:'ניק'+String(i).padStart(3,'0'),name:'מוצר בדיקה מספר '+i,category:'ניקיון',qty:i,unit:'יחידה',image:'x.webp'});
-fs.writeFileSync('/tmp/order-40.html',gs.buildOrderHtml_({orderId:'AR-40-ROWS',date:'21.08.2026',totalItems:820,totalPrice:'',customer:{business:'בדיקה בע\u05f4מ',contact:'א',phone:'0500000000',address:'כתובת'},items}),'utf8');
-console.log('נכתב /tmp/order-40.html');
-"
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=/tmp/order-40.pdf file:///tmp/order-40.html
-python3 -c "print('עמודים:', open('/tmp/order-40.pdf','rb').read().count(b'/Type /Page') - 1)"
-```
-
-צפוי: 3-4 עמודים. פתח את הקובץ וודא שלוש נקודות: שורת הכותרות הירוקה חוזרת בראש כל עמוד, אף שורת מוצר לא נחתכת בין עמודים, והפוטר מופיע פעם אחת בסוף.
-
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add tools/google-apps-script-orders.gs tools/test/
-git commit -m "הזמנות: מחולל HTML לתעודת ההזמנה + בדיקות ב-Node"
+git commit -m "הזמנות: מחולל תעודת ההזמנה כמסמך Docs + בדיקות מבנה"
 ```
 
 ---
@@ -713,8 +568,10 @@ git commit -m "הזמנות: מחולל HTML לתעודת ההזמנה + בדי�
 **Files:**
 - Modify: `tools/google-apps-script-orders.gs` (`SHEET_HEADERS`, `doPost`, הוספת `savePdf_`)
 
+הערה: `buildOrderDoc_` כבר מוחקת את מסמך הביניים; `savePdf_` אחראית רק על העותק הסופי.
+
 **Interfaces:**
-- Consumes: `buildOrderHtml_(data)` ממשימה 4.
+- Consumes: `buildOrderDoc_(data)` ממשימה 4.
 - Produces: `savePdf_(data) -> { blob: Blob, url: String }` או `null` בכישלון.
 
 - [ ] **Step 1: הוסף את העמודה החדשה בסוף הכותרות**
@@ -731,7 +588,7 @@ var SHEET_HEADERS = ['תאריך קבלה', 'מספר הזמנה', 'תאריך �
 
 - [ ] **Step 2: הוסף את פונקציית השמירה**
 
-הוסף אחרי `buildOrderHtml_`:
+הוסף אחרי `buildOrderDoc_`:
 
 ```javascript
 var PDF_FOLDER_NAME = 'הזמנות אהרוני — PDF';
@@ -749,8 +606,7 @@ function pdfFolder_() {
 function savePdf_(data) {
   try {
     var name = (clean_(data.orderId, 30) || 'order') + '.pdf';
-    var html = buildOrderHtml_(data);
-    var blob = Utilities.newBlob(html, MimeType.HTML, name).getAs(MimeType.PDF).setName(name);
+    var blob = buildOrderDoc_(data).setName(name);
     var file = pdfFolder_().createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return { blob: blob, url: file.getUrl() };
@@ -787,10 +643,10 @@ function savePdf_(data) {
 - [ ] **Step 4: הרץ את הבדיקות מחדש**
 
 ```bash
-node tools/test/order-pdf.test.js
+node tools/test/order-doc.test.js
 ```
 
-צפוי: `כל 5 הבדיקות עברו` — הרתמה טוענת את הקובץ כולו, ולכן היא גם מאמתת שלא נשברה תחביר.
+צפוי: `כל 6 הבדיקות עברו` — הרתמה טוענת את הקובץ כולו, ולכן היא גם מאמתת שלא נשברה תחביר.
 
 - [ ] **Step 5: בדוק בענן**
 
@@ -817,7 +673,7 @@ git commit -m "הזמנות: תעודת PDF מצורפת למייל ונשמרת
 
 **Files:**
 - Modify: `tools/google-apps-script-orders.gs` (הוספת `quoteLink_`, שימוש ב-`doPost`)
-- Modify: `tools/test/order-pdf.test.js` (בדיקות נוספות)
+- Modify: `tools/test/order-doc.test.js` (בדיקות נוספות)
 
 **Interfaces:**
 - Consumes: `data.items[]`, `data.totalPrice`, `data.customer`.
@@ -825,7 +681,7 @@ git commit -m "הזמנות: תעודת PDF מצורפת למייל ונשמרת
 
 - [ ] **Step 1: הוסף מבחני כישלון**
 
-הוסף ל-`tools/test/order-pdf.test.js`, לפני שורת ההרצה:
+הוסף ל-`tools/test/order-doc.test.js`, לפני שורת ההרצה:
 
 ```javascript
 test('קישור הצעת מחיר: נבנה להזמנה בלי מחירים', () => {
@@ -844,14 +700,14 @@ test('קישור הצעת מחיר: אינו נבנה כשיש כבר מחירי
 עדכן את שורת ה-`return` ב-`loadGs` כך שתחזיר גם אותה:
 
 ```javascript
-    '; return { buildOrderHtml_: buildOrderHtml_, escapeHtml_: escapeHtml_,' +
-    '   thumbUrl_: thumbUrl_, quoteLink_: quoteLink_ };'
+    '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_,' +
+    '   quoteLink_: quoteLink_ };'
 ```
 
 - [ ] **Step 2: הרץ ותאמת כישלון**
 
 ```bash
-node tools/test/order-pdf.test.js
+node tools/test/order-doc.test.js
 ```
 
 צפוי: שתי הבדיקות החדשות נופלות על `quoteLink_ is not defined`.
@@ -888,10 +744,10 @@ function quoteLink_(data) {
 - [ ] **Step 4: הרץ עד ירוק**
 
 ```bash
-node tools/test/order-pdf.test.js
+node tools/test/order-doc.test.js
 ```
 
-צפוי: `כל 7 הבדיקות עברו`.
+צפוי: `כל 8 הבדיקות עברו`.
 
 - [ ] **Step 5: הוסף את הקישור לגוף המייל**
 
@@ -911,7 +767,7 @@ node tools/test/order-pdf.test.js
 - [ ] **Step 7: Commit**
 
 ```bash
-git add tools/google-apps-script-orders.gs tools/test/order-pdf.test.js
+git add tools/google-apps-script-orders.gs tools/test/order-doc.test.js
 git commit -m "הזמנות: קישור להפיכת הזמנה עסקית להצעת מחיר בדף הסוכן"
 ```
 
@@ -1057,7 +913,7 @@ git commit -m "דף הסוכן: שם לקוח מהכתובת ועיצוב אחי
 - [ ] **Step 1: ודא שהכל committed**
 
 ```bash
-git status --short && node tools/test/order-pdf.test.js
+git status --short && node tools/test/order-doc.test.js
 ```
 
 צפוי: עץ נקי, כל הבדיקות עוברות.
