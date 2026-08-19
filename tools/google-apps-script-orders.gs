@@ -39,6 +39,330 @@ function clean_(value, maxLen) {
   return s.slice(0, maxLen || 200);
 }
 
+// כתובת התמונה הממוזערת. הקבצים נוצרים ב-tools/make_pdf_thumbs.py.
+// חובה JPEG — appendInlineImage של Docs אינו מקבל WebP, ו-155 מ-176
+// תמונות המוצר באתר הן webp.
+function thumbUrl_(id) {
+  return 'https://aroam.co.il/images/thumbs/' + encodeURIComponent(String(id || '')) + '.jpg';
+}
+
+/**
+ * מבנה טבלת המוצרים.
+ * ב-Docs עמודה 0 מרונדרת בצד שמאל, ולכן הסדר הפוך לסדר הקריאה:
+ * העמודה הראשונה היא הכמות (שמאל) והאחרונה היא התמונה (ימין).
+ * תא התמונה נשאר ריק כאן — התמונה מצוירת בשלב הציור לפי images[].
+ */
+function orderColumns_(data) {
+  var items = data.items || [];
+  var hasPrices = Number(data.totalPrice) > 0;
+
+  var headers = hasPrices
+    ? ['סה״כ', 'מחיר ליח׳', 'כמות', 'יחידה', 'מק״ט', 'מוצר', 'תמונה']
+    : ['כמות', 'יחידה', 'מק״ט', 'מוצר', 'תמונה'];
+
+  var qtyCol = hasPrices ? 2 : 0;
+  var nameCol = headers.length - 2;
+  var imageCol = headers.length - 1;
+
+  var rows = [], images = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+
+    var name = clean_(it.name, 120);
+    if (Number(it.free) > 0) {
+      name += '\nמבצע ' + clean_(it.bundle, 10) + ' — ' + clean_(it.free, 10) + ' חינם';
+    }
+
+    var row = hasPrices
+      ? [Number(it.total || 0).toFixed(2) + ' ₪',
+         Number(it.price || 0).toFixed(2) + ' ₪',
+         String(it.qty), clean_(it.unit, 20), clean_(it.id, 30), name, '']
+      : [String(it.qty), clean_(it.unit, 20), clean_(it.id, 30), name, ''];
+
+    rows.push(row);
+    images.push(it.image && it.id ? thumbUrl_(it.id) : null);
+  }
+
+  return {
+    headers: headers, rows: rows, images: images,
+    hasPrices: hasPrices, qtyCol: qtyCol, nameCol: nameCol, imageCol: imageCol
+  };
+}
+
+// ===== תעודת הזמנה כמסמך Google Docs -> PDF =====
+// מבוסס על .superpowers/sdd/order-doc-reference.gs (הספייק שאושר על ידי רועי),
+// אך גנרי: מבנה הטבלה (עמודות/רוחבים/מחירים) מגיע מ-orderColumns_(data)
+// ולא קשיח כאן. פלטת המותג בלבד.
+var OD_G = '#1A4231', OD_M = '#639C7D', OD_P = '#8FD6A3',
+    OD_L = '#DFE9E3', OD_BG = '#F7FBF8', OD_GY = '#6B7B72';
+
+function tight_(p) {
+  p.setSpacingBefore(0).setSpacingAfter(0).setLineSpacing(1.05);
+  return p;
+}
+
+function kv_(cell, k, v) {
+  var s = k + '   ' + v;
+  var p = tight_(cell.appendParagraph(s));
+  p.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+  var t = p.editAsText();
+  t.setFontFamily('Arial').setFontSize(9.5).setBold(false);
+  t.setForegroundColor(0, k.length - 1, OD_GY);
+  t.setForegroundColor(k.length, s.length - 1, '#22312A');
+  t.setBold(k.length + 3, s.length - 1, true);
+  return p;
+}
+
+function money_(v) {
+  return Number(v || 0).toFixed(2) + ' ₪';
+}
+
+// רוחב עמודות טבלת המוצרים. כמות/יחידה/מק"ט/מחיר/סה"כ/תמונה מקבלים רוחב
+// קבוע; עמודת המוצר (nameCol, תמיד אחת לפני התמונה) סופגת את מה שנשאר.
+function orderColWidths_(headers) {
+  var FIXED = {
+    'כמות': 46, 'יחידה': 58, 'מק״ט': 66, 'מחיר ליח׳': 64, 'סה״כ': 60, 'תמונה': 56
+  };
+  var TOTAL = 535;
+  var nameIdx = headers.length - 2;
+  var widths = [], used = 0, i, w;
+  for (i = 0; i < headers.length; i++) {
+    if (i === nameIdx) { widths.push(0); continue; }
+    w = FIXED[headers[i]] || 60;
+    widths.push(w);
+    used += w;
+  }
+  widths[nameIdx] = Math.max(140, TOTAL - used);
+  return widths;
+}
+
+/**
+ * בונה את מסמך תעודת ההזמנה כ-Google Doc, מייצא ל-PDF ומוחק את מסמך הביניים.
+ * data הוא אותו מבנה שנשלח מהאתר ל-doPost (ראה testOrder לדוגמה מלאה).
+ */
+function buildOrderDoc_(data) {
+  var RIGHT = DocumentApp.HorizontalAlignment.RIGHT;
+  var LEFT = DocumentApp.HorizontalAlignment.LEFT;
+  var CENTER = DocumentApp.HorizontalAlignment.CENTER;
+
+  var cols = orderColumns_(data);
+  var customer = data.customer || {};
+
+  var doc = DocumentApp.create('order-' + (data.orderId || new Date().getTime()));
+  var body = doc.getBody();
+  body.setMarginTop(30).setMarginBottom(30).setMarginLeft(30).setMarginRight(30);
+  var first = body.getChild(0);
+
+  // ----- רצועת כותרת: לוגו צמוד לשם העסק, ופרטי ההזמנה בצד השני -----
+  var head = body.appendTable([['', '', '']]);
+  head.setBorderWidth(0);
+  head.setColumnWidth(0, 60); head.setColumnWidth(1, 240); head.setColumnWidth(2, 235);
+  var hLogo = head.getCell(0, 0), hName = head.getCell(0, 1), hOrder = head.getCell(0, 2);
+  hLogo.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(6).setPaddingRight(6);
+  hName.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(4).setPaddingRight(4);
+  hOrder.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(12).setPaddingRight(12);
+
+  var pLogo = tight_(hLogo.getChild(0).asParagraph());
+  pLogo.setAlignment(CENTER);
+  try {
+    var logoBlob = UrlFetchApp.fetch('https://aroam.co.il/images/logo.png').getBlob();
+    pLogo.appendInlineImage(logoBlob).setWidth(44).setHeight(20);
+  } catch (eLogo) {}
+
+  var pName = tight_(hName.getChild(0).asParagraph()); pName.setAlignment(RIGHT);
+  pName.setText('אהרוני שיווק והפצה');
+  pName.editAsText().setFontFamily('Arial').setForegroundColor('#FFFFFF').setBold(true).setFontSize(13);
+  var pTag = tight_(hName.appendParagraph('חומרי ניקוי · נייר · חד פעמי · ציוד משרדי'));
+  pTag.setAlignment(RIGHT);
+  pTag.editAsText().setFontFamily('Arial').setForegroundColor('#BFD9CB').setBold(false).setFontSize(8);
+
+  var pOrderTitle = tight_(hOrder.getChild(0).asParagraph()); pOrderTitle.setAlignment(LEFT);
+  pOrderTitle.setText('תעודת הזמנה');
+  pOrderTitle.editAsText().setFontFamily('Arial').setForegroundColor(OD_L).setBold(false).setFontSize(10);
+  var pOrderId = tight_(hOrder.appendParagraph(clean_(data.orderId, 30)));
+  pOrderId.setAlignment(LEFT);
+  pOrderId.editAsText().setFontFamily('Arial').setForegroundColor(OD_P).setBold(true).setFontSize(15);
+  var receivedAt = Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'dd.MM.yyyy HH:mm');
+  var pReceived = tight_(hOrder.appendParagraph('התקבלה ' + receivedAt));
+  pReceived.setAlignment(LEFT);
+  pReceived.editAsText().setFontFamily('Arial').setForegroundColor('#BFD9CB').setBold(false).setFontSize(8);
+
+  tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+
+  // ----- כרטיסי פרטי לקוח / פרטי הזמנה, כל אחד עם פס ירוק עליון משלו -----
+  // (גבולות טבלה ב-Docs אחידים לכל הטבלה, ולכן פס עליון צבעוני = טבלה דקה
+  // נפרדת שמוצמדת מעל כרטיס משלה, בתוך אותו תא-עטיפה)
+  var cardsWrap = body.appendTable([['', '']]);
+  cardsWrap.setBorderWidth(0);
+  cardsWrap.setColumnWidth(0, 267); cardsWrap.setColumnWidth(1, 268);
+  var wCustomer = cardsWrap.getCell(0, 0), wOrder = cardsWrap.getCell(0, 1);
+  wCustomer.setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
+  wOrder.setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
+
+  function cardStrip_(wrapCell) {
+    var strip = wrapCell.appendTable([['']]);
+    strip.setBorderWidth(0);
+    var sc = strip.getCell(0, 0);
+    sc.setBackgroundColor(OD_M).setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(0).setPaddingRight(0);
+    tight_(sc.getChild(0).asParagraph());
+    return strip;
+  }
+  function cardBody_(wrapCell) {
+    var card = wrapCell.appendTable([['']]);
+    card.setBorderColor(OD_L).setBorderWidth(1);
+    var cc = card.getCell(0, 0);
+    cc.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+    return cc;
+  }
+
+  cardStrip_(wCustomer);
+  var custCell = cardBody_(wCustomer);
+  var tCust = tight_(custCell.getChild(0).asParagraph()); tCust.setAlignment(RIGHT); tCust.setText('פרטי הלקוח');
+  tCust.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
+  if (customer.business) kv_(custCell, 'שם העסק', clean_(customer.business, 100));
+  if (customer.contact) kv_(custCell, 'איש קשר', clean_(customer.contact, 100));
+  if (customer.phone) kv_(custCell, 'טלפון', clean_(customer.phone, 30));
+  if (customer.address) kv_(custCell, 'כתובת', clean_(customer.address, 200));
+
+  cardStrip_(wOrder);
+  var ordCell = cardBody_(wOrder);
+  var tOrd = tight_(ordCell.getChild(0).asParagraph()); tOrd.setAlignment(RIGHT); tOrd.setText('פרטי ההזמנה');
+  tOrd.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
+  if (data.date) kv_(ordCell, 'אספקה מבוקשת', clean_(data.date, 20));
+  if (customer.shipping) kv_(ordCell, 'שיטת אספקה', clean_(customer.shipping, 60));
+  if (customer.payment) kv_(ordCell, 'אופן תשלום', clean_(customer.payment, 60));
+  kv_(ordCell, 'סה״כ פריטים', clean_(data.totalItems, 10));
+  kv_(ordCell, 'סטטוס', 'חדשה');
+
+  // הסרת הפסקה הריקה שכל תא מקבל כברירת מחדל, לפני שהוספנו לתוכו טבלאות
+  wCustomer.removeChild(wCustomer.getChild(0));
+  wOrder.removeChild(wOrder.getChild(0));
+
+  tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+
+  // ----- טבלת המוצרים -----
+  var headers = cols.headers, rows = cols.rows, images = cols.images;
+  var widths = orderColWidths_(headers);
+  var tableData = [headers];
+  var r;
+  for (r = 0; r < rows.length; r++) tableData.push(rows[r]);
+  var t = body.appendTable(tableData);
+  t.setBorderColor(OD_L).setBorderWidth(1);
+  for (r = 0; r < widths.length; r++) t.setColumnWidth(r, widths[r]);
+
+  var c;
+  for (c = 0; c < headers.length; c++) {
+    var h = t.getCell(0, c);
+    h.setBackgroundColor(OD_M).setPaddingTop(6).setPaddingBottom(6);
+    tight_(h.getChild(0).asParagraph()).setAlignment(c === cols.nameCol ? RIGHT : CENTER);
+    h.editAsText().setFontFamily('Arial').setForegroundColor('#FFFFFF').setBold(true).setFontSize(9);
+  }
+
+  for (r = 1; r <= rows.length; r++) {
+    var even = (r % 2 === 0);
+    for (c = 0; c < headers.length; c++) {
+      var cell = t.getCell(r, c);
+      if (even) cell.setBackgroundColor(OD_BG);
+      cell.setPaddingTop(5).setPaddingBottom(5);
+
+      if (c === cols.nameCol) {
+        var lines = String(rows[r - 1][c] || '').split('\n');
+        var firstP = tight_(cell.getChild(0).asParagraph());
+        firstP.setAlignment(RIGHT); firstP.setText(lines[0]);
+        firstP.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(true).setFontSize(10);
+        var li;
+        for (li = 1; li < lines.length; li++) {
+          var subP = tight_(cell.appendParagraph(lines[li])); subP.setAlignment(RIGHT);
+          subP.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(8);
+        }
+      } else if (c === cols.imageCol) {
+        tight_(cell.getChild(0).asParagraph()).setAlignment(CENTER);
+        if (images[r - 1]) {
+          try {
+            var blob = UrlFetchApp.fetch(images[r - 1]).getBlob();
+            cell.getChild(0).asParagraph().appendInlineImage(blob).setWidth(40).setHeight(40);
+          } catch (eImg) {}
+        }
+      } else if (c === cols.qtyCol) {
+        var qp = tight_(cell.getChild(0).asParagraph()); qp.setAlignment(CENTER); qp.setText(String(rows[r - 1][c]));
+        qp.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(13);
+      } else {
+        var op = tight_(cell.getChild(0).asParagraph()); op.setAlignment(CENTER); op.setText(String(rows[r - 1][c]));
+        op.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(false).setFontSize(9.5);
+      }
+    }
+  }
+
+  // ----- בלוק סיכום (רק כשיש מחירים): סכום ביניים / הנחה / משלוח / סה"כ -----
+  // שורת הסה"כ = תא ברקע ירוק כהה (OD_G) עם טקסט לבן.
+  if (cols.hasPrices) {
+    tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+    var sumRows = [];
+    if (Number(data.subtotal) > 0) sumRows.push(['סכום ביניים', money_(data.subtotal)]);
+    if (Number(data.discount) > 0) sumRows.push(['הנחה', '-' + money_(data.discount)]);
+    if (Number(data.shipping) > 0) sumRows.push(['דמי משלוח', money_(data.shipping)]);
+    sumRows.push(['סה״כ לתשלום', money_(data.totalPrice)]);
+
+    var sTableData = [];
+    for (r = 0; r < sumRows.length; r++) sTableData.push([sumRows[r][0], sumRows[r][1]]);
+    var sTable = body.appendTable(sTableData);
+    sTable.setBorderWidth(0);
+    sTable.setColumnWidth(0, 400); sTable.setColumnWidth(1, 135);
+    for (r = 0; r < sumRows.length; r++) {
+      var isTotal = (r === sumRows.length - 1);
+      var lc = sTable.getCell(r, 0), vc = sTable.getCell(r, 1);
+      lc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
+      vc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
+      if (isTotal) { lc.setBackgroundColor(OD_G); vc.setBackgroundColor(OD_G); }
+      tight_(lc.getChild(0).asParagraph()).setAlignment(RIGHT);
+      tight_(vc.getChild(0).asParagraph()).setAlignment(LEFT);
+      lc.editAsText().setFontFamily('Arial').setBold(isTotal)
+        .setForegroundColor(isTotal ? '#FFFFFF' : OD_GY).setFontSize(isTotal ? 12 : 9.5);
+      vc.editAsText().setFontFamily('Arial').setBold(true)
+        .setForegroundColor(isTotal ? '#FFFFFF' : '#22312A').setFontSize(isTotal ? 13 : 9.5);
+    }
+  }
+
+  // ----- הערות הלקוח (רק אם יש), פס פסטל בצד -----
+  if (customer.notes) {
+    tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+    var nt = body.appendTable([['', '']]);
+    nt.setBorderWidth(0);
+    nt.setColumnWidth(0, 5); nt.setColumnWidth(1, 530);
+    nt.getCell(0, 0).setBackgroundColor(OD_P).setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
+    var nc = nt.getCell(0, 1);
+    nc.setBackgroundColor('#F2F8F4').setPaddingTop(7).setPaddingBottom(7).setPaddingLeft(10).setPaddingRight(10);
+    var np = tight_(nc.getChild(0).asParagraph()); np.setAlignment(RIGHT);
+    var label = 'הערות הלקוח:   ';
+    np.setText(label + clean_(customer.notes, 500));
+    var nx = np.editAsText();
+    nx.setFontFamily('Arial').setFontSize(9.5).setForegroundColor('#22312A').setBold(false);
+    nx.setForegroundColor(0, label.length - 1, OD_G);
+    nx.setBold(0, label.length - 1, true);
+  }
+
+  // ----- פוטר -----
+  tight_(body.appendParagraph('')).editAsText().setFontSize(6);
+  var ft = body.appendTable([['הזמנה זו נוצרה אוטומטית מהאתר aroam.co.il',
+    '052-6000158 · 03-6346236 · meiraroam@gmail.com']]);
+  ft.setBorderWidth(0);
+  ft.setColumnWidth(0, 260); ft.setColumnWidth(1, 275);
+  var f0 = ft.getCell(0, 0), f1 = ft.getCell(0, 1);
+  f0.setPaddingLeft(0).setPaddingRight(0); f1.setPaddingLeft(0).setPaddingRight(0);
+  tight_(f0.getChild(0).asParagraph()).setAlignment(RIGHT);
+  f0.editAsText().setFontFamily('Arial').setForegroundColor('#7A8A81').setBold(false).setFontSize(8);
+  tight_(f1.getChild(0).asParagraph()).setAlignment(LEFT);
+  f1.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(8);
+
+  first.removeFromParent();
+  doc.saveAndClose();
+
+  var pdfBlob = DriveApp.getFileById(doc.getId()).getAs('application/pdf')
+    .setName('תעודת הזמנה ' + (clean_(data.orderId, 30) || '') + '.pdf');
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
+  return pdfBlob;
+}
+
 // הגבלת קצב פשוטה: עד 30 הזמנות בשעה (מגן מפני הצפה/ניצול לרעה)
 function rateLimitOk_() {
   var cache = CacheService.getScriptCache();
