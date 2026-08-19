@@ -336,6 +336,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                             category: item.category,
                             unit: item.unit,
                             image: img,
+                            // נתיב התמונה הגולמי מה-CSV (יחסי, לא מקודד) — לתעודת ההזמנה (PDF) שנבנית ב-Apps Script;
+                            // image (למעלה) הוא הנתיב המוחלט+מקודד לתצוגה בדפדפן ואינו מתאים לשם.
+                            rawImage: item.image || "",
                             price: parseFloat(item.price) || 0,
                             // מבצע: original_price קיים רק בקובץ המחירון הנסתר — כשהוא גבוה מהמחיר מוצג "מבצע"
                             original_price: parseFloat(item.original_price) || 0,
@@ -2005,6 +2008,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 category: product.category,
                 qty: qty,
                 unit: product.unit,
+                // נתיב התמונה — נדרש לתעודת ההזמנה (PDF) שנבנית ב-Apps Script.
+                // rawImage הוא הנתיב היחסי כפי שהוא ב-CSV (לא מוחלט, לא מקודד) —
+                // product.image עבר כבר המרה לנתיב מוחלט+מקודד לצורך תצוגה בדפדפן ואינו מתאים לכאן.
+                image: product.rawImage || "",
                 price: price,
                 total: itemTotal,
                 // מבצע חבילה — כדי שבמייל/בגיליון יהיה ברור כמה יחידות לתת חינם
