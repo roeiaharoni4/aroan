@@ -178,214 +178,214 @@ function buildOrderDoc_(data) {
   // מרגע שהמסמך נוצר, כל כשל בבנייתו (כולל ביצירת ה-PDF) חייב עדיין להוביל
   // למחיקת מסמך הביניים ב-finally — אחרת הוא דולף לצמיתות ב-Drive.
   try {
-  var body = doc.getBody();
-  body.setMarginTop(30).setMarginBottom(30).setMarginLeft(30).setMarginRight(30);
-  var first = body.getChild(0);
+    var body = doc.getBody();
+    body.setMarginTop(30).setMarginBottom(30).setMarginLeft(30).setMarginRight(30);
+    var first = body.getChild(0);
 
-  // ----- רצועת כותרת: לוגו צמוד לשם העסק, ופרטי ההזמנה בצד השני -----
-  var head = body.appendTable([['', '', '']]);
-  head.setBorderWidth(0);
-  head.setColumnWidth(0, 60); head.setColumnWidth(1, 240); head.setColumnWidth(2, 235);
-  var hLogo = head.getCell(0, 0), hName = head.getCell(0, 1), hOrder = head.getCell(0, 2);
-  hLogo.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(6).setPaddingRight(6);
-  hName.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(4).setPaddingRight(4);
-  hOrder.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(12).setPaddingRight(12);
+    // ----- רצועת כותרת: לוגו צמוד לשם העסק, ופרטי ההזמנה בצד השני -----
+    var head = body.appendTable([['', '', '']]);
+    head.setBorderWidth(0);
+    head.setColumnWidth(0, 60); head.setColumnWidth(1, 240); head.setColumnWidth(2, 235);
+    var hLogo = head.getCell(0, 0), hName = head.getCell(0, 1), hOrder = head.getCell(0, 2);
+    hLogo.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(6).setPaddingRight(6);
+    hName.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(4).setPaddingRight(4);
+    hOrder.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(12).setPaddingRight(12);
 
-  var pLogo = tight_(hLogo.getChild(0).asParagraph());
-  pLogo.setAlignment(CENTER);
-  try {
-    var logoBlob = UrlFetchApp.fetch('https://aroam.co.il/images/logo.png').getBlob();
-    pLogo.appendInlineImage(logoBlob).setWidth(44).setHeight(20);
-  } catch (eLogo) {}
+    var pLogo = tight_(hLogo.getChild(0).asParagraph());
+    pLogo.setAlignment(CENTER);
+    try {
+      var logoBlob = UrlFetchApp.fetch('https://aroam.co.il/images/logo.png').getBlob();
+      pLogo.appendInlineImage(logoBlob).setWidth(44).setHeight(20);
+    } catch (eLogo) {}
 
-  var pName = tight_(hName.getChild(0).asParagraph()); pName.setAlignment(RIGHT);
-  pName.setText('אהרוני שיווק והפצה');
-  pName.editAsText().setFontFamily('Arial').setForegroundColor('#FFFFFF').setBold(true).setFontSize(13);
-  var pTag = tight_(hName.appendParagraph('חומרי ניקוי · נייר · חד פעמי · ציוד משרדי'));
-  pTag.setAlignment(RIGHT);
-  pTag.editAsText().setFontFamily('Arial').setForegroundColor('#BFD9CB').setBold(false).setFontSize(8);
+    var pName = tight_(hName.getChild(0).asParagraph()); pName.setAlignment(RIGHT);
+    pName.setText('אהרוני שיווק והפצה');
+    pName.editAsText().setFontFamily('Arial').setForegroundColor('#FFFFFF').setBold(true).setFontSize(13);
+    var pTag = tight_(hName.appendParagraph('חומרי ניקוי · נייר · חד פעמי · ציוד משרדי'));
+    pTag.setAlignment(RIGHT);
+    pTag.editAsText().setFontFamily('Arial').setForegroundColor('#BFD9CB').setBold(false).setFontSize(8);
 
-  var pOrderTitle = tight_(hOrder.getChild(0).asParagraph()); pOrderTitle.setAlignment(LEFT);
-  pOrderTitle.setText('תעודת הזמנה');
-  pOrderTitle.editAsText().setFontFamily('Arial').setForegroundColor(OD_L).setBold(false).setFontSize(10);
-  var pOrderId = tight_(hOrder.appendParagraph(clean_(data.orderId, 30)));
-  pOrderId.setAlignment(LEFT);
-  pOrderId.editAsText().setFontFamily('Arial').setForegroundColor(OD_P).setBold(true).setFontSize(15);
-  var receivedAt = Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'dd.MM.yyyy HH:mm');
-  var pReceived = tight_(hOrder.appendParagraph('התקבלה ' + receivedAt));
-  pReceived.setAlignment(LEFT);
-  pReceived.editAsText().setFontFamily('Arial').setForegroundColor('#BFD9CB').setBold(false).setFontSize(8);
+    var pOrderTitle = tight_(hOrder.getChild(0).asParagraph()); pOrderTitle.setAlignment(LEFT);
+    pOrderTitle.setText('תעודת הזמנה');
+    pOrderTitle.editAsText().setFontFamily('Arial').setForegroundColor(OD_L).setBold(false).setFontSize(10);
+    var pOrderId = tight_(hOrder.appendParagraph(clean_(data.orderId, 30)));
+    pOrderId.setAlignment(LEFT);
+    pOrderId.editAsText().setFontFamily('Arial').setForegroundColor(OD_P).setBold(true).setFontSize(15);
+    var receivedAt = Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'dd.MM.yyyy HH:mm');
+    var pReceived = tight_(hOrder.appendParagraph('התקבלה ' + receivedAt));
+    pReceived.setAlignment(LEFT);
+    pReceived.editAsText().setFontFamily('Arial').setForegroundColor('#BFD9CB').setBold(false).setFontSize(8);
 
-  tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+    tight_(body.appendParagraph('')).editAsText().setFontSize(4);
 
-  // ----- כרטיסי פרטי לקוח / פרטי הזמנה -----
-  // ניסיון קודם צייר פס ירוק עליון על כל כרטיס בנפרד (טבלת "strip" דקה
-  // מעל טבלת כרטיס, בתוך תא-עטיפה משותף), אבל זה רינדר כרצועה ירוקה אחת
-  // ברוחב מלא ומנותקת מהכרטיסים. ויתרנו על הפס וחזרנו למבנה הפשוט שכבר
-  // אומת בספייק: טבלה אחת בת שני תאים עם מסגרת ורקע אחידים.
-  var cards = body.appendTable([['', '']]);
-  cards.setBorderColor(OD_L).setBorderWidth(1);
-  cards.setColumnWidth(0, 267); cards.setColumnWidth(1, 268);
-  var custCell = cards.getCell(0, 0), ordCell = cards.getCell(0, 1);
-  custCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
-  ordCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+    // ----- כרטיסי פרטי לקוח / פרטי הזמנה -----
+    // ניסיון קודם צייר פס ירוק עליון על כל כרטיס בנפרד (טבלת "strip" דקה
+    // מעל טבלת כרטיס, בתוך תא-עטיפה משותף), אבל זה רינדר כרצועה ירוקה אחת
+    // ברוחב מלא ומנותקת מהכרטיסים. ויתרנו על הפס וחזרנו למבנה הפשוט שכבר
+    // אומת בספייק: טבלה אחת בת שני תאים עם מסגרת ורקע אחידים.
+    var cards = body.appendTable([['', '']]);
+    cards.setBorderColor(OD_L).setBorderWidth(1);
+    cards.setColumnWidth(0, 267); cards.setColumnWidth(1, 268);
+    var custCell = cards.getCell(0, 0), ordCell = cards.getCell(0, 1);
+    custCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+    ordCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
 
-  var tCust = tight_(custCell.getChild(0).asParagraph()); tCust.setAlignment(RIGHT); tCust.setText('פרטי הלקוח');
-  tCust.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
-  if (customer.business) kv_(custCell, 'שם העסק', clean_(customer.business, 100));
-  if (customer.contact) kv_(custCell, 'איש קשר', clean_(customer.contact, 100));
-  if (customer.phone) kv_(custCell, 'טלפון', clean_(customer.phone, 30));
-  if (customer.address) kv_(custCell, 'כתובת', clean_(customer.address, 200));
+    var tCust = tight_(custCell.getChild(0).asParagraph()); tCust.setAlignment(RIGHT); tCust.setText('פרטי הלקוח');
+    tCust.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
+    if (customer.business) kv_(custCell, 'שם העסק', clean_(customer.business, 100));
+    if (customer.contact) kv_(custCell, 'איש קשר', clean_(customer.contact, 100));
+    if (customer.phone) kv_(custCell, 'טלפון', clean_(customer.phone, 30));
+    if (customer.address) kv_(custCell, 'כתובת', clean_(customer.address, 200));
 
-  var tOrd = tight_(ordCell.getChild(0).asParagraph()); tOrd.setAlignment(RIGHT); tOrd.setText('פרטי ההזמנה');
-  tOrd.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
-  if (data.date) kv_(ordCell, 'אספקה מבוקשת', clean_(data.date, 20));
-  if (customer.shipping) kv_(ordCell, 'שיטת אספקה', clean_(customer.shipping, 60));
-  if (customer.payment) kv_(ordCell, 'אופן תשלום', clean_(customer.payment, 60));
-  kv_(ordCell, 'סה״כ פריטים', clean_(data.totalItems, 10));
-  kv_(ordCell, 'סטטוס', 'חדשה');
+    var tOrd = tight_(ordCell.getChild(0).asParagraph()); tOrd.setAlignment(RIGHT); tOrd.setText('פרטי ההזמנה');
+    tOrd.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
+    if (data.date) kv_(ordCell, 'אספקה מבוקשת', clean_(data.date, 20));
+    if (customer.shipping) kv_(ordCell, 'שיטת אספקה', clean_(customer.shipping, 60));
+    if (customer.payment) kv_(ordCell, 'אופן תשלום', clean_(customer.payment, 60));
+    kv_(ordCell, 'סה״כ פריטים', clean_(data.totalItems, 10));
+    kv_(ordCell, 'סטטוס', 'חדשה');
 
-  tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+    tight_(body.appendParagraph('')).editAsText().setFontSize(4);
 
-  // ----- טבלת המוצרים -----
-  var headers = cols.headers, rows = cols.rows, images = cols.images;
-  var widths = orderColWidths_(headers);
-  var tableData = [headers];
-  var r;
-  for (r = 0; r < rows.length; r++) tableData.push(rows[r]);
-  var t = body.appendTable(tableData);
-  t.setBorderColor(OD_L).setBorderWidth(1);
-  for (r = 0; r < widths.length; r++) t.setColumnWidth(r, widths[r]);
+    // ----- טבלת המוצרים -----
+    var headers = cols.headers, rows = cols.rows, images = cols.images;
+    var widths = orderColWidths_(headers);
+    var tableData = [headers];
+    var r;
+    for (r = 0; r < rows.length; r++) tableData.push(rows[r]);
+    var t = body.appendTable(tableData);
+    t.setBorderColor(OD_L).setBorderWidth(1);
+    for (r = 0; r < widths.length; r++) t.setColumnWidth(r, widths[r]);
 
-  var c;
-  for (c = 0; c < headers.length; c++) {
-    var h = t.getCell(0, c);
-    h.setBackgroundColor(OD_M).setPaddingTop(6).setPaddingBottom(6);
-    tight_(h.getChild(0).asParagraph()).setAlignment(c === cols.nameCol ? RIGHT : CENTER);
-    h.editAsText().setFontFamily('Arial').setForegroundColor('#FFFFFF').setBold(true).setFontSize(9);
-  }
-
-  for (r = 1; r <= rows.length; r++) {
-    var even = (r % 2 === 0);
+    var c;
     for (c = 0; c < headers.length; c++) {
-      var cell = t.getCell(r, c);
-      if (even) cell.setBackgroundColor(OD_BG);
-      cell.setPaddingTop(5).setPaddingBottom(5);
+      var h = t.getCell(0, c);
+      h.setBackgroundColor(OD_M).setPaddingTop(6).setPaddingBottom(6);
+      tight_(h.getChild(0).asParagraph()).setAlignment(c === cols.nameCol ? RIGHT : CENTER);
+      h.editAsText().setFontFamily('Arial').setForegroundColor('#FFFFFF').setBold(true).setFontSize(9);
+    }
 
-      if (c === cols.nameCol) {
-        // appendTable(tableData) כבר מפצל '\n' בתוך התא לפסקאות נפרדות —
-        // רק מעצבים את הפסקאות הקיימות, לא מוסיפים חדשות (אחרת הטקסט
-        // מוכפל: פעם מהפיצול האוטומטי ופעם מה-appendParagraph הידני).
-        var lines = String(rows[r - 1][c] || '').split('\n');
-        var nChildren = cell.getNumChildren();
-        var li, lp;
-        for (li = 0; li < lines.length; li++) {
-          if (li < nChildren) {
-            lp = tight_(cell.getChild(li).asParagraph());
-          } else {
-            // בטיחות: משלימים פסקה רק אם היא בפועל חסרה בתא
-            lp = tight_(cell.appendParagraph(lines[li]));
+    for (r = 1; r <= rows.length; r++) {
+      var even = (r % 2 === 0);
+      for (c = 0; c < headers.length; c++) {
+        var cell = t.getCell(r, c);
+        if (even) cell.setBackgroundColor(OD_BG);
+        cell.setPaddingTop(5).setPaddingBottom(5);
+
+        if (c === cols.nameCol) {
+          // appendTable(tableData) כבר מפצל '\n' בתוך התא לפסקאות נפרדות —
+          // רק מעצבים את הפסקאות הקיימות, לא מוסיפים חדשות (אחרת הטקסט
+          // מוכפל: פעם מהפיצול האוטומטי ופעם מה-appendParagraph הידני).
+          var lines = String(rows[r - 1][c] || '').split('\n');
+          var nChildren = cell.getNumChildren();
+          var li, lp;
+          for (li = 0; li < lines.length; li++) {
+            if (li < nChildren) {
+              lp = tight_(cell.getChild(li).asParagraph());
+            } else {
+              // בטיחות: משלימים פסקה רק אם היא בפועל חסרה בתא
+              lp = tight_(cell.appendParagraph(lines[li]));
+            }
+            lp.setAlignment(RIGHT);
+            if (li === 0) {
+              lp.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(true).setFontSize(10);
+            } else {
+              lp.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(8);
+            }
           }
-          lp.setAlignment(RIGHT);
-          if (li === 0) {
-            lp.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(true).setFontSize(10);
-          } else {
-            lp.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(8);
+          // ניקוי הגנתי: פסקאות עודפות מעבר ל-lines.length (כלומר התא הכיל
+          // מראש יותר פסקאות ממה שאנחנו כותבים עכשיו) נשארות בעיצוב ברירת
+          // המחדל של Docs ולכן מוסרות — מוחקים מהסוף כדי לא לשבש אינדקסים.
+          while (cell.getNumChildren() > lines.length) {
+            cell.removeChild(cell.getChild(cell.getNumChildren() - 1));
           }
+        } else if (c === cols.imageCol) {
+          tight_(cell.getChild(0).asParagraph()).setAlignment(CENTER);
+          if (images[r - 1]) {
+            try {
+              var blob = UrlFetchApp.fetch(images[r - 1]).getBlob();
+              cell.getChild(0).asParagraph().appendInlineImage(blob).setWidth(40).setHeight(40);
+            } catch (eImg) {}
+          }
+        } else if (c === cols.qtyCol) {
+          var qp = tight_(cell.getChild(0).asParagraph()); qp.setAlignment(CENTER); qp.setText(String(rows[r - 1][c]));
+          qp.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(13);
+        } else {
+          var op = tight_(cell.getChild(0).asParagraph()); op.setAlignment(CENTER); op.setText(String(rows[r - 1][c]));
+          op.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(false).setFontSize(9.5);
         }
-        // ניקוי הגנתי: פסקאות עודפות מעבר ל-lines.length (כלומר התא הכיל
-        // מראש יותר פסקאות ממה שאנחנו כותבים עכשיו) נשארות בעיצוב ברירת
-        // המחדל של Docs ולכן מוסרות — מוחקים מהסוף כדי לא לשבש אינדקסים.
-        while (cell.getNumChildren() > lines.length) {
-          cell.removeChild(cell.getChild(cell.getNumChildren() - 1));
-        }
-      } else if (c === cols.imageCol) {
-        tight_(cell.getChild(0).asParagraph()).setAlignment(CENTER);
-        if (images[r - 1]) {
-          try {
-            var blob = UrlFetchApp.fetch(images[r - 1]).getBlob();
-            cell.getChild(0).asParagraph().appendInlineImage(blob).setWidth(40).setHeight(40);
-          } catch (eImg) {}
-        }
-      } else if (c === cols.qtyCol) {
-        var qp = tight_(cell.getChild(0).asParagraph()); qp.setAlignment(CENTER); qp.setText(String(rows[r - 1][c]));
-        qp.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(13);
-      } else {
-        var op = tight_(cell.getChild(0).asParagraph()); op.setAlignment(CENTER); op.setText(String(rows[r - 1][c]));
-        op.editAsText().setFontFamily('Arial').setForegroundColor('#22312A').setBold(false).setFontSize(9.5);
       }
     }
-  }
 
-  // ----- בלוק סיכום (רק כשיש מחירים): סכום ביניים / הנחה / משלוח / סה"כ -----
-  // שורת הסה"כ = תא ברקע ירוק כהה (OD_G) עם טקסט לבן.
-  if (cols.hasPrices) {
-    tight_(body.appendParagraph('')).editAsText().setFontSize(4);
-    var sumRows = [];
-    if (Number(data.subtotal) > 0) sumRows.push(['סכום ביניים', money_(data.subtotal)]);
-    if (Number(data.discount) > 0) sumRows.push(['הנחה', '-' + money_(data.discount)]);
-    if (Number(data.shipping) > 0) sumRows.push(['דמי משלוח', money_(data.shipping)]);
-    sumRows.push(['סה״כ לתשלום', money_(data.totalPrice)]);
+    // ----- בלוק סיכום (רק כשיש מחירים): סכום ביניים / הנחה / משלוח / סה"כ -----
+    // שורת הסה"כ = תא ברקע ירוק כהה (OD_G) עם טקסט לבן.
+    if (cols.hasPrices) {
+      tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+      var sumRows = [];
+      if (Number(data.subtotal) > 0) sumRows.push(['סכום ביניים', money_(data.subtotal)]);
+      if (Number(data.discount) > 0) sumRows.push(['הנחה', '-' + money_(data.discount)]);
+      if (Number(data.shipping) > 0) sumRows.push(['דמי משלוח', money_(data.shipping)]);
+      sumRows.push(['סה״כ לתשלום', money_(data.totalPrice)]);
 
-    var sTableData = [];
-    for (r = 0; r < sumRows.length; r++) sTableData.push([sumRows[r][0], sumRows[r][1]]);
-    var sTable = body.appendTable(sTableData);
-    sTable.setBorderWidth(0);
-    sTable.setColumnWidth(0, 400); sTable.setColumnWidth(1, 135);
-    for (r = 0; r < sumRows.length; r++) {
-      var isTotal = (r === sumRows.length - 1);
-      var lc = sTable.getCell(r, 0), vc = sTable.getCell(r, 1);
-      lc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
-      vc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
-      if (isTotal) { lc.setBackgroundColor(OD_G); vc.setBackgroundColor(OD_G); }
-      tight_(lc.getChild(0).asParagraph()).setAlignment(RIGHT);
-      tight_(vc.getChild(0).asParagraph()).setAlignment(LEFT);
-      lc.editAsText().setFontFamily('Arial').setBold(isTotal)
-        .setForegroundColor(isTotal ? '#FFFFFF' : OD_GY).setFontSize(isTotal ? 12 : 9.5);
-      vc.editAsText().setFontFamily('Arial').setBold(true)
-        .setForegroundColor(isTotal ? '#FFFFFF' : '#22312A').setFontSize(isTotal ? 13 : 9.5);
+      var sTableData = [];
+      for (r = 0; r < sumRows.length; r++) sTableData.push([sumRows[r][0], sumRows[r][1]]);
+      var sTable = body.appendTable(sTableData);
+      sTable.setBorderWidth(0);
+      sTable.setColumnWidth(0, 400); sTable.setColumnWidth(1, 135);
+      for (r = 0; r < sumRows.length; r++) {
+        var isTotal = (r === sumRows.length - 1);
+        var lc = sTable.getCell(r, 0), vc = sTable.getCell(r, 1);
+        lc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
+        vc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
+        if (isTotal) { lc.setBackgroundColor(OD_G); vc.setBackgroundColor(OD_G); }
+        tight_(lc.getChild(0).asParagraph()).setAlignment(RIGHT);
+        tight_(vc.getChild(0).asParagraph()).setAlignment(LEFT);
+        lc.editAsText().setFontFamily('Arial').setBold(isTotal)
+          .setForegroundColor(isTotal ? '#FFFFFF' : OD_GY).setFontSize(isTotal ? 12 : 9.5);
+        vc.editAsText().setFontFamily('Arial').setBold(true)
+          .setForegroundColor(isTotal ? '#FFFFFF' : '#22312A').setFontSize(isTotal ? 13 : 9.5);
+      }
     }
-  }
 
-  // ----- הערות הלקוח (רק אם יש), פס פסטל בצד -----
-  if (customer.notes) {
-    tight_(body.appendParagraph('')).editAsText().setFontSize(4);
-    var nt = body.appendTable([['', '']]);
-    nt.setBorderWidth(0);
-    nt.setColumnWidth(0, 5); nt.setColumnWidth(1, 530);
-    nt.getCell(0, 0).setBackgroundColor(OD_P).setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
-    var nc = nt.getCell(0, 1);
-    nc.setBackgroundColor('#F2F8F4').setPaddingTop(7).setPaddingBottom(7).setPaddingLeft(10).setPaddingRight(10);
-    var np = tight_(nc.getChild(0).asParagraph()); np.setAlignment(RIGHT);
-    var label = 'הערות הלקוח:   ';
-    np.setText(label + clean_(customer.notes, 500));
-    var nx = np.editAsText();
-    nx.setFontFamily('Arial').setFontSize(9.5).setForegroundColor('#22312A').setBold(false);
-    nx.setForegroundColor(0, label.length - 1, OD_G);
-    nx.setBold(0, label.length - 1, true);
-  }
+    // ----- הערות הלקוח (רק אם יש), פס פסטל בצד -----
+    if (customer.notes) {
+      tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+      var nt = body.appendTable([['', '']]);
+      nt.setBorderWidth(0);
+      nt.setColumnWidth(0, 5); nt.setColumnWidth(1, 530);
+      nt.getCell(0, 0).setBackgroundColor(OD_P).setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(0).setPaddingRight(0);
+      var nc = nt.getCell(0, 1);
+      nc.setBackgroundColor('#F2F8F4').setPaddingTop(7).setPaddingBottom(7).setPaddingLeft(10).setPaddingRight(10);
+      var np = tight_(nc.getChild(0).asParagraph()); np.setAlignment(RIGHT);
+      var label = 'הערות הלקוח:   ';
+      np.setText(label + clean_(customer.notes, 500));
+      var nx = np.editAsText();
+      nx.setFontFamily('Arial').setFontSize(9.5).setForegroundColor('#22312A').setBold(false);
+      nx.setForegroundColor(0, label.length - 1, OD_G);
+      nx.setBold(0, label.length - 1, true);
+    }
 
-  // ----- פוטר -----
-  tight_(body.appendParagraph('')).editAsText().setFontSize(6);
-  var ft = body.appendTable([['הזמנה זו נוצרה אוטומטית מהאתר aroam.co.il',
-    '052-6000158 · 03-6346236 · meiraroam@gmail.com']]);
-  ft.setBorderWidth(0);
-  ft.setColumnWidth(0, 235); ft.setColumnWidth(1, 300);
-  var f0 = ft.getCell(0, 0), f1 = ft.getCell(0, 1);
-  // ריפוד פנימי (צמוד לגבול המשותף בין התאים) כדי שהטקסטים לא ייגעו זה בזה —
-  // f0 מיושר לימין (הטקסט נצמד לגבול) ו-f1 מיושר לשמאל (גם הוא נצמד לאותו גבול).
-  f0.setPaddingLeft(0).setPaddingRight(14); f1.setPaddingLeft(14).setPaddingRight(0);
-  tight_(f0.getChild(0).asParagraph()).setAlignment(RIGHT);
-  f0.editAsText().setFontFamily('Arial').setForegroundColor('#7A8A81').setBold(false).setFontSize(7.5);
-  tight_(f1.getChild(0).asParagraph()).setAlignment(LEFT);
-  f1.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(7.5);
+    // ----- פוטר -----
+    tight_(body.appendParagraph('')).editAsText().setFontSize(6);
+    var ft = body.appendTable([['הזמנה זו נוצרה אוטומטית מהאתר aroam.co.il',
+      '052-6000158 · 03-6346236 · meiraroam@gmail.com']]);
+    ft.setBorderWidth(0);
+    ft.setColumnWidth(0, 235); ft.setColumnWidth(1, 300);
+    var f0 = ft.getCell(0, 0), f1 = ft.getCell(0, 1);
+    // ריפוד פנימי (צמוד לגבול המשותף בין התאים) כדי שהטקסטים לא ייגעו זה בזה —
+    // f0 מיושר לימין (הטקסט נצמד לגבול) ו-f1 מיושר לשמאל (גם הוא נצמד לאותו גבול).
+    f0.setPaddingLeft(0).setPaddingRight(14); f1.setPaddingLeft(14).setPaddingRight(0);
+    tight_(f0.getChild(0).asParagraph()).setAlignment(RIGHT);
+    f0.editAsText().setFontFamily('Arial').setForegroundColor('#7A8A81').setBold(false).setFontSize(7.5);
+    tight_(f1.getChild(0).asParagraph()).setAlignment(LEFT);
+    f1.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(7.5);
 
-  first.removeFromParent();
-  doc.saveAndClose();
+    first.removeFromParent();
+    doc.saveAndClose();
 
-  var pdfBlob = DriveApp.getFileById(doc.getId()).getAs('application/pdf')
-    .setName('תעודת הזמנה ' + (clean_(data.orderId, 30) || '') + '.pdf');
-  return pdfBlob;
+    var pdfBlob = DriveApp.getFileById(doc.getId()).getAs('application/pdf')
+      .setName('תעודת הזמנה ' + (clean_(data.orderId, 30) || '') + '.pdf');
+    return pdfBlob;
   } finally {
     // מחיקת מסמך הביניים לא יכולה להסתיר כשל מקורי — אם היא עצמה נכשלת
     // (למשל המסמך כבר לא קיים), פשוט מתעלמים וממשיכים לפרוש את השגיאה המקורית.
@@ -508,7 +508,25 @@ function doPost(e) {
         body += '\n\nלהפיכת ההזמנה להצעת מחיר (נפתח בדף הסוכן עם המחירים):\n' + qlink + '\n';
       }
       var mailOpts = pdf ? { attachments: [pdf.blob] } : {};
-      MailApp.sendEmail(NOTIFY_EMAIL, subject, body, mailOpts);
+      // ההזמנה כבר נכתבה לגיליון למעלה — כשל בשליחת המייל (מכסת שליחה,
+      // גודל צרופה, תקלה זמנית) לא יכול להפיל את הבקשה כולה ולגרום ללקוח
+      // לראות שגיאה על הזמנה שבפועל נקלטה. אם השליחה עם הצרופה נכשלת,
+      // מנסים שוב בלי הצרופה — עדיף התראה בלי הקובץ מאשר בלי התראה בכלל.
+      try {
+        MailApp.sendEmail(NOTIFY_EMAIL, subject, body, mailOpts);
+      } catch (eMail) {
+        if (mailOpts.attachments) {
+          try {
+            MailApp.sendEmail(NOTIFY_EMAIL, subject, body, {});
+          } catch (eMailNoAttach) {
+            Logger.log('שליחת מייל ההתראה נכשלה גם בלי הצרופה, להזמנה ' +
+              clean_(data.orderId, 30) + ' (השורה כבר נכתבה לגיליון): ' + eMailNoAttach);
+          }
+        } else {
+          Logger.log('שליחת מייל ההתראה נכשלה להזמנה ' +
+            clean_(data.orderId, 30) + ' (השורה כבר נכתבה לגיליון): ' + eMail);
+        }
+      }
     }
 
     return ContentService.createTextOutput(JSON.stringify({ success: true }))
