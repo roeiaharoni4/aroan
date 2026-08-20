@@ -135,6 +135,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     // עגלה שמורה במכשיר — הלקוח ממשיך מאיפה שהפסיק (מפתח נפרד לכל קטלוג)
     const CART_KEY = 'aroam_cart_' + (window.location.pathname.split('/')[1] || 'root');
 
+    // הודעת אזהרה גלויה ולא-חוסמת: קישור ?cart= (מייל הזמנה, "שתף קישור") שהתיישן —
+    // מזהי מוצר שנמחקו/שונו בעורך מאז שהקישור נוצר. בלי ההודעה הפריט פשוט נעלם
+    // בשקט מהעגלה. בנויה עם textContent בלבד (לא innerHTML) כי המזהים מגיעים מה-URL.
+    function showCartWarning(missingIds) {
+        if (!productsEl || !productsEl.parentNode || !missingIds.length) return;
+        const banner = document.createElement("div");
+        banner.className = "cart-warning-banner";
+        banner.setAttribute("role", "alert");
+
+        const textEl = document.createElement("span");
+        textEl.className = "cart-warning-text";
+        const strong = document.createElement("strong");
+        strong.textContent = "שים לב: ";
+        textEl.appendChild(strong);
+        const itemWord = missingIds.length === 1 ? "פריט אחד" : `${missingIds.length} פריטים`;
+        textEl.appendChild(document.createTextNode(
+            `${itemWord} מהקישור לא נמצאו בקטלוג הנוכחי ולא נטענו לעגלה (ייתכן שהמוצר הוסר או שהמק"ט שלו השתנה). ` +
+            `מזהים חסרים: ${missingIds.join(', ')}. יש להשלים אותם ידנית.`
+        ));
+        banner.appendChild(textEl);
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "cart-warning-close";
+        closeBtn.setAttribute("aria-label", "סגירת ההודעה");
+        closeBtn.textContent = "×";
+        closeBtn.addEventListener("click", () => banner.remove());
+        banner.appendChild(closeBtn);
+
+        productsEl.parentNode.insertBefore(banner, productsEl);
+    }
+
     // Initialize App
     init();
 
@@ -201,13 +233,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             try {
                 // Format: id:qty,id:qty
                 const items = cartParam.split(',');
+                const missingIds = [];
                 items.forEach(item => {
                     const [id, qty] = item.split(':');
                     if (id && qty) {
-                        cart[id] = parseInt(qty, 10);
+                        if (PRODUCTS.some(p => p.id === id)) {
+                            cart[id] = parseInt(qty, 10);
+                        } else {
+                            // מזהה שלא קיים בקטלוג הנוכחי — קישור ישן (מייל/שיתוף) שהתיישן
+                            missingIds.push(id);
+                        }
                     }
                 });
                 console.log("Restored cart from URL:", cart);
+                if (missingIds.length > 0) {
+                    console.warn("Cart param referenced missing product ids:", missingIds);
+                    showCartWarning(missingIds);
+                }
                 updateSummary();
             } catch (e) {
                 console.error("Failed to parse cart param", e);

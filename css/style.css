@@ -119,6 +119,12 @@
     /* היה לבן קשיח — יצר ריבועים זוהרים במצב כהה */
 }
 
+[data-theme="dark"] .cart-warning-banner {
+    /* #F7FBF8 (כמעט לבן) לא קריא במצב כהה — גוון ירוק כהה תואם עם אותה מסגרת פסטל */
+    background: #16281D;
+    color: var(--text-main);
+}
+
 * {
     box-sizing: border-box;
 }
@@ -287,6 +293,44 @@ button {
     border-radius: 6px;
     padding: 0.3rem 0.5rem;
     cursor: pointer;
+}
+
+/* Cart Warning Banner — קישור ?cart= (מייל הזמנה/שיתוף) עם מזהי מוצר שלא
+   נמצאו בקטלוג הנוכחי. גלוי אך לא חוסם, ניתן לסגירה. צבעי אזהרה עדינים
+   מתוך פלטת המותג (לא אדום/צהוב סטנדרטי) כדי להשתלב בעיצוב. */
+.cart-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: #F7FBF8;
+    border: 1px solid var(--primary-pastel);
+    border-inline-start: 4px solid var(--primary);
+    color: var(--primary-dark);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 1rem;
+    margin: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.cart-warning-text {
+    flex: 1;
+}
+
+.cart-warning-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--primary-dark);
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    opacity: 0.7;
+}
+
+.cart-warning-close:hover {
+    opacity: 1;
 }
 
 /* Product Grid */
