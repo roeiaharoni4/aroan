@@ -185,7 +185,7 @@ function buildOrderDoc_(data) {
     // ----- רצועת כותרת: לוגו צמוד לשם העסק, ופרטי ההזמנה בצד השני -----
     var head = body.appendTable([['', '', '']]);
     head.setBorderWidth(0);
-    head.setColumnWidth(0, 60); head.setColumnWidth(1, 240); head.setColumnWidth(2, 235);
+    head.setColumnWidth(0, 80); head.setColumnWidth(1, 230); head.setColumnWidth(2, 225);
     var hLogo = head.getCell(0, 0), hName = head.getCell(0, 1), hOrder = head.getCell(0, 2);
     hLogo.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(6).setPaddingRight(6);
     hName.setBackgroundColor(OD_G).setPaddingTop(11).setPaddingBottom(11).setPaddingLeft(4).setPaddingRight(4);
@@ -195,7 +195,9 @@ function buildOrderDoc_(data) {
     pLogo.setAlignment(CENTER);
     try {
       var logoBlob = UrlFetchApp.fetch('https://aroam.co.il/images/logo.png').getBlob();
-      pLogo.appendInlineImage(logoBlob).setWidth(44).setHeight(20);
+      // 64x38 שומר על היחס האמיתי של הקובץ (182x109). ערכים שאינם ביחס הזה
+      // מותחים את הלוגו — כך הוא נראה שטוח בתעודות שנשלחו עד 20.08.
+      pLogo.appendInlineImage(logoBlob).setWidth(64).setHeight(38);
     } catch (eLogo) {}
 
     var pName = tight_(hName.getChild(0).asParagraph()); pName.setAlignment(RIGHT);
@@ -327,14 +329,17 @@ function buildOrderDoc_(data) {
       if (Number(data.shipping) > 0) sumRows.push(['דמי משלוח', money_(data.shipping)]);
       sumRows.push(['סה״כ לתשלום', money_(data.totalPrice)]);
 
+      // עמודה 0 מרונדרת ב-Docs בצד שמאל, ולכן הסכום נכתב אליה והתווית לעמודה 1.
+      // בסדר ההפוך (תווית בעמודה 0) המסמך יצא הפוך לעברית: הסכום מימין והמילים
+      // משמאל — כך זה נראה בתעודות שנשלחו עד 20.08.
       var sTableData = [];
-      for (r = 0; r < sumRows.length; r++) sTableData.push([sumRows[r][0], sumRows[r][1]]);
+      for (r = 0; r < sumRows.length; r++) sTableData.push([sumRows[r][1], sumRows[r][0]]);
       var sTable = body.appendTable(sTableData);
       sTable.setBorderWidth(0);
-      sTable.setColumnWidth(0, 400); sTable.setColumnWidth(1, 135);
+      sTable.setColumnWidth(0, 135); sTable.setColumnWidth(1, 400);
       for (r = 0; r < sumRows.length; r++) {
         var isTotal = (r === sumRows.length - 1);
-        var lc = sTable.getCell(r, 0), vc = sTable.getCell(r, 1);
+        var vc = sTable.getCell(r, 0), lc = sTable.getCell(r, 1);
         lc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
         vc.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
         if (isTotal) { lc.setBackgroundColor(OD_G); vc.setBackgroundColor(OD_G); }
