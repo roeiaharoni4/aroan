@@ -16,7 +16,7 @@
 **מיקום פעיל (12.7.26):** `קטלוג לקוחות/aroan` — זהו הריפו החי. כל שדרוגי יולי 2026 + העיצוב החדש הועברו לכאן מ"עותק של aroan", עם products.csv מאוחד (177 שורות) ותיקון 8 נתיבי תמונות (`:` → `-`). התיקיות "עותק של aroan" ו-aroam/aroam-catalog הן עותקי עבודה ישנים — לא לעבוד בהן. (WORDPRESS_DEPLOY.md מיושן — האתר כבר לא בוורדפרס.)
 
 - **מקור נתוני מוצרים:** `data/products.csv` (עמודות: id, name, category, unit, image, price, description; עמודת brand אופציונלית — גוברת על זיהוי אוטומטי). אפשר לחבר ל-Google Sheets מפורסם (ראה UPDATES_GUIDE.md).
-- **js/app.js** — לוגיקת הקטלוג (טעינת CSV עם PapaParse, קטגוריות, חיפוש, מותגים, עגלה, שליחת הזמנה בוואטסאפ/מייל, הזמנות אחרונות, פרטי לקוח, אישור שליחה). משותף לקטלוג הלקוחות, דפי הקטגוריה ודף הסוכן. יש פרמטר גרסה בקישורים (`app.js?v=15`) — להעלות מספר אחרי כל שינוי.
+- **js/app.js** — לוגיקת הקטלוג (טעינת CSV עם PapaParse, קטגוריות, חיפוש, מותגים, עגלה, שליחת הזמנה בוואטסאפ/מייל, הזמנות אחרונות, פרטי לקוח, אישור שליחה). משותף לקטלוג הלקוחות, דפי הקטגוריה ודף הסוכן. יש פרמטר גרסה בקישורים — להעלות מספר אחרי כל שינוי. **הגרסאות הנוכחיות (20.8.26): `app.js?v=44`, `style.css?v=34`, `sw` cache-v37 — בכל 14 הדפים.**
 - **js/components.js** — הדר/פוטר (custom elements), וואטסאפ צף, טפסי לידים (AJAX ל-Google Apps Script), מעקב המרות (dataLayer).
 - **js/catalog-shell.js** — רכיב `<catalog-shell>` שמזריק את ממשק הקטלוג לדפי הקטגוריה. ה-IDs חייבים להישאר זהים ל-catalog/index.html.
 - **css/site.css** — עיצוב האתר הכללי (משתני צבע + מצב כהה). **css/style.css** — עיצוב אפליקציית הקטלוג.
@@ -32,7 +32,8 @@
   | `AKfycbyasqqt8uTERc…` | היסטוריית הצעות (דף הסוכן) | app.js ~שורה 1746 |
   | `AKfycbxfp0qDK0ergy…` | טפסי לידים (צור קשר) | components.js |
 
-  **סקריפט ההזמנות הותקן ופרוס (31.7.26):** [פרויקט Apps Script](https://script.google.com/home/projects/1kwSk_xA6hbvMRDeJerUfxYw1jKuLsOIfEv9Xmav52kRe7ZHqqDHt5_cV/edit) · גיליון [הזמנות אהרוני](https://docs.google.com/spreadsheets/d/1IidCbfHIGuifPdcaP9Fv7bO6TTTEbSMJnk_gtUcU-jE/edit) (`SPREADSHEET_ID` בשורה 10 של הסקריפט). המקור: `tools/google-apps-script-orders.gs`. **גרסה 2** פרוסה; הגרסה הישנה שמורה כ"גרסה 1" (שחזור: לפריסה ← ניהול הפריסות ← עריכה ← גרסה 1). מזהה הפריסה לא השתנה — אין צורך לגעת ב-app.js.
+  **סקריפט ההזמנות הותקן ופרוס (31.7.26):** [פרויקט Apps Script](https://script.google.com/home/projects/1kwSk_xA6hbvMRDeJerUfxYw1jKuLsOIfEv9Xmav52kRe7ZHqqDHt5_cV/edit) · גיליון [הזמנות אהרוני](https://docs.google.com/spreadsheets/d/1IidCbfHIGuifPdcaP9Fv7bO6TTTEbSMJnk_gtUcU-jE/edit) (`SPREADSHEET_ID` בשורה 10 של הסקריפט). המקור: `tools/google-apps-script-orders.gs`. **גרסה 5 פרוסה (20.8.26, 22:28)**; הגרסאות הקודמות שמורות (שחזור: לפריסה ← ניהול הפריסות ← עריכה ← בחירת גרסה). מזהה הפריסה `AKfycbz_rRjFdy2MqP…` לא השתנה מעולם — אין צורך לגעת ב-app.js. היסטוריית הגרסאות: 2 = פרטי לקוח בגיליון (31.7) · 3 = תעודת PDF וקישור להצעת מחיר (20.8) · 4 = לוגו ביחס הנכון ושורות סיכום בכיוון עברית · 5 = קישור להצעת מחיר גם בהזמנות מהקטלוג העסקי.
+  **שתי מלכודות לפני כל עדכון של הסקריפט בענן (נצרבו 20.8):** (א) הקובץ ב-`tools/` מכיל `YOUR_SPREADSHEET_ID` כמציין מקום — הדבקה שלו כמות שהוא **משביתה את הכתיבה לגיליון**; המזהה החי הוא `1IidCbfHIGuifPdcaP9Fv7bO6TTTEbSMJnk_gtUcU-jE`. (ב) הקוד בענן אינו זהה בייט-לבייט לקובץ ב-`tools/` (פער ~185 תווים גם אחרי הסרת הערות, לא זוהה). **לכן מעדכנים בהחלפות מחרוזת נקודתיות דרך `monaco.editor.getModels()[0]`, אחרי ספירת מופעים — לא בהדבקת הקובץ המלא.**
   **טיפ לזיהוי הפרויקט הנכון בעתיד:** לפתוח את כתובת ה-webhook בדפדפן (GET → שגיאת `doGet`), ואז ההפעלה תופיע בראש [ההפעלות שלי](https://script.google.com/home/executions) עם קישור לפרויקט.
 - **GTM + GA4:** GTM-W8HST8RB בכל הדפים + **gtag.js ישיר עם GA4 מזהה G-W1MRCCC3FS** (נכס properties/545698526, הוטמע 15.7.26). אירועי המרה: whatsapp_click, phone_click, form_submit, order_sent — נשלחים גם ל-dataLayer (GTM) וגם ל-GA4 דרך gtag('event').
 
@@ -42,6 +43,7 @@
 - **בדיקה מקומית:** start_catalog.command (שרת על פורט 8080-8090). סגירת החלון מכבה את השרת.
 - **גרסאות:** יש git בתיקייה. לפני כל סבב שינויים: `git add -A && git commit -m "תיאור"`. שחזור: `git reset --hard HEAD`.
 - **תמונות מוצרים:** `tools/עדכון_תמונות.command` — מאחד רקע לבן/ריבוע/הקטנה, מגבה ל-`images_backup/`.
+- **מצב פריסה (20.8.26, 22:50):** רועי דחף עד commit `8e1ed35` — כלומר סבבים 1-38 חיים באתר. **סבב 39 (מסמך הצעת המחיר) committed וממתין ל-push.** בענן: סקריפט ההזמנות בגרסה 5, מעודכן.
 - **פריסה:** `git add -A && git commit && git push` — GitHub Pages מתעדכן אוטומטית תוך דקות. אחרי שינויי SEO — לשלוח sitemap מחדש ב-Search Console. **הערה (15.7.26):** מסביבת Claude ‏commit עובד, אבל ל-push אין credentials — רועי מריץ `git push` בעצמו.
 
 ## מה בוצע (יולי 2026)
