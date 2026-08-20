@@ -2153,6 +2153,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 discount: totals.discount.toFixed(2),
                 shipping: totals.shipping.toFixed(2),
                 totalItems: totalItems,
+                // האם הלקוח ראה מחירים. הסקריפט בענן צריך את זה כדי לדעת אם
+                // לצרף למייל קישור "פתח כהצעת מחיר" — הוא לא יכול להסיק את זה
+                // מ-totalPrice, שמחושב מ-products.csv גם כשהמחירים מוסתרים.
+                showPrices: !!CONFIG.showPrices,
                 customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
             };
 

@@ -52,7 +52,13 @@ function thumbUrl_(id) {
  * הטיפוח והוועד המחירים כבר סופיים, ודף הסוכן ממילא טוען products.csv בלבד.
  */
 function quoteLink_(data) {
-  if (Number(data.totalPrice) > 0) return '';
+  // הקישור נועד להזמנה שהלקוח שלח **בלי לראות מחירים** (הקטלוג העסקי), כדי
+  // שאפשר יהיה לתמחר אותה בדף הסוכן. עד 20.08 התנאי היה "totalPrice ריק",
+  // אבל האתר שולח סכום מחושב גם כשהמחירים מוסתרים — ל-118 מ-176 המוצרים
+  // ב-products.csv יש מחיר — ולכן הקישור לא נבנה אף פעם.
+  // showPrices מגיע מהאתר; כשהוא חסר (app.js ישן בקאש) חוזרים לתנאי הישן.
+  var pricesHidden = data.showPrices === false;
+  if (!pricesHidden && Number(data.totalPrice) > 0) return '';
   var items = data.items || [];
   if (!items.length) return '';
 

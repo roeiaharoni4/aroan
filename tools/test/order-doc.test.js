@@ -52,6 +52,21 @@ const CARE = {
   ]
 };
 
+// מה שהאתר שולח בפועל מהקטלוג העסקי: המחירים מוסתרים מהלקוח, אבל
+// totalPrice ומחירי הפריטים מחושבים מ-products.csv ונשלחים.
+const B2B_PRICED = {
+  orderId: 'AR-20260820-4449', date: '20.08.2026', totalItems: 5,
+  totalPrice: '345.00', subtotal: '345.00', discount: '0.00', shipping: '0.00',
+  showPrices: false,
+  customer: { business: 'רועי בדיקה', contact: '', phone: '098', address: '' },
+  items: [
+    { id: 'חדפ003', name: 'כוס בירה 330 40 יח׳', category: 'חד פעמי ואריזות',
+      qty: 1, unit: 'יחידה', image: 'images/חדפ/כוס.webp', price: 200, total: 200 },
+    { id: 'חדפ002', name: 'גביע 150/250 מל', category: 'חד פעמי ואריזות',
+      qty: 1, unit: 'יחידה', image: '', price: 0, total: 0 }
+  ]
+};
+
 const tests = [];
 function test(name, fn) { tests.push([name, fn]); }
 
@@ -133,6 +148,34 @@ test('קישור הצעת מחיר: נבנה להזמנה בלי מחירים', 
 
 test('קישור הצעת מחיר: אינו נבנה כשיש כבר מחירים', () => {
   assert.strictEqual(gs.quoteLink_(CARE), '', 'לא אמור להיווצר קישור להזמנה עם מחירים');
+});
+
+// הקטלוג העסקי מסתיר מחירים מהלקוח, אבל האתר שולח סכום מחושב מ-products.csv
+// (יש מחיר ל-118 מ-176 המוצרים). לכן זיהוי לפי totalPrice בלבד סיווג את
+// ההזמנה כ"מתומחרת" והקישור לא נבנה אף פעם — הבאג שרועי דיווח עליו 20.08.
+test('קישור הצעת מחיר: נבנה גם כשהאתר שלח סכום, כל עוד המחירים היו מוסתרים', () => {
+  const link = gs.quoteLink_(B2B_PRICED);
+  assert.ok(link.indexOf('https://aroam.co.il/agent/?cart=') === 0, 'הקישור לא נבנה: ' + link);
+  assert.ok(link.includes(encodeURIComponent('חדפ003') + ':1'), 'הפריט חסר בקישור');
+  assert.ok(link.includes('customer=' + encodeURIComponent('רועי בדיקה')), 'שם הלקוח חסר');
+});
+
+test('קישור הצעת מחיר: showPrices=true חוסם גם כשאין סכום', () => {
+  const priced = Object.assign({}, B2B_PRICED, { showPrices: true });
+  assert.strictEqual(gs.quoteLink_(priced), '', 'קטלוג שמציג מחירים לא אמור לקבל קישור');
+});
+
+// תאימות לאחור: דפדפן עם app.js ישן בקאש אינו שולח showPrices כלל
+test('קישור הצעת מחיר: בלי השדה החדש חוזרים להתנהגות הישנה', () => {
+  const legacy = Object.assign({}, B2B_PRICED);
+  delete legacy.showPrices;
+  assert.strictEqual(gs.quoteLink_(legacy), '', 'בלי השדה, סכום קיים חוסם כמו קודם');
+});
+
+test('עמודות המחיר נשארות בהזמנה עסקית — רועי ביקש לראות מחירי מחירון', () => {
+  const c = gs.orderColumns_(B2B_PRICED);
+  assert.strictEqual(c.hasPrices, true, 'המחירים אמורים להישאר בתעודה');
+  assert.strictEqual(c.headers.length, 7, 'צפויות שבע עמודות');
 });
 
 let failed = 0;
