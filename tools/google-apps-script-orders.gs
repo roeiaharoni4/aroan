@@ -340,7 +340,9 @@ function buildOrderDoc_(data) {
   ft.setBorderWidth(0);
   ft.setColumnWidth(0, 235); ft.setColumnWidth(1, 300);
   var f0 = ft.getCell(0, 0), f1 = ft.getCell(0, 1);
-  f0.setPaddingLeft(0).setPaddingRight(0); f1.setPaddingLeft(0).setPaddingRight(0);
+  // ריפוד פנימי (צמוד לגבול המשותף בין התאים) כדי שהטקסטים לא ייגעו זה בזה —
+  // f0 מיושר לימין (הטקסט נצמד לגבול) ו-f1 מיושר לשמאל (גם הוא נצמד לאותו גבול).
+  f0.setPaddingLeft(0).setPaddingRight(14); f1.setPaddingLeft(14).setPaddingRight(0);
   tight_(f0.getChild(0).asParagraph()).setAlignment(RIGHT);
   f0.editAsText().setFontFamily('Arial').setForegroundColor('#7A8A81').setBold(false).setFontSize(7.5);
   tight_(f1.getChild(0).asParagraph()).setAlignment(LEFT);
@@ -353,6 +355,31 @@ function buildOrderDoc_(data) {
     .setName('תעודת הזמנה ' + (clean_(data.orderId, 30) || '') + '.pdf');
   DriveApp.getFileById(doc.getId()).setTrashed(true);
   return pdfBlob;
+}
+
+var PDF_FOLDER_NAME = 'הזמנות אהרוני — PDF';
+
+// מחזיר את תיקיית היעד ב-Drive, ויוצר אותה בפעם הראשונה
+function pdfFolder_() {
+  var it = DriveApp.getFoldersByName(PDF_FOLDER_NAME);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(PDF_FOLDER_NAME);
+}
+
+/**
+ * מייצר את ה-PDF ושומר עותק ב-Drive.
+ * מחזיר null בכל כישלון — הקורא ממשיך בלעדיו.
+ */
+function savePdf_(data) {
+  try {
+    var name = (clean_(data.orderId, 30) || 'order') + '.pdf';
+    var blob = buildOrderDoc_(data).setName(name);
+    var file = pdfFolder_().createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return { blob: blob, url: file.getUrl() };
+  } catch (err) {
+    Logger.log('PDF failed: ' + err);
+    return null;
+  }
 }
 
 // הגבלת קצב פשוטה: עד 30 הזמנות בשעה (מגן מפני הצפה/ניצול לרעה)
@@ -397,6 +424,9 @@ function doPost(e) {
     var shippingText = Number(data.shipping) > 0 ? Number(data.shipping).toFixed(2) : '';
     var discountText = Number(data.discount) > 0 ? Number(data.discount).toFixed(2) : '';
 
+    // תעודת ההזמנה. כישלון כאן לא מפיל את ההזמנה — הפונקציה מחזירה null.
+    var pdf = savePdf_(data);
+
     sheet.appendRow([
       new Date(),                          // תאריך קבלה
       clean_(data.orderId, 30),            // מספר הזמנה
@@ -412,7 +442,8 @@ function doPost(e) {
       'חדשה',                              // סטטוס
       clean_(customer.shipping, 60),       // שיטת אספקה (ריק בקטלוג העסקי)
       shippingText,                        // דמי משלוח
-      clean_(customer.payment, 60)         // אופן תשלום (ריק בקטלוג העסקי)
+      clean_(customer.payment, 60),        // אופן תשלום (ריק בקטלוג העסקי)
+      pdf ? pdf.url : ''                   // קובץ PDF
     ]);
 
     // מייל התראה
@@ -434,7 +465,8 @@ function doPost(e) {
         (shippingText ? 'דמי משלוח: ' + shippingText + ' ש"ח\n' : '') +
         (totalPriceText ? 'סה"כ לתשלום: ' + totalPriceText + ' ש"ח\n' : '') + '\n' +
         'הגיליון המלא: https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID;
-      MailApp.sendEmail(NOTIFY_EMAIL, subject, body);
+      var mailOpts = pdf ? { attachments: [pdf.blob] } : {};
+      MailApp.sendEmail(NOTIFY_EMAIL, subject, body, mailOpts);
     }
 
     return ContentService.createTextOutput(JSON.stringify({ success: true }))
@@ -445,11 +477,11 @@ function doPost(e) {
   }
 }
 
-// כותרות הגיליון. שלוש העמודות האחרונות נוספו אחרי "סטטוס" ולא באמצע השורה,
+// כותרות הגיליון. העמודות האחרונות נוספו אחרי "סטטוס" ולא באמצע השורה,
 // כדי שגיליון קיים עם הזמנות ישנות לא יזוז — בשורות הישנות הן פשוט יישארו ריקות.
 var SHEET_HEADERS = ['תאריך קבלה', 'מספר הזמנה', 'תאריך אספקה מבוקש', 'שם העסק',
   'איש קשר', 'טלפון', 'כתובת למשלוח', 'הערות', 'פירוט פריטים', 'סה"כ פריטים',
-  'סה"כ לתשלום', 'סטטוס', 'שיטת אספקה', 'דמי משלוח', 'אופן תשלום'];
+  'סה"כ לתשלום', 'סטטוס', 'שיטת אספקה', 'דמי משלוח', 'אופן תשלום', 'קובץ PDF'];
 var STATUS_COL = 12; // מיקום עמודת הסטטוס (1-based)
 
 // יוצר את הגיליון עם כותרות ורשימת סטטוסים, ומשלים כותרות חסרות בגיליון קיים
