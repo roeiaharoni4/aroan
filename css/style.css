@@ -1850,6 +1850,7 @@ body:has(.fab-container) .scroll-top-btn {
     /* Hide Everything NOT in the modal */
     .app-container,
     .fab-container,
+    .toast,
     .modal-overlay:not(.open) {
         display: none !important;
     }
@@ -2025,7 +2026,7 @@ body:has(.fab-container) .scroll-top-btn {
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     .q-brand { display: flex; align-items: center; gap: 12px; }
-    .q-brand img { height: 46px; background: #fff; border-radius: 6px; padding: 4px 6px; }
+    .q-brand img { height: 60px; background: #fff; border-radius: 6px; padding: 4px 6px; }
     .q-brand strong { display: block; font-size: 14pt; }
     .q-brand span { font-size: 9pt; color: #BFD9CB; }
     .q-meta { text-align: left; }
@@ -2042,4 +2043,30 @@ body:has(.fab-container) .scroll-top-btn {
     #order-modal thead { display: table-header-group; }
     /* עמודת התמונה מוסתרת במסך העבודה ומופיעה רק בהדפסה */
     #order-modal .oc-img img { width: 44px; height: 44px; object-fit: contain; }
+
+    /* --- הצעת מחיר בלבד (ה-class נוסף ומוסר ב-printQuote) --- */
+
+    /* הסיכום מודפס מתוך גוף המסמך, ולכן הסיכום שבפוטר מוסתר — אחרת הוא היה
+       מופיע פעם שנייה, ומתחת לשורות החתימה. */
+    body.quote-print .modal-footer { display: none !important; }
+
+    /* שדה התאריך הוא קלט תיבה — בהדפסה מוסתר הקלט ומוצג התאריך כטקסט.
+       מוסתר הקלט בלבד ולא העטיפה, כי תצוגת התאריך יושבת בתוכה. */
+    body.quote-print #order-date-input-wrap { display: none !important; }
+    body.quote-print #order-date-display {
+        display: block !important; font-size: 10pt; margin-bottom: 8px; color: #22312A;
+    }
+
+    body.quote-print .print-summary { margin-top: 12px; }
+    body.quote-print .q-sum-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 4px 10px; font-size: 10pt; color: #4A5A51;
+    }
+    body.quote-print .q-sum-value { font-weight: 700; color: #22312A; }
+    body.quote-print .q-sum-total {
+        background: #1A4231; border-radius: 6px; padding: 9px 12px;
+        margin-top: 4px; font-size: 12pt; font-weight: 700; color: #fff;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    body.quote-print .q-sum-total .q-sum-value { color: #fff; font-size: 13pt; }
 }

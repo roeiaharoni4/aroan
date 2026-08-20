@@ -24,8 +24,15 @@ const DEFAULT_CONFIG = {
     // יהיה לסנן את ההזמנות שלו בגיליון בלי לגעת בסקריפט Apps Script.
     orderPrefix: 'AR',
     // אופני התשלום המוצגים בבורר. null = ברירת המחדל (מזומן/אשראי במסירה + ביט מראש).
-    paymentOptions: null
+    paymentOptions: null,
+    // חישוב מע״מ ואפשרות עיגול לשקל — נחוצים רק להצעת מחיר, ולכן דף הסוכן בלבד.
+    quoteVat: false
 };
+
+// שיעור המע״מ בישראל. שינוי כאן משנה גם את התצוגה בחלון ההזמנה וגם את המסמך
+// המודפס — שניהם קוראים מ-quoteTotals ולא מחשבים בעצמם.
+const VAT_RATE = 0.18;
+const QUOTE_ROUND_KEY = 'aroam_quote_round';
 let CONFIG = {};
 
 // מבצע ברמת הסל (נטען מ-CONFIG.promoSource — קטלוג הטיפוח): {min_total, percent}
@@ -187,6 +194,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Setup Date defaults
         setupDate();
 
+        // מתג העיגול לשקל (דף הסוכן בלבד)
+        setupQuoteRounding();
+
         // Prefill saved customer details (אם הלקוח הזמין בעבר)
         prefillCustomerDetails();
 
@@ -319,6 +329,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             // If showPrices is false, we probably only want to show item count.
             // But let's leave it to updateSummary to hide the specific text.
         }
+    }
+
+    // תיבת "עיגול לשקל שלם" בחלון ההזמנה. קיימת רק בדף הסוכן, ולכן כל
+    // הפונקציה יוצאת בשקט כשאין אלמנט. הבחירה נשמרת במכשיר.
+    function setupQuoteRounding() {
+        const box = document.getElementById('round-total');
+        const label = document.getElementById('round-total-label');
+        if (!box) return;
+        if (!CONFIG.quoteVat || !CONFIG.showPrices) {
+            if (label) label.style.display = 'none';
+            return;
+        }
+        try { box.checked = localStorage.getItem(QUOTE_ROUND_KEY) === '1'; } catch (e) { }
+        box.addEventListener('change', () => {
+            try { localStorage.setItem(QUOTE_ROUND_KEY, box.checked ? '1' : '0'); } catch (e) { }
+            updateSummary();
+        });
     }
 
     function setupDate() {
@@ -624,6 +651,22 @@ document.addEventListener("DOMContentLoaded", async () => {
             total: totalPrice - discount + shipping,
             totalItems: totalItems
         };
+    }
+
+    // האם הסוכן ביקש לעגל את הסה"כ לשקל שלם (נזכר בין ביקורים)
+    function quoteRounding() {
+        const box = document.getElementById('round-total');
+        return !!(box && box.checked);
+    }
+
+    // מקור האמת היחיד למע"מ ולעיגול — גם התצוגה בחלון ההזמנה וגם המסמך
+    // המודפס קוראים מכאן. העיגול מוחל על הסה"כ, והמע"מ נגזר ממנו בחזרה,
+    // כדי ששלוש השורות במסמך תמיד יסתכמו לסכום שכתוב בהן.
+    function quoteTotals(net) {
+        const rounded = quoteRounding();
+        let gross = net * (1 + VAT_RATE);
+        if (rounded) gross = Math.round(gross);
+        return { net: net, vat: gross - net, gross: gross, rounded: rounded };
     }
 
     // כמה חסר למשלוח חינם (0 = לא רלוונטי או שכבר הושג)
@@ -1716,6 +1759,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
+        // שורת המע"מ בדף הסוכן — ההצעה מוצגת ללקוח כולל מע"מ, ולכן הסוכן
+        // צריך לראות את הסכום הסופי כבר בזמן בניית ההצעה.
+        const vatEl = document.getElementById('summary-vat');
+        if (vatEl) {
+            if (CONFIG.quoteVat && CONFIG.showPrices && finalTotal > 0) {
+                const q = quoteTotals(finalTotal);
+                vatEl.textContent = `כולל מע״מ ${Math.round(VAT_RATE * 100)}%: ₪${q.gross.toFixed(2)}`
+                    + (q.rounded ? ' (מעוגל)' : '');
+                vatEl.style.display = '';
+            } else {
+                vatEl.style.display = 'none';
+            }
+        }
+
         if (fabCountEl) fabCountEl.textContent = totalItems;
 
         // שמירת העגלה במכשיר בכל שינוי
@@ -2032,6 +2089,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             String(today.getDate()).padStart(2, '0');
         const rand = Math.floor(1000 + Math.random() * 9000);
         return `${CONFIG.orderPrefix || 'AR'}-${yyyymmdd}-${rand}`;
+    }
+
+    // מספר הצעה באותה תבנית כמו מספר ההזמנה (AR-20260820-4437), במקום
+    // timestamp בן 13 ספרות שהלקוח רואה על המסמך.
+    function generateQuoteId() {
+        const today = new Date();
+        const yyyymmdd = today.getFullYear() +
+            String(today.getMonth() + 1).padStart(2, '0') +
+            String(today.getDate()).padStart(2, '0');
+        const rand = Math.floor(1000 + Math.random() * 9000);
+        return `Q-${yyyymmdd}-${rand}`;
     }
 
     function getCartItemsData() {
@@ -2485,7 +2553,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             newQuote = {
-                id: 'Q-' + Date.now(),
+                id: generateQuoteId(),
                 date: new Date().toISOString().split('T')[0],
                 customer: customerNameOrQuote,
                 items: currentCartItems,
@@ -2693,6 +2761,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="q-to">לכבוד: <strong>${savedQuote.customer}</strong></div>
         `;
 
+        // בלוק הסיכום מודפס בתוך גוף המסמך, לפני החתימות. עד 20.08 הסכום הגיע
+        // מ-modal-footer שיושב אחרי גוף המודאל, ולכן הודפס *מתחת* לשורות
+        // החתימה ואחרי "ט.ל.ח". הסיכום שבפוטר מוסתר בהדפסה (ראה style.css).
+        const sumDiv = document.createElement("div");
+        sumDiv.className = "print-summary";
+        sumDiv.innerHTML = buildQuoteSummaryHtml();
+
         const footerDiv = document.createElement("div");
         footerDiv.className = "print-footer";
         footerDiv.innerHTML = `
@@ -2701,19 +2776,57 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <div class="signature-box" style="float:left;">חתימת סוכן/מאשר</div>
             </div>
             <div style="text-align:center; font-size:0.8rem; margin-top:20px;">
-                ט.ל.ח | המחירים אינם כוללים מע״מ | תוקף ההצעה: 14 יום
+                ט.ל.ח | ${CONFIG.quoteVat ? 'הסכום הסופי כולל מע״מ' : 'המחירים אינם כוללים מע״מ'} | תוקף ההצעה: 14 יום
             </div>
         `;
 
         modalBody.insertBefore(headerDiv, modalBody.firstChild);
+        modalBody.appendChild(sumDiv);
         modalBody.appendChild(footerDiv);
+        // כללי ההדפסה של ההצעה מגודרים תחת ה-class הזה, כדי שהדפסה רגילה
+        // בשאר הקטלוגים לא תושפע.
+        document.body.classList.add('quote-print');
 
         window.print();
 
         setTimeout(() => {
+            document.body.classList.remove('quote-print');
             if (headerDiv.parentNode) headerDiv.parentNode.removeChild(headerDiv);
+            if (sumDiv.parentNode) sumDiv.parentNode.removeChild(sumDiv);
             if (footerDiv.parentNode) footerDiv.parentNode.removeChild(footerDiv);
         }, 1000);
+    }
+
+    // שורות הסיכום של ההצעה: סכום ביניים · מע"מ · סה"כ לתשלום.
+    // כל הסכומים מגיעים מ-orderTotals/quoteTotals, כך שהמסמך לעולם לא סותר
+    // את מה שמוצג על המסך.
+    function buildQuoteSummaryHtml() {
+        const t = orderTotals();
+        const money = n => '₪' + n.toFixed(2);
+        const rows = [];
+        rows.push(['סכום ביניים', money(t.subtotal)]);
+        if (t.discount > 0) rows.push(['הנחה', '-' + money(t.discount)]);
+        if (t.shipping > 0) rows.push(['דמי משלוח', money(t.shipping)]);
+
+        if (!CONFIG.quoteVat) {
+            rows.push(['סה״כ לתשלום', money(t.total)]);
+            return quoteSummaryRowsHtml(rows);
+        }
+
+        const q = quoteTotals(t.total);
+        rows.push([`מע״מ ${Math.round(VAT_RATE * 100)}%`, money(q.vat)]);
+        rows.push(['סה״כ לתשלום כולל מע״מ' + (q.rounded ? ' (מעוגל)' : ''), money(q.gross)]);
+        return quoteSummaryRowsHtml(rows);
+    }
+
+    function quoteSummaryRowsHtml(rows) {
+        return rows.map((r, i) => {
+            const isTotal = i === rows.length - 1;
+            return `<div class="q-sum-row${isTotal ? ' q-sum-total' : ''}">`
+                + `<span class="q-sum-label">${r[0]}</span>`
+                + `<span class="q-sum-value">${r[1]}</span>`
+                + `</div>`;
+        }).join('');
     }
 
     function shareCartLink() {
