@@ -1971,3 +1971,31 @@ body:has(.fab-container) .scroll-top-btn {
         min-height: 46px;
     }
 }
+/* ===== הצעת מחיר להדפסה (דף הסוכן) ===== */
+/* העיצוב תואם את תעודת ההזמנה שנשלחת במייל, כדי שהלקוח יראה שפה אחת. */
+@media print {
+    .q-head {
+        display: flex; justify-content: space-between; align-items: center;
+        background: #1A4231; color: #fff; border-radius: 8px;
+        padding: 14px 18px; margin-bottom: 14px;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .q-brand { display: flex; align-items: center; gap: 12px; }
+    .q-brand img { height: 46px; background: #fff; border-radius: 6px; padding: 4px 6px; }
+    .q-brand strong { display: block; font-size: 14pt; }
+    .q-brand span { font-size: 9pt; color: #BFD9CB; }
+    .q-meta { text-align: left; }
+    .q-kind { font-size: 12pt; font-weight: 700; }
+    .q-num { font-size: 15pt; font-weight: 800; color: #8FD6A3; }
+    .q-date { font-size: 9pt; color: #BFD9CB; }
+    .q-to { font-size: 11pt; margin-bottom: 10px; }
+
+    #order-modal thead th {
+        background: #639C7D !important; color: #fff !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    #order-modal tbody tr { page-break-inside: avoid; }
+    #order-modal thead { display: table-header-group; }
+    /* עמודת התמונה מוסתרת במסך העבודה ומופיעה רק בהדפסה */
+    #order-modal .oc-img img { width: 44px; height: 44px; object-fit: contain; }
+}

@@ -2620,7 +2620,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Print PDF Logic ---
     async function printQuote() {
-        const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", "לקוח כללי");
+        // כשההזמנה נפתחה מקישור שנשלח במייל, שם הלקוח מוצע כברירת מחדל.
+        // ה-prompt נשאר כדי שרועי יוכל לתקן לפני ההדפסה.
+        const suggested = new URLSearchParams(window.location.search).get('customer');
+        const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", suggested || "לקוח כללי");
         if (customerName === null) return;
 
         const savedQuote = await saveQuote(customerName);
@@ -2631,22 +2634,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         const headerDiv = document.createElement("div");
         headerDiv.className = "print-header";
         headerDiv.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; text-align:right;">
-                <div>
-                    <img src="/images/logo.png" alt="לוגו אהרוני" style="height: 60px; margin-bottom: 10px;">
-                    <h1 style="margin:0; font-size:1.5rem;">אהרוני שיווק והפצה</h1>
-                    <div>סוכן: רועי אהרוני</div>
-                    <div>כתובת: היצירה 16, אור יהודה</div>
-                    <div>טלפון: 052-6000158</div>
+            <div class="q-head">
+                <div class="q-brand">
+                    <img src="/images/logo.png" alt="">
+                    <div>
+                        <strong>אהרוני שיווק והפצה</strong>
+                        <span>חומרי ניקוי · נייר · חד פעמי · ציוד משרדי</span>
+                    </div>
                 </div>
-                <div style="text-align:left;">
-                    <h2>הצעת מחיר / הזמנה</h2>
-                    <div>מספר: ${savedQuote.id}</div>
-                    <div>תאריך: ${savedQuote.date}</div>
-                    <div>לכבוד: <strong>${savedQuote.customer}</strong></div>
+                <div class="q-meta">
+                    <div class="q-kind">הצעת מחיר</div>
+                    <div class="q-num">${savedQuote.id}</div>
+                    <div class="q-date">${savedQuote.date}</div>
                 </div>
             </div>
-            <hr style="margin-top:20px; border-color:#000;">
+            <div class="q-to">לכבוד: <strong>${savedQuote.customer}</strong></div>
         `;
 
         const footerDiv = document.createElement("div");
