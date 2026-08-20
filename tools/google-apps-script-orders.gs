@@ -397,10 +397,17 @@ function buildOrderDoc_(data) {
 
 var PDF_FOLDER_NAME = 'הזמנות אהרוני — PDF';
 
-// מחזיר את תיקיית היעד ב-Drive, ויוצר אותה בפעם הראשונה
+// מחזיר את תיקיית היעד ב-Drive, ויוצר אותה בפעם הראשונה.
+// חשוב: getFoldersByName מחזיר גם תיקיות שנמצאות בסל המיחזור. בלי הסינון
+// הזה, תיקייה שנמחקה פעם אחת "נמצאת" שוב, וכל קובץ שנוצר בתוכה יורש את
+// מצב הסל — הקישור בגיליון נראה תקין אבל מחזיר "לא ניתן לפתוח את הקובץ".
 function pdfFolder_() {
   var it = DriveApp.getFoldersByName(PDF_FOLDER_NAME);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(PDF_FOLDER_NAME);
+  while (it.hasNext()) {
+    var folder = it.next();
+    if (!folder.isTrashed()) return folder;
+  }
+  return DriveApp.createFolder(PDF_FOLDER_NAME);
 }
 
 /**
