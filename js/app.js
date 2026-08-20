@@ -2022,7 +2022,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                     freeNote.textContent = free > 0 ? `${free} חינם (${product.bundle})` : "";
                 };
                 qtyInp.addEventListener("input", () => { updateRow(); updateSummary(); }); // Update global summary too
-                priceInp.addEventListener("input", () => { updateRow(); updateSummary(); });
+                priceInp.addEventListener("input", () => {
+                    // עריכת המחיר נכתבת חזרה למוצר, אחרת שורת הסכום מתעדכנת
+                    // אבל סה"כ הסל, שורת המע"מ והמסמך המודפס ממשיכים לקרוא את
+                    // המחיר הישן מ-PRODUCTS — והמספרים על המסך סותרים זה את זה.
+                    // המחיר חוזר ממילא מה-CSV בטעינה הבאה של הדף.
+                    if (CONFIG.editablePrices) product.price = parseFloat(priceInp.value) || 0;
+                    updateRow();
+                    updateSummary();
+                });
                 updateRow();
                 row.appendChild(tdTotal);
             } else {
@@ -2745,48 +2753,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const modalBody = document.querySelector("#order-modal .modal-body");
 
-        const headerDiv = document.createElement("div");
-        headerDiv.className = "print-header";
-        headerDiv.innerHTML = `
-            <div class="q-head">
-                <div class="q-brand">
-                    <img src="/images/logo.png" alt="">
-                    <div>
-                        <strong>אהרוני שיווק והפצה</strong>
-                        <span>חומרי ניקוי · נייר · חד פעמי · ציוד משרדי</span>
-                    </div>
-                </div>
-                <div class="q-meta">
-                    <div class="q-kind">הצעת מחיר</div>
-                    <div class="q-num">${savedQuote.id}</div>
-                    <div class="q-date">${savedQuote.date}</div>
-                </div>
-            </div>
-            <div class="q-to">לכבוד: <strong>${savedQuote.customer}</strong></div>
-        `;
+        const docDiv = document.createElement("div");
+        docDiv.className = "quote-doc";
+        docDiv.innerHTML = buildQuoteDocHtml(savedQuote);
+        modalBody.appendChild(docDiv);
 
-        // בלוק הסיכום מודפס בתוך גוף המסמך, לפני החתימות. עד 20.08 הסכום הגיע
-        // מ-modal-footer שיושב אחרי גוף המודאל, ולכן הודפס *מתחת* לשורות
-        // החתימה ואחרי "ט.ל.ח". הסיכום שבפוטר מוסתר בהדפסה (ראה style.css).
-        const sumDiv = document.createElement("div");
-        sumDiv.className = "print-summary";
-        sumDiv.innerHTML = buildQuoteSummaryHtml();
-
-        const footerDiv = document.createElement("div");
-        footerDiv.className = "print-footer";
-        footerDiv.innerHTML = `
-            <div style="margin-top:40px; border-top:2px solid #000; padding-top:10px; display:flex; justify-content:space-between;">
-                <div class="signature-box">חתימת המזמין</div>
-                <div class="signature-box" style="float:left;">חתימת סוכן/מאשר</div>
-            </div>
-            <div style="text-align:center; font-size:0.8rem; margin-top:20px;">
-                ט.ל.ח | ${CONFIG.quoteVat ? 'הסכום הסופי כולל מע״מ' : 'המחירים אינם כוללים מע״מ'} | תוקף ההצעה: 14 יום
-            </div>
-        `;
-
-        modalBody.insertBefore(headerDiv, modalBody.firstChild);
-        modalBody.appendChild(sumDiv);
-        modalBody.appendChild(footerDiv);
         // כללי ההדפסה של ההצעה מגודרים תחת ה-class הזה, כדי שהדפסה רגילה
         // בשאר הקטלוגים לא תושפע.
         document.body.classList.add('quote-print');
@@ -2795,42 +2766,126 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         setTimeout(() => {
             document.body.classList.remove('quote-print');
-            if (headerDiv.parentNode) headerDiv.parentNode.removeChild(headerDiv);
-            if (sumDiv.parentNode) sumDiv.parentNode.removeChild(sumDiv);
-            if (footerDiv.parentNode) footerDiv.parentNode.removeChild(footerDiv);
+            if (docDiv.parentNode) docDiv.parentNode.removeChild(docDiv);
         }, 1000);
     }
 
-    // שורות הסיכום של ההצעה: סכום ביניים · מע"מ · סה"כ לתשלום.
-    // כל הסכומים מגיעים מ-orderTotals/quoteTotals, כך שהמסמך לעולם לא סותר
-    // את מה שמוצג על המסך.
-    function buildQuoteSummaryHtml() {
-        const t = orderTotals();
-        const money = n => '₪' + n.toFixed(2);
-        const rows = [];
-        rows.push(['סכום ביניים', money(t.subtotal)]);
-        if (t.discount > 0) rows.push(['הנחה', '-' + money(t.discount)]);
-        if (t.shipping > 0) rows.push(['דמי משלוח', money(t.shipping)]);
+    // מסמך ההצעה המודפס. המבנה מועתק מתעודת ההזמנה שנשלחת במייל
+    // (tools/google-apps-script-orders.gs) כדי שהלקוח יראה שני מסמכים באותה
+    // שפה: רצועת כותרת, שני כרטיסי פרטים, טבלה עם תמונות, סיכום ופוטר.
+    function buildQuoteDocHtml(quote) {
+        const esc = t => String(t == null ? '' : t)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        // אותו פורמט כמו money_ בתעודה שנשלחת במייל, כדי ששני המסמכים יקראו זהה
+        const money = n => Number(n).toFixed(2) + ' ₪';
 
-        if (!CONFIG.quoteVat) {
-            rows.push(['סה״כ לתשלום', money(t.total)]);
-            return quoteSummaryRowsHtml(rows);
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const stamp = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+        const validUntil = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const validStamp = `${pad(validUntil.getDate())}.${pad(validUntil.getMonth() + 1)}.${validUntil.getFullYear()}`;
+
+        // שורות המוצרים — אותו סדר עמודות כמו בתעודה: תמונה בימין, סה"כ בשמאל
+        let rowsHtml = '';
+        let totalItems = 0;
+        for (const [id, qty] of Object.entries(cart)) {
+            const product = PRODUCTS.find(p => p.id === id);
+            if (!product || qty <= 0) continue;
+            totalItems += qty;
+            const charged = chargeableQty(product, qty);
+            const free = qty - charged;
+            const img = product.image
+                ? `<img src="${esc(product.image)}" alt="">`
+                : '<span class="qd-noimg">אין תמונה</span>';
+            const bundleNote = free > 0
+                ? `<div class="qd-bundle">מבצע ${esc(product.bundle)} — ${free} חינם</div>` : '';
+            rowsHtml += '<tr>'
+                + `<td class="qd-img">${img}</td>`
+                + `<td class="qd-name"><div class="qd-title">${esc(product.name)}</div>`
+                + (product.category ? `<div class="qd-cat">${esc(product.category)}</div>` : '')
+                + bundleNote + '</td>'
+                + `<td>${esc(product.id)}</td>`
+                + `<td>${esc(product.unit)}</td>`
+                + `<td class="qd-qty">${qty}</td>`
+                + `<td>${money(product.price)}</td>`
+                + `<td class="qd-total">${money(charged * product.price)}</td>`
+                + '</tr>';
         }
 
-        const q = quoteTotals(t.total);
-        rows.push([`מע״מ ${Math.round(VAT_RATE * 100)}%`, money(q.vat)]);
-        rows.push(['סה״כ לתשלום כולל מע״מ' + (q.rounded ? ' (מעוגל)' : ''), money(q.gross)]);
-        return quoteSummaryRowsHtml(rows);
-    }
-
-    function quoteSummaryRowsHtml(rows) {
-        return rows.map((r, i) => {
-            const isTotal = i === rows.length - 1;
-            return `<div class="q-sum-row${isTotal ? ' q-sum-total' : ''}">`
-                + `<span class="q-sum-label">${r[0]}</span>`
-                + `<span class="q-sum-value">${r[1]}</span>`
-                + `</div>`;
+        // סיכום — התווית מימין והסכום משמאל, כמו בתעודה
+        const t = orderTotals();
+        const sumRows = [['סכום ביניים', money(t.subtotal)]];
+        if (t.discount > 0) sumRows.push(['הנחה', '-' + money(t.discount)]);
+        if (t.shipping > 0) sumRows.push(['דמי משלוח', money(t.shipping)]);
+        if (CONFIG.quoteVat) {
+            const q = quoteTotals(t.total);
+            sumRows.push([`מע״מ ${Math.round(VAT_RATE * 100)}%`, money(q.vat)]);
+            sumRows.push(['סה״כ לתשלום כולל מע״מ' + (q.rounded ? ' (מעוגל)' : ''), money(q.gross)]);
+        } else {
+            sumRows.push(['סה״כ לתשלום', money(t.total)]);
+        }
+        const sumHtml = sumRows.map((r, i) => {
+            const isTotal = i === sumRows.length - 1;
+            return `<div class="qd-sum-row${isTotal ? ' qd-sum-total' : ''}">`
+                + `<span>${r[0]}</span><span class="qd-sum-val">${r[1]}</span></div>`;
         }).join('');
+
+        const kv = (k, v) => `<div class="qd-kv"><span>${k}</span><b>${esc(v)}</b></div>`;
+
+        return `
+            <div class="qd-head">
+                <div class="qd-brand">
+                    <img src="/images/logo.png" alt="">
+                    <div>
+                        <strong>אהרוני שיווק והפצה</strong>
+                        <span>חומרי ניקוי · נייר · חד פעמי · ציוד משרדי</span>
+                    </div>
+                </div>
+                <div class="qd-meta">
+                    <div class="qd-kind">הצעת מחיר</div>
+                    <div class="qd-num">${esc(quote.id)}</div>
+                    <div class="qd-when">נערכה ${stamp}</div>
+                </div>
+            </div>
+
+            <div class="qd-cards">
+                <div class="qd-card">
+                    <h4>פרטי הלקוח</h4>
+                    ${kv('לכבוד', quote.customer)}
+                </div>
+                <div class="qd-card">
+                    <h4>פרטי ההצעה</h4>
+                    ${kv('תאריך', stamp)}
+                    ${kv('בתוקף עד', validStamp)}
+                    ${kv('סה״כ פריטים', totalItems)}
+                </div>
+            </div>
+
+            <table class="qd-table">
+                <thead>
+                    <tr>
+                        <th>תמונה</th><th>מוצר</th><th>מק״ט</th><th>יחידה</th>
+                        <th>כמות</th><th>מחיר ליח׳</th><th>סה״כ</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+
+            <div class="qd-sum">${sumHtml}</div>
+
+            <div class="qd-sign">
+                <div class="qd-sign-box">חתימת המזמין</div>
+                <div class="qd-sign-box">חתימת סוכן/מאשר</div>
+            </div>
+            <div class="qd-legal">
+                ט.ל.ח | ${CONFIG.quoteVat ? 'הסכום הסופי כולל מע״מ' : 'המחירים אינם כוללים מע״מ'} | תוקף ההצעה: 14 יום
+            </div>
+
+            <div class="qd-foot">
+                <span class="qd-foot-src">הצעת מחיר מאתר aroam.co.il</span>
+                <span class="qd-foot-contact">052-6000158 · 03-6346236 · meiraroam@gmail.com</span>
+            </div>
+        `;
     }
 
     function shareCartLink() {
