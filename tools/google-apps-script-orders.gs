@@ -152,6 +152,9 @@ function buildOrderDoc_(data) {
   var customer = data.customer || {};
 
   var doc = DocumentApp.create('order-' + (data.orderId || new Date().getTime()));
+  // מרגע שהמסמך נוצר, כל כשל בבנייתו (כולל ביצירת ה-PDF) חייב עדיין להוביל
+  // למחיקת מסמך הביניים ב-finally — אחרת הוא דולף לצמיתות ב-Drive.
+  try {
   var body = doc.getBody();
   body.setMarginTop(30).setMarginBottom(30).setMarginLeft(30).setMarginRight(30);
   var first = body.getChild(0);
@@ -267,6 +270,12 @@ function buildOrderDoc_(data) {
             lp.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(8);
           }
         }
+        // ניקוי הגנתי: פסקאות עודפות מעבר ל-lines.length (כלומר התא הכיל
+        // מראש יותר פסקאות ממה שאנחנו כותבים עכשיו) נשארות בעיצוב ברירת
+        // המחדל של Docs ולכן מוסרות — מוחקים מהסוף כדי לא לשבש אינדקסים.
+        while (cell.getNumChildren() > lines.length) {
+          cell.removeChild(cell.getChild(cell.getNumChildren() - 1));
+        }
       } else if (c === cols.imageCol) {
         tight_(cell.getChild(0).asParagraph()).setAlignment(CENTER);
         if (images[r - 1]) {
@@ -353,8 +362,14 @@ function buildOrderDoc_(data) {
 
   var pdfBlob = DriveApp.getFileById(doc.getId()).getAs('application/pdf')
     .setName('תעודת הזמנה ' + (clean_(data.orderId, 30) || '') + '.pdf');
-  DriveApp.getFileById(doc.getId()).setTrashed(true);
   return pdfBlob;
+  } finally {
+    // מחיקת מסמך הביניים לא יכולה להסתיר כשל מקורי — אם היא עצמה נכשלת
+    // (למשל המסמך כבר לא קיים), פשוט מתעלמים וממשיכים לפרוש את השגיאה המקורית.
+    try {
+      DriveApp.getFileById(doc.getId()).setTrashed(true);
+    } catch (eTrash) {}
+  }
 }
 
 var PDF_FOLDER_NAME = 'הזמנות אהרוני — PDF';
