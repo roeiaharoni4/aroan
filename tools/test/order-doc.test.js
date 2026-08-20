@@ -20,7 +20,8 @@ function loadGs() {
   `;
   return new Function(
     stubs + src +
-    '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_ };'
+    '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_,' +
+    '   quoteLink_: quoteLink_ };'
   )();
 }
 
@@ -120,6 +121,18 @@ test('מוצר בלי תמונה מסומן ככזה', () => {
   assert.strictEqual(c.rows[0][c.imageCol], '', 'תא התמונה נטען בציור, לא במחרוזת');
   assert.strictEqual(c.images[1], null, 'למוצר בלי image לא אמורה להיות כתובת');
   assert.ok(String(c.images[0]).indexOf('thumbs') > -1, 'למוצר עם image חסרה כתובת');
+});
+
+test('קישור הצעת מחיר: נבנה להזמנה בלי מחירים', () => {
+  const link = gs.quoteLink_(B2B);
+  assert.ok(link.indexOf('https://aroam.co.il/agent/?cart=') === 0, 'תחילית שגויה: ' + link);
+  assert.ok(link.includes(encodeURIComponent('ניק001') + ':6'), 'הפריט הראשון חסר');
+  assert.ok(link.includes(encodeURIComponent('מוצ001') + ':12'), 'הפריט השני חסר');
+  assert.ok(link.includes('customer=' + encodeURIComponent('מסעדת הגן הירוק בע״מ')), 'שם הלקוח חסר');
+});
+
+test('קישור הצעת מחיר: אינו נבנה כשיש כבר מחירים', () => {
+  assert.strictEqual(gs.quoteLink_(CARE), '', 'לא אמור להיווצר קישור להזמנה עם מחירים');
 });
 
 let failed = 0;

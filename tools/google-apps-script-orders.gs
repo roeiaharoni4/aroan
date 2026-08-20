@@ -47,6 +47,29 @@ function thumbUrl_(id) {
 }
 
 /**
+ * קישור שפותח את ההזמנה בדף הסוכן לצורך תמחור.
+ * מוחזר רק כשלהזמנה אין מחירים — כלומר רק מהקטלוג העסקי. בקטלוגי
+ * הטיפוח והוועד המחירים כבר סופיים, ודף הסוכן ממילא טוען products.csv בלבד.
+ */
+function quoteLink_(data) {
+  if (Number(data.totalPrice) > 0) return '';
+  var items = data.items || [];
+  if (!items.length) return '';
+
+  var parts = [];
+  for (var i = 0; i < items.length; i++) {
+    if (!items[i].id || !(Number(items[i].qty) > 0)) continue;
+    parts.push(encodeURIComponent(items[i].id) + ':' + Number(items[i].qty));
+  }
+  if (!parts.length) return '';
+
+  var cust = data.customer || {};
+  var name = cust.business || cust.contact || '';
+  return 'https://aroam.co.il/agent/?cart=' + parts.join(',') +
+         (name ? '&customer=' + encodeURIComponent(name) : '');
+}
+
+/**
  * מבנה טבלת המוצרים.
  * ב-Docs עמודה 0 מרונדרת בצד שמאל, ולכן הסדר הפוך לסדר הקריאה:
  * העמודה הראשונה היא הכמות (שמאל) והאחרונה היא התמונה (ימין).
@@ -480,6 +503,10 @@ function doPost(e) {
         (shippingText ? 'דמי משלוח: ' + shippingText + ' ש"ח\n' : '') +
         (totalPriceText ? 'סה"כ לתשלום: ' + totalPriceText + ' ש"ח\n' : '') + '\n' +
         'הגיליון המלא: https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID;
+      var qlink = quoteLink_(data);
+      if (qlink) {
+        body += '\n\nלהפיכת ההזמנה להצעת מחיר (נפתח בדף הסוכן עם המחירים):\n' + qlink + '\n';
+      }
       var mailOpts = pdf ? { attachments: [pdf.blob] } : {};
       MailApp.sendEmail(NOTIFY_EMAIL, subject, body, mailOpts);
     }
