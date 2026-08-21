@@ -1732,7 +1732,15 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        if parsed.path == '/api/list-images':
+        if parsed.path == '/api/ping':
+            # סימן חיים לסקריפטי ההפעלה: שרת ישן שנשאר פתוח מיום קודם לא מכיר
+            # את הנתיב הזה, ולכן הם יודעים לדלג עליו במקום להתחבר אליו ולהיכשל
+            # רק כשמנסים לשמור. VERSION עולה כשנוסף endpoint חדש.
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'ok': True, 'app': 'aroam', 'version': 2}).encode('utf-8'))
+        elif parsed.path == '/api/list-images':
             self.handle_list_images()
         elif parsed.path == '/api/fetch-sheet':
             self.handle_fetch_sheet(parse_qs(parsed.query))

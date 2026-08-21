@@ -8,14 +8,20 @@ echo "========================================"
 echo "   עורך המחירונים - אהרוני"
 echo "========================================"
 
-# חיפוש שרת שכבר רץ בטווח הפורטים
-RUNNING_PORT=""
-for port in {8080..8090}; do
-    if lsof -i :$port > /dev/null 2>&1; then
-        RUNNING_PORT=$port
-        break
-    fi
-done
+# מחפש שרת של הפרויקט שכבר רץ. הבדיקה היא /api/ping ולא "האם הפורט תפוס",
+# כי שרת שנשאר פתוח מיום קודם מגיש את הקבצים העדכניים מהדיסק אבל לא מכיר
+# נתיבי API חדשים — והשמירה נכשלת עם שגיאה לא ברורה.
+find_live_server() {
+    for port in {8080..8090}; do
+        if curl -s -m 1 "http://localhost:$port/api/ping" 2>/dev/null | grep -q '"aroam"'; then
+            echo $port
+            return
+        fi
+    done
+    echo ""
+}
+
+RUNNING_PORT=$(find_live_server)
 
 if [ -n "$RUNNING_PORT" ]; then
     echo "השרת כבר פועל בפורט $RUNNING_PORT — מתחבר אליו."

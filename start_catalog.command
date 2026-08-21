@@ -7,6 +7,19 @@ echo "========================================"
 echo "   Starting Aroam Catalog Server..."
 echo "========================================"
 
+# מחפש שרת של הפרויקט שכבר רץ. הבדיקה היא /api/ping ולא "האם הפורט תפוס",
+# כי שרת שנשאר פתוח מיום קודם מגיש את הקבצים העדכניים מהדיסק אבל לא מכיר
+# נתיבי API חדשים — והשמירה נכשלת עם שגיאה לא ברורה.
+find_live_server() {
+    for port in {8080..8090}; do
+        if curl -s -m 1 "http://localhost:$port/api/ping" 2>/dev/null | grep -q '"aroam"'; then
+            echo $port
+            return
+        fi
+    done
+    echo ""
+}
+
 # Function to find an open port
 find_port() {
     for port in {8080..8090}; do
@@ -17,6 +30,18 @@ find_port() {
     done
     echo "0"
 }
+
+# שרת תקין שכבר רץ — מתחברים אליו במקום לפתוח עוד אחד (כך לא נערמים
+# שרתים ישנים שממשיכים לתפוס את הפורטים הנמוכים)
+RUNNING_PORT=$(find_live_server)
+if [ -n "$RUNNING_PORT" ]; then
+    echo "השרת כבר פועל בפורט $RUNNING_PORT — מתחבר אליו."
+    open "http://localhost:$RUNNING_PORT/catalog/"
+    echo ""
+    echo "אפשר לסגור את החלון הזה — השרת ממשיך לרוץ בחלון השני."
+    read -p "לחץ Enter לסגירה..."
+    exit 0
+fi
 
 PORT=$(find_port)
 

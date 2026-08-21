@@ -309,7 +309,18 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-            .then(r => r.json())
+            // שרת ישן שנשאר פתוח מיום קודם מגיש את העמוד העדכני אבל לא מכיר את
+            // /api/chain, ומחזיר דף שגיאה ב-HTML. בלי הבדיקה הזאת r.json() נכשל
+            // והדפדפן מציג "The string did not match the expected pattern".
+            .then(r => r.text().then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    throw new Error(r.status === 404 || r.status === 501
+                        ? 'השרת המקומי ישן ולא מכיר את /api/chain. סגור את חלון הטרמינל של השרת והפעל מחדש את start_catalog.command'
+                        : 'תשובה לא צפויה מהשרת (' + r.status + ')');
+                }
+            }))
             .then(res => {
                 saveBtn.disabled = false;
                 if (!res.success) throw new Error(res.error || 'שגיאה');
