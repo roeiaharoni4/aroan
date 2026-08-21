@@ -1917,10 +1917,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function validateCustomerDetails(customer) {
-        // עמוד רשת החנויות: הזיהוי הוא הסניף, שנבחר בשער לפני שהקטלוג נפתח ולכן
-        // תמיד קיים — אין שדות חובה נוספים. גם לא שומרים ל-aroam_customer_details,
-        // כי המפתח משותף לכל הקטלוגים ושם הסניף היה מודלף לטופס של הקטלוג העסקי.
-        if (CONFIG.customerMode === 'branch') return true;
+        // עמוד רשת החנויות: הסניף נבחר בשער ולכן תמיד קיים, והשדה היחיד שנדרש
+        // הוא שם המזמין. לא שומרים ל-aroam_customer_details — המפתח משותף לכל
+        // הקטלוגים, ושם הסניף היה מודלף לטופס של הקטלוג העסקי (העמוד שומר
+        // את שם המזמין בעצמו, במפתח משלו).
+        if (CONFIG.customerMode === 'branch') {
+            if (!customer.contact) {
+                showToast("נא למלא את שם המזמין לפני שליחת ההזמנה");
+                const el = document.getElementById("cust-contact");
+                if (el) {
+                    el.focus();
+                    el.style.borderColor = "red";
+                    setTimeout(() => { el.style.borderColor = ""; }, 2500);
+                }
+                return false;
+            }
+            return true;
+        }
 
         const isB2C = CONFIG.customerMode === 'b2c';
         // בלקוח פרטי אין "שם עסק" — הזיהוי הוא שם מלא
@@ -2113,7 +2126,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             // בעמוד רשת החנויות השדה מכיל "מרכז קניות — חנות", ולכן התווית שונה.
             // השדה עצמו נשאר business, כך שהפיילוד לגיליון ולתעודת ה-PDF לא משתנה.
             if (customer.business) lines.push(`${CONFIG.customerMode === 'branch' ? 'סניף' : 'שם העסק'}: ${customer.business}`);
-            if (customer.contact) lines.push(customer.business ? `איש קשר: ${customer.contact}` : `שם: ${customer.contact}`);
+            if (customer.contact) {
+                // בעמוד הרשת ה"עסק" הוא הסניף, ולכן מי שמילא את ההזמנה הוא "מזמין"
+                const contactLabel = CONFIG.customerMode === 'branch' ? 'מזמין'
+                    : (customer.business ? 'איש קשר' : 'שם');
+                lines.push(`${contactLabel}: ${customer.contact}`);
+            }
             if (customer.phone) lines.push(`טלפון: ${customer.phone}`);
             if (customer.shipping) lines.push(`שיטת אספקה: ${customer.shipping}`);
             if (customer.address) lines.push(`כתובת למשלוח: ${customer.address}`);

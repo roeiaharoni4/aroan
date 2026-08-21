@@ -435,7 +435,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=47" defer></script>
+    <script src="/js/app.js?v=48" defer></script>
 </head>
 
 <body>
@@ -484,6 +484,9 @@
             // =========================================
             var CODE_KEY = 'aroam_shops_ok';
             var BRANCH_KEY = 'aroam_shops_branch';
+            // שם המזמין נשמר במפתח של העמוד ולא ב-aroam_customer_details המשותף,
+            // כדי שלא ידלוף לטופס של הקטלוג העסקי (ולהפך)
+            var NAME_KEY = 'aroam_shops_orderer';
             var CHAIN_URL = '/data/chain.json';
 
             var gate = document.getElementById('shops-gate');
@@ -760,6 +763,15 @@
             document.addEventListener('DOMContentLoaded', function () {
                 var b = savedBranch();
                 if (b && b.store && !gateOpen) paintBranch(b);
+
+                // שם המזמין נזכר במכשיר — בעל החנות מזמין שוב ושוב מאותו טלפון
+                var nameEl = document.getElementById('cust-contact');
+                if (!nameEl) return;
+                var saved = read(NAME_KEY);
+                if (saved && !nameEl.value) nameEl.value = saved;
+                nameEl.addEventListener('input', function () {
+                    write(NAME_KEY, nameEl.value.trim());
+                });
             });
 
             start();
@@ -868,11 +880,24 @@
                         <span>מזמינים עבור: <span class="branch-label"></span></span>
                         <button type="button" class="branch-change" onclick="aroamChangeBranch()">שנה סניף</button>
                     </div>
-                    <label for="cust-notes"
-                        style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">הערות
-                        להזמנה</label>
-                    <input type="text" id="cust-notes" placeholder="אופציונלי — שם המזמין, מועד אספקה מבוקש וכו׳"
-                        style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    <div
+                        style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.6rem;">
+                        <div>
+                            <label for="cust-contact"
+                                style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">שם
+                                המזמין <span style="color:red;">*</span></label>
+                            <input type="text" id="cust-contact" placeholder="מי מזמין מהסניף"
+                                autocomplete="name"
+                                style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        </div>
+                        <div>
+                            <label for="cust-notes"
+                                style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">הערות
+                                להזמנה</label>
+                            <input type="text" id="cust-notes" placeholder="אופציונלי — מועד אספקה מבוקש וכו׳"
+                                style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="table-responsive" style="overflow-x: auto;">
