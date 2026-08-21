@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let malls = [];              // [{name, stores: [שם, ...]}]
     let street = [];             // חנויות שאינן במרכז קניות
     let selected = new Set();    // מזהי המוצרים הגלויים
+    let overrides = {};          // {id: {name, price}} — שם ומחיר ייעודיים לרשת
     let catalog = [];            // כל שורות products.csv
 
     const mallsList = document.getElementById('malls-list');
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const countEl = document.getElementById('prod-count');
     const warningEl = document.getElementById('chain-empty-warning');
     const clearBtn = document.getElementById('clear-selection-btn');
+    const onlySelectedBox = document.getElementById('only-selected');
     const saveBtn = document.getElementById('save-all-btn');
     const stateEl = document.getElementById('save-state');
 
@@ -169,7 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderProducts() {
         const q = searchInput.value.trim().toLowerCase();
-        const rows = catalog.filter(r => !q || (r.name + ' ' + r.category).toLowerCase().includes(q));
+        const onlyOn = onlySelectedBox.checked;
+        const rows = catalog.filter(r => {
+            if (onlyOn && !selected.has(r.id)) return false;
+            return !q || (r.name + ' ' + r.category).toLowerCase().includes(q);
+        });
 
         if (!rows.length) {
             productList.innerHTML = '<p style="padding:20px; text-align:center; color:#888;">אין תוצאות</p>';
@@ -192,13 +198,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span>${esc(cat)}</span>
                     <span class="cat-count">(${items.filter(r => selected.has(r.id)).length}/${items.length})</span>
                 </label>
-                ${items.map(r => `
-                    <label class="prod-item">
-                        <input type="checkbox" class="prod-toggle" value="${esc(r.id)}" ${selected.has(r.id) ? 'checked' : ''}>
-                        <img src="${esc(imgPath(r.image))}" alt="" onerror="this.style.visibility='hidden'">
-                        <span class="p-name">${esc(r.name)}</span>
+                ${items.map(r => {
+                    const ov = overrides[r.id] || {};
+                    return `
+                    <div class="prod-item ${selected.has(r.id) ? 'on' : ''}" data-id="${esc(r.id)}">
+                        <label class="p-pick">
+                            <input type="checkbox" class="prod-toggle" value="${esc(r.id)}" ${selected.has(r.id) ? 'checked' : ''}>
+                            <img src="${esc(imgPath(r.image))}" alt="" onerror="this.style.visibility='hidden'">
+                            <span class="p-name">${esc(r.name)}</span>
+                        </label>
                         <span class="p-id">${esc(r.id)}</span>
-                    </label>`).join('')}
+                        <span class="p-edit">
+                            <input type="text" class="p-name-override" maxlength="120" value="${esc(ov.name || '')}"
+                                placeholder="שם לתצוגה (ריק = שם הקטלוג)" title="השם שיוצג לבעלי החנויות">
+                            <input type="number" class="p-price" step="0.01" min="0" value="${ov.price != null ? ov.price : ''}"
+                                placeholder="מחיר ₪" title="מחיר לרשת — לא מוצג לבעלי החנויות">
+                        </span>
+                    </div>`;
+                }).join('')}
             </div>`;
         }).join('');
     }
@@ -206,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     productList.addEventListener('change', (e) => {
         if (e.target.classList.contains('prod-toggle')) {
             e.target.checked ? selected.add(e.target.value) : selected.delete(e.target.value);
+            e.target.closest('.prod-item').classList.toggle('on', e.target.checked);
             // רק המונה של הקבוצה ו"בחר הכל" צריכים רענון — לא בונים מחדש את כל הרשימה,
             // כדי שגלילה ומיקוד לא יקפצו בכל סימון
             refreshGroupHead(e.target.closest('.cat-group'));
@@ -216,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const on = e.target.checked;
             e.target.closest('.cat-group').querySelectorAll('.prod-toggle').forEach(cb => {
                 cb.checked = on;
+                cb.closest('.prod-item').classList.toggle('on', on);
                 on ? selected.add(cb.value) : selected.delete(cb.value);
             });
             refreshGroupHead(e.target.closest('.cat-group'));
@@ -232,7 +251,26 @@ document.addEventListener('DOMContentLoaded', () => {
         group.querySelector('.cat-toggle').checked = on === boxes.length;
     }
 
+    // שם ומחיר לרשת נשמרים ב-overrides תוך כדי הקלדה; ערך ריק מוחק את השדה
+    productList.addEventListener('input', (e) => {
+        const isName = e.target.classList.contains('p-name-override');
+        const isPrice = e.target.classList.contains('p-price');
+        if (!isName && !isPrice) return;
+        const id = e.target.closest('.prod-item').dataset.id;
+        const ov = overrides[id] || (overrides[id] = {});
+        if (isName) {
+            const v = e.target.value.trim();
+            if (v) ov.name = v; else delete ov.name;
+        } else {
+            const v = parseFloat(e.target.value);
+            if (v > 0) ov.price = v; else delete ov.price;
+        }
+        if (!ov.name && ov.price == null) delete overrides[id];
+        markDirty();
+    });
+
     searchInput.addEventListener('input', renderProducts);
+    onlySelectedBox.addEventListener('change', renderProducts);
 
     clearBtn.addEventListener('click', () => {
         if (!selected.size) return;
@@ -275,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 malls = (data.malls || []).map(m => ({ name: m.name || '', stores: m.stores || [] }));
                 street = (data.stores || []).slice();
                 selected = new Set((data.products || []).map(String));
+                overrides = data.overrides || {};
                 renderMalls();
                 renderStreet();
                 renderProducts();
@@ -296,7 +335,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 .map(m => ({ name: m.name.trim(), stores: m.stores.map(s => s.trim()).filter(Boolean) }))
                 .filter(m => m.name),
             stores: street.map(s => s.trim()).filter(Boolean),
-            products: [...selected]
+            products: [...selected],
+            // רק מוצרים שנבחרו — שם או מחיר של מוצר שהוסר הם רעש בקובץ
+            overrides: Object.fromEntries(
+                Object.entries(overrides).filter(([id]) => selected.has(id))
+            )
         };
 
         const emptyMalls = payload.malls.filter(m => !m.stores.length).map(m => m.name);
@@ -331,7 +374,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 street = payload.stores;
                 renderMalls();
                 renderStreet();
-                showToast(`נשמר: ${res.malls} מרכזי קניות, ${res.stores} חנויות רחוב, ${res.products} מוצרים גלויים`);
+                overrides = payload.overrides;
+                renderProducts();
+                showToast(`נשמר: ${res.malls} מרכזי קניות, ${res.stores} חנויות רחוב, ` +
+                    `${res.products} מוצרים גלויים, ${res.overrides} עם שם/מחיר לרשת`);
             })
             .catch(err => {
                 saveBtn.disabled = false;

@@ -458,11 +458,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const res = await fetch(CONFIG.allowedProductsSource + '?_t=' + Math.floor(Date.now() / 3600000));
             if (!res.ok) return;
-            const ids = (await res.json()).products;
-            if (!Array.isArray(ids) || !ids.length) return;
-            const allowed = new Set(ids.map(String));
-            PRODUCTS = PRODUCTS.filter(p => allowed.has(p.id));
-            console.log(`Filtered to ${PRODUCTS.length} allowed products`);
+            const data = await res.json();
+
+            const ids = data.products;
+            if (Array.isArray(ids) && ids.length) {
+                const allowed = new Set(ids.map(String));
+                PRODUCTS = PRODUCTS.filter(p => allowed.has(p.id));
+                console.log(`Filtered to ${PRODUCTS.length} allowed products`);
+            }
+
+            // שם ומחיר ייעודיים לרשת. השם מחליף את שם הקטלוג בכל מקום שקורא
+            // product.name (כרטיס, חיפוש, טבלת ההזמנה, ההודעה והפיילוד).
+            // המחיר אינו מוצג בעמוד (showPrices כבוי) אבל כן נכנס לפיילוד,
+            // ולכן הגיליון ותעודת ה-PDF מראים את הסכום לפי מחירי הרשת.
+            const overrides = data.overrides;
+            if (overrides && typeof overrides === 'object') {
+                PRODUCTS.forEach(p => {
+                    const o = overrides[p.id];
+                    if (!o) return;
+                    if (o.name) p.name = String(o.name);
+                    const price = parseFloat(o.price);
+                    if (price > 0) p.price = price;
+                });
+            }
         } catch (e) {
             console.warn('טעינת רשימת המוצרים הגלויים נכשלה — מוצג הקטלוג המלא', e);
         }

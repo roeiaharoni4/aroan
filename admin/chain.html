@@ -180,6 +180,17 @@
             border-bottom: 1px solid #fafafa;
         }
 
+        /* רק אזור הסימון הוא label. שדות השם והמחיר יושבים מחוצה לו, אחרת
+           לחיצה עליהם הייתה מסמנת/מבטלת את המוצר. */
+        .p-pick {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
+        }
+
         .prod-item img {
             width: 34px;
             height: 34px;
@@ -195,6 +206,40 @@
         .prod-item .p-id {
             color: #999;
             font-size: 0.8rem;
+            min-width: 60px;
+            text-align: left;
+        }
+
+        /* שם ומחיר לרשת — מוצגים רק למוצר שסומן, כדי שרשימת 176 המוצרים
+           תישאר קריאה ולא תהפוך לטופס ענק */
+        .p-edit {
+            display: none;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .prod-item.on .p-edit {
+            display: flex;
+        }
+
+        .p-edit input {
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font: inherit;
+            font-size: 0.85rem;
+        }
+
+        .p-edit .p-name-override {
+            width: 170px;
+        }
+
+        .p-edit .p-price {
+            width: 82px;
+        }
+
+        .prod-item.on {
+            background: #f5faf7;
         }
     </style>
 </head>
@@ -251,10 +296,15 @@
                 <div class="chain-card">
                     <h3>מוצרים גלויים לרשת</h3>
                     <p class="chain-hint">המוצרים מגיעים מהקטלוג הראשי — שינוי שם או תמונה שם מתעדכן כאן אוטומטית.
-                        בעמוד הרשת לא מוצגים מחירים.</p>
+                        לכל מוצר שנבחר אפשר לקבוע <strong>שם לתצוגה</strong> שיוצג לחנויות במקום שם הקטלוג,
+                        ו<strong>מחיר לרשת</strong>. <strong>המחיר לא מוצג לבעלי החנויות</strong> — הוא רק מחושב
+                        לתוך ההזמנה שמגיעה אליך (גיליון ההזמנות ותעודת ה-PDF). שדה שנשאר ריק = כמו בקטלוג הראשי.</p>
                     <div id="chain-empty-warning">לא נבחרו מוצרים — כרגע <u>כל הקטלוג</u> גלוי לרשת.</div>
                     <div class="prod-toolbar">
                         <input type="text" id="prod-search" placeholder="חיפוש מוצר או קטגוריה...">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; white-space:nowrap;">
+                            <input type="checkbox" id="only-selected"> הצג רק נבחרים
+                        </label>
                         <strong id="prod-count">0 נבחרו</strong>
                         <button type="button" class="btn btn-outline" id="clear-selection-btn">נקה בחירה</button>
                     </div>

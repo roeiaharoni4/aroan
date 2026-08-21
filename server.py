@@ -1884,16 +1884,37 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     seen_ids.add(pid)
                     products.append(pid)
 
+            # שם ומחיר ייעודיים לרשת, פר מזהה. רשומה בלי שם ובלי מחיר תקין
+            # לא נשמרת — כך הקובץ לא מתמלא ברשומות ריקות של מוצרים שנפתחו ונסגרו.
+            overrides = {}
+            for pid, ov in list((data.get('overrides') or {}).items())[:2000]:
+                pid = str(pid or '').strip()
+                if not pid or not isinstance(ov, dict):
+                    continue
+                entry = {}
+                name = str(ov.get('name') or '').strip()[:120]
+                if name:
+                    entry['name'] = name
+                try:
+                    price = round(float(ov.get('price')), 2)
+                    if price > 0:
+                        entry['price'] = price
+                except (TypeError, ValueError):
+                    pass
+                if entry:
+                    overrides[pid] = entry
+
             with open(CHAIN_FILE, 'w', encoding='utf-8') as f:
-                json.dump({'malls': malls, 'stores': street, 'products': products},
-                          f, ensure_ascii=False, indent=1)
+                json.dump({'malls': malls, 'stores': street, 'products': products,
+                           'overrides': overrides}, f, ensure_ascii=False, indent=1)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True, 'malls': len(malls),
                                          'stores': len(street),
-                                         'products': len(products)}).encode('utf-8'))
+                                         'products': len(products),
+                                         'overrides': len(overrides)}).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
