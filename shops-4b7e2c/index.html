@@ -546,10 +546,27 @@
                 return false;
             }
 
+            var gateOpen = true;
+
+            function hideGate() {
+                gate.style.display = 'none';
+                gateOpen = false;
+                document.body.classList.remove('shops-locked');
+            }
+
+            // "חזור" מהקטלוג מחזיר לבורר הסניף, ולכן השער מוסתר ולא נמחק
+            function reopenGateAtMalls() {
+                gate.style.display = '';
+                gateOpen = true;
+                document.body.classList.add('shops-locked');
+                panelCode.classList.remove('active');
+                panelBranch.classList.add('active');
+                showMalls(true);
+            }
+
             function unlock(b) {
                 paintBranch(b);
-                gate.remove();
-                document.body.classList.remove('shops-locked');
+                hideGate();
             }
 
             // --- שלב 2: בורר הסניף — ריבועים, קודם מרכזי קניות ואז החנויות שבמרכז ---
@@ -569,10 +586,14 @@
                 else if (fallback) fallback.focus();
             }
 
-            // בוחר סניף ונכנס לקטלוג
+            // בוחר סניף ונכנס לקטלוג. בכל מסלול נשאר בדיוק ערך היסטוריה אחד
+            // מעל מסך הבורר, כך ש"חזור" תמיד מחזיר לבחירת הסניף.
             function pick(mallName, storeName) {
                 var b = { mall: mallName, store: storeName };
                 write(BRANCH_KEY, JSON.stringify(b));
+                var st = history.state || {};
+                if (st.shopsStep === 'stores') history.replaceState({ shopsStep: 'catalog' }, '');
+                else history.pushState({ shopsStep: 'catalog' }, '');
                 unlock(b);
             }
 
@@ -584,7 +605,7 @@
 
                 branchGrid.innerHTML = '';
                 MALLS.forEach(function (m) {
-                    branchGrid.appendChild(tile(m.name, function () { showStores(m); }));
+                    branchGrid.appendChild(tile(m.name, function () { showStores(m, true); }));
                 });
 
                 streetGrid.innerHTML = '';
@@ -602,7 +623,8 @@
                 if (focus) focusFirstTile();
             }
 
-            function showStores(mall) {
+            function showStores(mall, push) {
+                if (push) history.pushState({ shopsStep: 'stores', mall: mall.name }, '');
                 backBtn.style.display = '';
                 mallsTitle.style.display = 'none';
                 streetSection.style.display = 'none';
@@ -621,7 +643,31 @@
                 focusFirstTile(backBtn);
             }
 
-            backBtn.addEventListener('click', function () { showMalls(true); });
+            // דרך ההיסטוריה ולא רינדור ישיר — אחרת "חזור" של הדפדפן והקישור
+            // שבעמוד היו מתארים מצבים שונים
+            backBtn.addEventListener('click', function () { history.back(); });
+
+            window.addEventListener('popstate', function (e) {
+                // כשחלון הסל פתוח, app.js הוא שמטפל ב"חזור"
+                var modal = document.getElementById('order-modal');
+                if (modal && modal.classList.contains('cart-page')) return;
+
+                var st = e.state || {};
+                if (st.shopsStep === 'catalog') return;
+
+                if (st.shopsStep === 'stores') {
+                    var m = MALLS.find(function (x) { return x.name === st.mall; });
+                    if (m) {
+                        if (!gateOpen) reopenGateAtMalls();
+                        showStores(m, false);
+                        focusFirstTile(backBtn);
+                        return;
+                    }
+                }
+                // אין מצב שמור — חוזרים לרשימת הסניפים
+                if (gateOpen) showMalls(true);
+                else reopenGateAtMalls();
+            });
 
             function showBranchPicker() {
                 panelCode.classList.remove('active');
@@ -713,7 +759,7 @@
             // כבר קיים; במסלול "סניף שמור" הכניסה עשויה לקרות לפני כן, ולכן צובעים שוב.
             document.addEventListener('DOMContentLoaded', function () {
                 var b = savedBranch();
-                if (b && b.mall && b.store && !document.getElementById('shops-gate')) paintBranch(b);
+                if (b && b.store && !gateOpen) paintBranch(b);
             });
 
             start();
