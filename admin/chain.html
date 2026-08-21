@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשת חנויות - Aroam</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+    <script src="/js/lib/papaparse.min.js"></script>
+    <style>
+        .chain-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .chain-card h3 {
+            margin: 0 0 4px;
+            font-size: 1.05rem;
+        }
+
+        .chain-hint {
+            font-size: 0.85rem;
+            color: #888;
+            margin: 0 0 14px;
+        }
+
+        /* --- מרכזי קניות --- */
+        .mall-row {
+            border: 1px solid #e6e6e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .mall-head {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .mall-head input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .store-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .store-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f3f7f4;
+            border: 1px solid #cfe0d5;
+            border-radius: 20px;
+            padding: 4px 6px 4px 12px;
+        }
+
+        .store-chip input {
+            border: none;
+            background: transparent;
+            font: inherit;
+            font-size: 0.9rem;
+            width: 12ch;
+            min-width: 6ch;
+            padding: 0;
+        }
+
+        .store-chip input:focus {
+            outline: none;
+            border-bottom: 1px solid var(--primary);
+        }
+
+        .chip-x {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #b1483f;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0 2px;
+        }
+
+        .btn-mini {
+            border: 1px dashed #bbb;
+            background: none;
+            border-radius: 20px;
+            padding: 5px 12px;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .btn-mini:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* --- מוצרים גלויים --- */
+        .prod-toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .prod-toolbar input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 9px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        #chain-empty-warning {
+            display: none;
+            background: #fdecea;
+            border: 1px solid #f5b7b1;
+            color: #922b21;
+            border-radius: 6px;
+            padding: 9px 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        #product-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+
+        .cat-group {
+            border-bottom: 1px solid #f0f0f0;
+            padding: 8px 0;
+        }
+
+        .cat-group:last-child {
+            border-bottom: none;
+        }
+
+        .cat-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            padding: 4px 0 8px;
+        }
+
+        .cat-head .cat-count {
+            font-weight: 400;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .prod-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 5px 0 5px 0;
+            padding-inline-start: 22px;
+            border-bottom: 1px solid #fafafa;
+        }
+
+        .prod-item img {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+            background: #fafafa;
+            border-radius: 4px;
+        }
+
+        .prod-item .p-name {
+            flex: 1;
+        }
+
+        .prod-item .p-id {
+            color: #999;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="../images/logo.png" alt="Aroam Logo" class="logo" onerror="this.style.display='none'">
+                <h2>רשת חנויות</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html"><span class="icon">📦</span> ניהול מוצרים (קטלוג ראשי)</a>
+                <a href="pricelist.html"><span class="icon">💰</span> מחירון הטיפוח</a>
+                <a href="pricelist.html?catalog=committee"><span class="icon">👥</span> מחירון ועד עובדים</a>
+                <a href="chain.html" class="active"><span class="icon">🏬</span> רשת חנויות</a>
+                <a href="/shops-4b7e2c/" target="_blank"><span class="icon">🌐</span> צפייה בעמוד הרשת</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="save-all-btn" class="btn btn-primary btn-block">שמור שינויים</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="search-box">
+                    <strong style="font-size:1.05rem;">עמוד הרשת — סניפים ומוצרים גלויים</strong>
+                </div>
+                <div class="actions">
+                    <span id="save-state" style="color:#888; font-size:0.88rem;"></span>
+                </div>
+            </header>
+
+            <div class="content-body">
+
+                <!-- כרטיס א׳: מרכזי קניות והחנויות שבכל אחד -->
+                <div class="chain-card">
+                    <h3>מרכזי קניות וחנויות</h3>
+                    <p class="chain-hint">בעל החנות בוחר קודם מרכז קניות ואז את החנות שלו. השם שתכתוב כאן הוא
+                        השם שיופיע על ההזמנה שתקבל.</p>
+                    <div id="malls-list"></div>
+                    <button type="button" class="btn btn-outline" id="add-mall-btn">+ הוסף מרכז קניות</button>
+                </div>
+
+                <!-- כרטיס ב׳: אילו מוצרים מהקטלוג הראשי גלויים לרשת -->
+                <div class="chain-card">
+                    <h3>מוצרים גלויים לרשת</h3>
+                    <p class="chain-hint">המוצרים מגיעים מהקטלוג הראשי — שינוי שם או תמונה שם מתעדכן כאן אוטומטית.
+                        בעמוד הרשת לא מוצגים מחירים.</p>
+                    <div id="chain-empty-warning">לא נבחרו מוצרים — כרגע <u>כל הקטלוג</u> גלוי לרשת.</div>
+                    <div class="prod-toolbar">
+                        <input type="text" id="prod-search" placeholder="חיפוש מוצר או קטגוריה...">
+                        <strong id="prod-count">0 נבחרו</strong>
+                        <button type="button" class="btn btn-outline" id="clear-selection-btn">נקה בחירה</button>
+                    </div>
+                    <div id="product-list">טוען מוצרים...</div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <script src="chain.js"></script>
+</body>
+
+</html>

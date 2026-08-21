@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <!-- Google Tag Manager -->
+    <script>(function (w, d, s, l, i) {
+            w[l] = w[l] || []; w[l].push({
+                'gtm.start':
+                    new Date().getTime(), event: 'gtm.js'
+            }); var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+                    'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-W8HST8RB');</script>
+    <!-- End Google Tag Manager -->
+    <!-- Google Analytics 4 (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-W1MRCCC3FS');
+    </script>
+    <!-- End Google Analytics 4 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הזמנות לסניפים | אהרוני שיווק והפצה</title>
+    <!-- עמוד סגור ללקוח רשת: נגיש רק דרך קישור + קוד. לא מאונדקס, לא ב-sitemap,
+         ובכוונה לא ב-robots.txt (חסימה שם הייתה חושפת את הכתובת). -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap"></noscript>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="/css/style.css?v=34">
+    <style>
+        body {
+            padding-top: 0;
+        }
+
+        .fixed-header {
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+
+        /* כותרת עצמאית — בלי ניווט לאתר המלא */
+        .care-header {
+            background: var(--bg-surface, #fff);
+            border-bottom: 1px solid var(--border-color, #e0e0e0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .care-header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .care-phone {
+            color: var(--primary-dark, #1A4231);
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 1.05rem;
+            white-space: nowrap;
+        }
+
+        .care-phone:hover {
+            color: var(--primary, #639C7D);
+        }
+
+        /* שורת הסניף הפעיל — כך בעל החנות רואה בכל רגע מאיזה סניף הוא מזמין */
+        .branch-bar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            background: rgba(99, 156, 125, 0.12);
+            border: 1px solid rgba(99, 156, 125, 0.35);
+            border-radius: 10px;
+            padding: 7px 12px;
+            font-size: 0.95rem;
+        }
+
+        .branch-bar .branch-label {
+            font-weight: 700;
+            color: var(--primary-dark, #1A4231);
+        }
+
+        .branch-change {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            font-size: 0.9rem;
+            color: var(--primary-dark, #1A4231);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* פוטר מינימלי */
+        .care-footer {
+            background: var(--primary-dark, #1A4231);
+            color: #fff;
+            margin-top: 2rem;
+            padding: 1.5rem 1rem;
+        }
+
+        .care-footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .care-footer-brand {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .care-footer a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .care-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .care-footer-contact {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .care-footer-area {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+
+        .care-footer-legal {
+            font-size: 0.85rem;
+            opacity: 0.75;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* בר ההזמנה הקבוע מכסה את תחתית העמוד — מפנים לו מקום */
+        body:has(.fab-container) .care-footer {
+            padding-bottom: 90px;
+        }
+
+        /* פתיח קצר */
+        .care-intro {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 18px 16px 4px;
+            text-align: center;
+        }
+
+        .care-intro h1 {
+            font-size: 1.5rem;
+            color: var(--primary-dark, #1A4231);
+            margin-bottom: 6px;
+        }
+
+        .care-intro p {
+            font-size: 0.95rem;
+            color: var(--text-secondary, #666);
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* רצועת תנאי ההזמנה */
+        .care-trust {
+            list-style: none;
+            margin: 18px auto 0;
+            padding: 12px 16px;
+            max-width: 900px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px 22px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            background: rgba(99, 156, 125, 0.10);
+            border: 1px solid rgba(99, 156, 125, 0.35);
+            border-radius: 10px;
+        }
+
+        .care-trust a {
+            color: inherit;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .care-trust {
+                flex-direction: column;
+                align-items: flex-start;
+                text-align: right;
+                gap: 6px;
+            }
+        }
+
+        .shop-terms {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 8px 16px 24px;
+            text-align: center;
+        }
+
+        /* נגישות: כפתור קטגוריה פעיל בירוק כהה (ניגודיות AA מול לבן) */
+        .cat-btn.active {
+            background: var(--primary-dark, #1A4231);
+            border-color: var(--primary-dark, #1A4231);
+        }
+
+        /* --- שער הכניסה ובורר הסניף --- */
+        #shops-gate {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: var(--primary-dark, #1A4231);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            padding: 24px;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        #shops-gate img {
+            width: 120px;
+            height: auto;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        #shops-gate h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            /* site.css צובע כותרות בירוק המותג — על רקע ירוק כהה זה נבלע */
+            color: #fff;
+        }
+
+        #shops-gate p {
+            margin: 0;
+            max-width: 360px;
+            font-size: 0.95rem;
+            opacity: 0.85;
+            line-height: 1.6;
+        }
+
+        .gate-panel {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .gate-panel.active {
+            display: flex;
+        }
+
+        #shops-form {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #shops-code {
+            padding: 0.7rem 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+            width: 190px;
+            letter-spacing: 0.15em;
+        }
+
+        #shops-gate button[type="submit"],
+        #branch-continue {
+            padding: 0.7rem 1.6rem;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent-color, #8FD6A3);
+            color: var(--primary-dark, #1A4231);
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #branch-continue:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .gate-field {
+            width: 100%;
+            text-align: right;
+        }
+
+        .gate-field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .gate-field select {
+            width: 100%;
+            /* 16px נגד זום אוטומטי ב-iOS */
+            font-size: 16px;
+            padding: 0.65rem 0.8rem;
+            border: none;
+            border-radius: 10px;
+            background: #fff;
+            color: #222;
+        }
+
+        .gate-field select:disabled {
+            opacity: 0.6;
+        }
+
+        #shops-error,
+        #branch-error {
+            display: none;
+            color: #ffd6d1;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        body.shops-locked {
+            overflow: hidden;
+        }
+    </style>
+
+    <!-- Scripts -->
+    <script>
+        window.CATALOG_CONFIG = {
+            // סיכום ההזמנה נפתח כתצוגה מלאת-מסך עם כתובת משלה
+            cartView: true,
+            // הרשת מזמינה ללא מחירים — התמחור מסודר מול הנהלת הרשת
+            showPrices: false,
+            showAddButton: true,
+            allowPdf: false,
+            allowShare: true,
+            // הקטלוג הוא products.csv הרגיל, מסונן לרשימת המזהים שרועי בחר.
+            // אין כאן מחירון נפרד — כך שם/תמונה/תיאור אף פעם לא מתיישנים.
+            allowedProductsSource: '/data/chain.json',
+            // הזיהוי הוא הסניף שנבחר בשער, ולכן אין שדות חובה בטופס
+            customerMode: 'branch',
+            // קידומת ייחודית — כך מסננים את הזמנות הרשת בגיליון ההזמנות
+            orderPrefix: 'RS'
+        };
+    </script>
+    <script src="/js/lib/papaparse.min.js" defer></script>
+    <script src="/js/app.js?v=45" defer></script>
+</head>
+
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W8HST8RB" height="0" width="0"
+            style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <!-- שער כניסה + בחירת סניף. זהו אתר סטטי — הקוד יושב בדפדפן ולכן זו הגנה
+         מפני העברה לא מכוונת של הקישור, לא מפני מי שיודע לחפש. -->
+    <div id="shops-gate" role="dialog" aria-modal="true" aria-labelledby="shops-gate-title">
+        <img src="/images/logo.png" alt="אהרוני שיווק והפצה" width="120" height="65">
+        <h2 id="shops-gate-title">הזמנות לסניפים</h2>
+
+        <!-- שלב 1: קוד כניסה -->
+        <div class="gate-panel active" id="gate-code">
+            <p>הזינו את קוד הכניסה שקיבלתם מהנהלת הרשת.</p>
+            <form id="shops-form">
+                <input type="text" id="shops-code" inputmode="numeric" autocomplete="off" placeholder="קוד כניסה"
+                    aria-label="קוד כניסה">
+                <button type="submit">כניסה</button>
+            </form>
+            <p id="shops-error">הקוד שגוי — נסו שוב</p>
+        </div>
+
+        <!-- שלב 2: בחירת סניף -->
+        <div class="gate-panel" id="gate-branch">
+            <p>בחרו את הסניף שלכם. ההזמנה תישלח בשם הסניף הזה.</p>
+            <div class="gate-field">
+                <label for="branch-mall">מרכז קניות</label>
+                <select id="branch-mall"></select>
+            </div>
+            <div class="gate-field">
+                <label for="branch-store">חנות</label>
+                <select id="branch-store" disabled></select>
+            </div>
+            <button type="button" id="branch-continue" disabled>המשך לקטלוג</button>
+            <p id="branch-error"></p>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // ===== קוד הכניסה — לשינוי כאן בלבד =====
+            var ACCESS_CODE = '3160';
+            // =========================================
+            var CODE_KEY = 'aroam_shops_ok';
+            var BRANCH_KEY = 'aroam_shops_branch';
+            var CHAIN_URL = '/data/chain.json';
+
+            var gate = document.getElementById('shops-gate');
+            var panelCode = document.getElementById('gate-code');
+            var panelBranch = document.getElementById('gate-branch');
+            var form = document.getElementById('shops-form');
+            var input = document.getElementById('shops-code');
+            var codeError = document.getElementById('shops-error');
+            var mallSel = document.getElementById('branch-mall');
+            var storeSel = document.getElementById('branch-store');
+            var continueBtn = document.getElementById('branch-continue');
+            var branchError = document.getElementById('branch-error');
+
+            var MALLS = [];
+
+            function normalize(v) { return String(v || '').trim(); }
+
+            function read(key) {
+                try { return localStorage.getItem(key); } catch (e) { return null; }
+            }
+
+            function write(key, value) {
+                try { localStorage.setItem(key, value); } catch (e) { }
+            }
+
+            document.body.classList.add('shops-locked');
+
+            // --- הסניף הנבחר ---
+            // נכתב ל-cust-business המוסתר, ולכן app.js קורא אותו בלי שינוי:
+            // ההזמנה יוצאת מזוהה לפי "מרכז קניות — חנות" בהודעה, בגיליון ובתעודה.
+            function branchLabel(b) { return b.mall + ' — ' + b.store; }
+
+            function paintBranch(b) {
+                var hidden = document.getElementById('cust-business');
+                if (hidden) hidden.value = branchLabel(b);
+                var labels = document.querySelectorAll('.branch-label');
+                for (var i = 0; i < labels.length; i++) labels[i].textContent = branchLabel(b);
+                var bars = document.querySelectorAll('.branch-bar');
+                for (var j = 0; j < bars.length; j++) bars[j].style.display = 'flex';
+            }
+
+            function savedBranch() {
+                try { return JSON.parse(read(BRANCH_KEY) || 'null'); } catch (e) { return null; }
+            }
+
+            // בחירה שהתיישנה: רועי שינה שם או מחק מרכז/חנות בעורך
+            function branchExists(b) {
+                if (!b || !b.mall || !b.store) return false;
+                for (var i = 0; i < MALLS.length; i++) {
+                    if (MALLS[i].name === b.mall && MALLS[i].stores.indexOf(b.store) !== -1) return true;
+                }
+                return false;
+            }
+
+            function unlock(b) {
+                paintBranch(b);
+                gate.remove();
+                document.body.classList.remove('shops-locked');
+            }
+
+            // --- שלב 2: בורר הסניף ---
+            function fillStores() {
+                var mall = MALLS.find(function (m) { return m.name === mallSel.value; });
+                storeSel.innerHTML = '';
+                if (!mall || !mall.stores.length) {
+                    storeSel.disabled = true;
+                    continueBtn.disabled = true;
+                    return;
+                }
+                storeSel.disabled = false;
+                storeSel.appendChild(new Option('בחרו חנות…', ''));
+                mall.stores.forEach(function (s) { storeSel.appendChild(new Option(s, s)); });
+                continueBtn.disabled = true;
+            }
+
+            function showBranchPicker() {
+                panelCode.classList.remove('active');
+                panelBranch.classList.add('active');
+
+                if (!MALLS.length) {
+                    branchError.textContent = 'טרם הוגדרו סניפים. אנא פנו לאהרוני שיווק והפצה בטלפון 03-6346236.';
+                    branchError.style.display = 'block';
+                    mallSel.disabled = storeSel.disabled = continueBtn.disabled = true;
+                    return;
+                }
+
+                mallSel.innerHTML = '';
+                mallSel.appendChild(new Option('בחרו מרכז קניות…', ''));
+                MALLS.forEach(function (m) { mallSel.appendChild(new Option(m.name, m.name)); });
+                mallSel.disabled = false;
+                fillStores();
+                mallSel.focus();
+            }
+
+            mallSel.addEventListener('change', fillStores);
+            storeSel.addEventListener('change', function () {
+                continueBtn.disabled = !storeSel.value;
+            });
+
+            continueBtn.addEventListener('click', function () {
+                if (!mallSel.value || !storeSel.value) return;
+                var b = { mall: mallSel.value, store: storeSel.value };
+                write(BRANCH_KEY, JSON.stringify(b));
+                unlock(b);
+            });
+
+            // "שנה סניף" — משאיר את הקוד ופותח את הבורר מחדש
+            window.aroamChangeBranch = function () {
+                try { localStorage.removeItem(BRANCH_KEY); } catch (e) { }
+                location.reload();
+            };
+
+            // --- טעינת רשימת הסניפים ואז הכרעה איזה מסך להציג ---
+            function start() {
+                fetch(CHAIN_URL + '?_t=' + Date.now())
+                    .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+                    .then(function (data) {
+                        MALLS = (data.malls || []).filter(function (m) { return m && m.name; })
+                            .map(function (m) { return { name: m.name, stores: m.stores || [] }; });
+                        route();
+                    })
+                    .catch(function (err) {
+                        // בלי רשימת סניפים אין הזמנה מזוהה — לא ממשיכים לקטלוג
+                        console.error('טעינת רשימת הסניפים נכשלה', err);
+                        panelCode.classList.remove('active');
+                        panelBranch.classList.add('active');
+                        mallSel.disabled = storeSel.disabled = continueBtn.disabled = true;
+                        branchError.textContent = 'לא הצלחנו לטעון את רשימת הסניפים. נסו לרענן את העמוד.';
+                        branchError.style.display = 'block';
+                    });
+            }
+
+            function route() {
+                // 1. קוד בכתובת (?k=) — כך הקישור שהרשת מפיצה נכנס ישירות.
+                //    מיד אחרי הכניסה מנקים אותו כדי שלא ידלוף בצילום מסך או בשיתוף.
+                var fromUrl = normalize(new URLSearchParams(location.search).get('k'));
+                var hasCode = false;
+                if (fromUrl === ACCESS_CODE) {
+                    var url = new URL(location.href);
+                    url.searchParams.delete('k');
+                    history.replaceState(null, '', url.pathname + url.search + url.hash);
+                    write(CODE_KEY, ACCESS_CODE);
+                    hasCode = true;
+                } else if (normalize(read(CODE_KEY)) === ACCESS_CODE) {
+                    // 2. קוד ששמור מכניסה קודמת
+                    hasCode = true;
+                }
+
+                if (!hasCode) { setTimeout(function () { input.focus(); }, 100); return; }
+
+                // 3. סניף ששמור מכניסה קודמת — ועדיין קיים בקובץ
+                var b = savedBranch();
+                if (branchExists(b)) unlock(b);
+                else showBranchPicker();
+            }
+
+            // 4. הזנה ידנית של הקוד
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (normalize(input.value) !== ACCESS_CODE) {
+                    codeError.style.display = 'block';
+                    input.select();
+                    return;
+                }
+                write(CODE_KEY, ACCESS_CODE);
+                codeError.style.display = 'none';
+                var b = savedBranch();
+                if (branchExists(b)) unlock(b);
+                else showBranchPicker();
+            });
+
+            // הסניף נכתב ל-DOM רק אחרי שהוא נבנה. כשהמשתמש לוחץ "המשך" ה-DOM
+            // כבר קיים; במסלול "סניף שמור" הכניסה עשויה לקרות לפני כן, ולכן צובעים שוב.
+            document.addEventListener('DOMContentLoaded', function () {
+                var b = savedBranch();
+                if (b && b.mall && b.store && !document.getElementById('shops-gate')) paintBranch(b);
+            });
+
+            start();
+        })();
+    </script>
+
+    <!-- כותרת עצמאית: לוגו + טלפון + הסניף הפעיל, בלי ניווט לאתר המלא -->
+    <header class="care-header">
+        <div class="care-header-inner">
+            <a href="/shops-4b7e2c/" class="care-logo" aria-label="הזמנות לסניפים — אהרוני שיווק והפצה">
+                <img src="/images/logo.png" alt="אהרוני שיווק והפצה" width="100" height="54"
+                    style="height:54px; width:auto;" fetchpriority="high">
+            </a>
+            <a href="tel:036346236" class="care-phone">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px; margin-left:5px;">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>03-6346236
+            </a>
+            <div class="branch-bar" style="display:none;">
+                <span>מזמינים עבור: <span class="branch-label"></span></span>
+                <button type="button" class="branch-change" onclick="aroamChangeBranch()">שנה סניף</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="care-intro">
+        <h1>הזמנות לסניפים</h1>
+        <p>סמנו כמויות, שלחו את ההזמנה בוואטסאפ או במייל, ואנחנו נחזור אליכם לאישור ולתיאום האספקה.</p>
+    </section>
+
+    <div class="app-container with-sidebar">
+
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content" style="display:none;"></div>
+
+            <div class="search-container">
+                <input type="text" id="search-input" aria-label="חיפוש מוצר" class="search-input"
+                    placeholder="חיפוש מוצר...">
+            </div>
+        </header>
+
+        <!-- Categories: side column on desktop, chips row on mobile -->
+        <aside class="catalog-sidebar">
+            <div class="sidebar-title">קטגוריות</div>
+            <nav class="categories-nav" id="categories">
+                <!-- Categories injected by JS -->
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main>
+            <div class="products-grid" id="products">
+                <!-- המוצרים נטענים ע"י app.js מ-/data/products.csv ומסוננים לפי
+                     data/chain.json (אין הזרקה סטטית — העמוד noindex) -->
+            </div>
+        </main>
+
+        <!-- Floating Action Button (Cart) -->
+        <div class="fab-container">
+            <button id="open-order-btn" class="fab">
+                <span>הצגת הזמנה</span>
+                <span class="fab-badge" id="fab-count">0</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- תנאי ההזמנה — מתחת לקטלוג, כדי שהמוצרים יהיו הדבר הראשון שרואים -->
+    <section class="shop-terms">
+        <ul class="care-trust" aria-label="תנאי הזמנה">
+            <li><strong>אספקה</strong> לסניף במסלול החלוקה</li>
+            <li><strong>תשלום</strong> מסודר מול הנהלת הרשת</li>
+            <li><strong>שאלות?</strong> <a href="tel:036346236">03-6346236</a></li>
+        </ul>
+    </section>
+
+    <!-- Order Modal -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">סיכום הזמנה</h2>
+                <button id="close-order-btn" class="btn-close">&times;</button>
+            </div>
+
+            <div class="modal-body">
+
+                <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="order-date"
+                            style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">תאריך
+                            הזמנה:</label>
+                        <input type="date" id="order-date"
+                            style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                    </div>
+                    <div id="order-date-display" style="font-weight:600; color:var(--primary-dark); display:none;">
+                    </div>
+                </div>
+
+                <!-- הסניף הוא הזיהוי של ההזמנה; הוא נבחר בשער ונכתב לשדה המוסתר -->
+                <div id="customer-details"
+                    style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(99,156,125,0.06); border-radius: 10px;">
+                    <input type="hidden" id="cust-business">
+                    <div class="branch-bar" style="display:none; margin-bottom:0.7rem;">
+                        <span>מזמינים עבור: <span class="branch-label"></span></span>
+                        <button type="button" class="branch-change" onclick="aroamChangeBranch()">שנה סניף</button>
+                    </div>
+                    <label for="cust-notes"
+                        style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">הערות
+                        להזמנה</label>
+                    <input type="text" id="cust-notes" placeholder="אופציונלי — שם המזמין, מועד אספקה מבוקש וכו׳"
+                        style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                </div>
+
+                <div class="table-responsive" style="overflow-x: auto;">
+                    <table class="order-table">
+                        <thead>
+                            <tr>
+                                <th>מק״ט</th>
+                                <th>שם מוצר</th>
+                                <th>קטגוריה</th>
+                                <th>כמות</th>
+                                <th>יחידה</th>
+                                <th>מחיר יח׳</th>
+                                <th>סה״כ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="order-table-body">
+                            <!-- Order Lines injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.9rem; color: #666;">סה״כ פריטים: <span id="summary-items">0</span>
+                        </div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">סה״כ לתשלום: <span
+                                id="summary-total">0.00 ₪</span></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
+                    <button id="clear-cart-btn" class="btn btn-danger">נקה הזמנה</button>
+                    <button id="send-email" class="btn btn-outline" style="min-width: 120px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-10 5L2 7"></path></svg>שלח במייל
+                    </button>
+                    <button id="send-whatsapp" class="btn btn-success"
+                        style="background:#25D366; color:white; min-width: 140px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg>שלח ב-WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick View Modal -->
+    <div class="modal-overlay" id="quick-view-modal">
+        <div class="modal-content quick-view-content">
+            <button id="close-quick-view-btn" class="btn-close-absolute">&times;</button>
+            <div class="quick-view-grid">
+                <div class="quick-view-image-container">
+                    <img id="qv-image" src="" alt="">
+                </div>
+                <div class="quick-view-details">
+                    <div class="qv-category" id="qv-category"></div>
+                    <h2 class="qv-title" id="qv-title"></h2>
+                    <div class="qv-sku" id="qv-sku"></div>
+                    <div class="qv-price" id="qv-price"></div>
+                    <div class="qv-description" id="qv-description">
+                        <!-- Description if available -->
+                    </div>
+
+                    <div class="qv-controls">
+                        <div class="qty-control large">
+                            <button class="qty-btn" id="qv-minus">–</button>
+                            <input type="number" class="qty-input" id="qv-input" min="0" aria-label="כמות להזמנה">
+                            <button class="qty-btn" id="qv-plus">+</button>
+                        </div>
+                        <button id="qv-add-to-cart" class="btn btn-primary btn-block">הוסף להזמנה</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- פוטר מינימלי: פרטי קשר בלבד, בלי ניווט לאתר המלא -->
+    <footer class="care-footer">
+        <div class="care-footer-inner">
+            <div class="care-footer-brand">אהרוני שיווק והפצה</div>
+            <div class="care-footer-contact">
+                <a href="tel:036346236">03-6346236</a>
+                <span>·</span>
+                <a href="https://wa.me/972526000158" target="_blank" rel="noopener">WhatsApp</a>
+            </div>
+            <div class="care-footer-area">אספקה לסניפים באור יהודה, בקעת אונו וגוש דן</div>
+            <div class="care-footer-legal">
+                <a href="/accessibility/">הצהרת נגישות</a>
+                <span>·</span>
+                <a href="/privacy/">מדיניות פרטיות</a>
+                <span>·</span>
+                <a href="/terms/">תקנון ותנאי שימוש</a>
+            </div>
+        </div>
+    </footer>
+    <script src="/js/components.js" defer></script>
+</body>
+
+</html>

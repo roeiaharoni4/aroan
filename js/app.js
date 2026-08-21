@@ -11,8 +11,12 @@ const DEFAULT_CONFIG = {
     allowPdf: true,
     allowShare: true,
     // 'b2c' = לקוח פרטי: שם מלא במקום שם עסק, ובורר שיטת אספקה ואופן תשלום.
+    // 'branch' = עמוד רשת החנויות: הזיהוי הוא הסניף שנבחר בשער, בלי שדות חובה.
     // כל השאר ('b2b') נשאר בהתנהגות הקיימת של קטלוג הלקוחות ודף הסוכן.
     customerMode: 'b2b',
+    // רשימת המזהים שמותר להציג (קובץ JSON עם {"products": [...]}).
+    // null = כל הקטלוג, כלומר כל הדפים מלבד עמוד רשת החנויות.
+    allowedProductsSource: null,
     // כתובת קונפיג שיטות האספקה. null = בלי משלוח כלל (הקטלוג העסקי והסוכן).
     shippingSource: null,
     // true = סיכום ההזמנה נפתח כתצוגה מלאת-מסך עם ?cart=1 בכתובת במקום כחלון.
@@ -205,6 +209,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Load Data
         await loadProducts();
+
+        // סינון לרשימת המוצרים הגלויים (רק כשמוגדר allowedProductsSource — עמוד רשת החנויות).
+        // חייב לרוץ לפני בניית הקטגוריות, כדי שקטגוריה בלי מוצרים גלויים לא תופיע כלל.
+        await applyProductFilter();
 
         // Load Promotions (הנחות קטגוריה והנחת סל — רק כשמוגדר promoSource)
         await applyPromotions();
@@ -433,6 +441,26 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             });
         });
+    }
+
+    // --- סינון לרשימת מוצרים גלויים (CONFIG.allowedProductsSource) ---
+    // עמוד רשת החנויות טוען את הקטלוג הראשי ומציג ממנו רק את המוצרים שרועי בחר,
+    // כדי שלא ייווצר עותק שני של products.csv שמתיישן. הקובץ מבנהו {"products": [id, ...]}.
+    // כל מסלול כישלון — קובץ חסר, JSON פגום, רשימה ריקה — משאיר את הקטלוג המלא,
+    // כדי שהעמוד לא ייראה שבור לפני שהרשימה הוגדרה בעורך.
+    async function applyProductFilter() {
+        if (!CONFIG.allowedProductsSource) return;
+        try {
+            const res = await fetch(CONFIG.allowedProductsSource + '?_t=' + Math.floor(Date.now() / 3600000));
+            if (!res.ok) return;
+            const ids = (await res.json()).products;
+            if (!Array.isArray(ids) || !ids.length) return;
+            const allowed = new Set(ids.map(String));
+            PRODUCTS = PRODUCTS.filter(p => allowed.has(p.id));
+            console.log(`Filtered to ${PRODUCTS.length} allowed products`);
+        } catch (e) {
+            console.warn('טעינת רשימת המוצרים הגלויים נכשלה — מוצג הקטלוג המלא', e);
+        }
     }
 
     // --- Brand Filter UI (תפריט סינון מותגים ליד החיפוש) ---
@@ -1866,6 +1894,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function validateCustomerDetails(customer) {
+        // עמוד רשת החנויות: הזיהוי הוא הסניף, שנבחר בשער לפני שהקטלוג נפתח ולכן
+        // תמיד קיים — אין שדות חובה נוספים. גם לא שומרים ל-aroam_customer_details,
+        // כי המפתח משותף לכל הקטלוגים ושם הסניף היה מודלף לטופס של הקטלוג העסקי.
+        if (CONFIG.customerMode === 'branch') return true;
+
         const isB2C = CONFIG.customerMode === 'b2c';
         // בלקוח פרטי אין "שם עסק" — הזיהוי הוא שם מלא
         const nameField = isB2C ? "cust-contact" : "cust-business";
@@ -1888,6 +1921,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function prefillCustomerDetails() {
+        // במצב סניף אין מה למלא מראש — הסניף מגיע מהשער, לא מהזמנה קודמת בקטלוג אחר
+        if (CONFIG.customerMode === 'branch') return;
         try {
             const saved = JSON.parse(localStorage.getItem('aroam_customer_details') || 'null');
             if (!saved) return;
@@ -2052,7 +2087,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // בלבד הייתה משמיטה את כל פרטי הלקוח מההודעה.
         const customer = getCustomerDetails();
         if (customer && (customer.business || customer.contact)) {
-            if (customer.business) lines.push(`שם העסק: ${customer.business}`);
+            // בעמוד רשת החנויות השדה מכיל "מרכז קניות — חנות", ולכן התווית שונה.
+            // השדה עצמו נשאר business, כך שהפיילוד לגיליון ולתעודת ה-PDF לא משתנה.
+            if (customer.business) lines.push(`${CONFIG.customerMode === 'branch' ? 'סניף' : 'שם העסק'}: ${customer.business}`);
             if (customer.contact) lines.push(customer.business ? `איש קשר: ${customer.contact}` : `שם: ${customer.contact}`);
             if (customer.phone) lines.push(`טלפון: ${customer.phone}`);
             if (customer.shipping) lines.push(`שיטת אספקה: ${customer.shipping}`);

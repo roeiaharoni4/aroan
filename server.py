@@ -18,6 +18,9 @@ PRICELIST_PROMO_FILE = 'data/pricelist-promo.json'
 CARE_SHIPPING_FILE = 'data/care-shipping.json'
 CARE_PAGE_FILE = 'care/index.html'
 MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
+# עמוד רשת החנויות: מרכזי הקניות, החנויות שבכל מרכז, ורשימת המזהים הגלויים לרשת.
+# אין כאן מחירון — העמוד טוען את products.csv ומסנן אותו לפי הרשימה.
+CHAIN_FILE = 'data/chain.json'
 SITE_BASE_URL = 'https://aroam.co.il'
 
 # שני מחירונים חיים על אותו עורך ועל אותם endpoints, ונבדלים רק בקבצים
@@ -1795,6 +1798,8 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_save_promo()
         elif parsed_path.path == '/api/shipping':
             self.handle_save_shipping()
+        elif parsed_path.path == '/api/chain':
+            self.handle_save_chain()
         else:
             self.send_error(404, "API endpoint not found")
 
@@ -1825,6 +1830,52 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True, 'methods': methods}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+
+    def handle_save_chain(self):
+        # עמוד רשת החנויות: מרכזי קניות, החנויות שבכל מרכז ורשימת המוצרים הגלויים.
+        # אין גנרטורים — העמוד noindex, בלי סכמה, בלי פיד ובלי דפי SEO.
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+
+            def clean_name(v):
+                return str(v or '').strip()[:60]
+
+            malls = []
+            seen_malls = set()
+            for m in (data.get('malls') or [])[:100]:
+                name = clean_name((m or {}).get('name'))
+                if not name or name in seen_malls:
+                    continue
+                seen_malls.add(name)
+                stores, seen_stores = [], set()
+                for s in ((m or {}).get('stores') or [])[:200]:
+                    sname = clean_name(s)
+                    if sname and sname not in seen_stores:
+                        seen_stores.add(sname)
+                        stores.append(sname)
+                malls.append({'name': name, 'stores': stores})
+
+            products, seen_ids = [], set()
+            for pid in (data.get('products') or [])[:2000]:
+                pid = str(pid or '').strip()
+                if pid and pid not in seen_ids:
+                    seen_ids.add(pid)
+                    products.append(pid)
+
+            with open(CHAIN_FILE, 'w', encoding='utf-8') as f:
+                json.dump({'malls': malls, 'products': products}, f, ensure_ascii=False, indent=1)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'malls': len(malls),
+                                         'products': len(products)}).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
