@@ -21,7 +21,7 @@ function loadGs() {
   return new Function(
     stubs + src +
     '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_,' +
-    '   quoteLink_: quoteLink_ };'
+    '   quoteLink_: quoteLink_, isBranchOrder_: isBranchOrder_ };'
   )();
 }
 
@@ -170,6 +170,20 @@ test('קישור הצעת מחיר: בלי השדה החדש חוזרים להת
   const legacy = Object.assign({}, B2B_PRICED);
   delete legacy.showPrices;
   assert.strictEqual(gs.quoteLink_(legacy), '', 'בלי השדה, סכום קיים חוסם כמו קודם');
+});
+
+test('הזמנת רשת מזוהה לפי קידומת RS-', () => {
+  assert.strictEqual(gs.isBranchOrder_({ orderId: 'RS-20260821-6066' }), true, 'RS- אמורה להיות הזמנת רשת');
+});
+
+test('הזמנה רגילה אינה הזמנת רשת', () => {
+  assert.strictEqual(gs.isBranchOrder_({ orderId: 'AR-20260821-4437' }), false, 'AR- היא הזמנה רגילה');
+  assert.strictEqual(gs.isBranchOrder_({ orderId: 'VD-20260805-1234' }), false, 'VD- היא הזמנת ועד');
+});
+
+test('הזמנה בלי מספר לא מפילה את זיהוי הרשת', () => {
+  assert.strictEqual(gs.isBranchOrder_({}), false, 'בלי orderId — לא הזמנת רשת');
+  assert.strictEqual(gs.isBranchOrder_(null), false, 'בלי data — לא הזמנת רשת');
 });
 
 test('עמודות המחיר נשארות בהזמנה עסקית — רועי ביקש לראות מחירי מחירון', () => {

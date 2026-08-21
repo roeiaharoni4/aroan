@@ -145,6 +145,13 @@ function kv_(cell, k, v) {
   return p;
 }
 
+// הזמנה מעמוד רשת החנויות. הזיהוי הוא קידומת מספר ההזמנה (RS-), שנקבעת
+// ב-CATALOG_CONFIG.orderPrefix של אותו עמוד — כך אין תלות בשדה חדש בפיילוד,
+// והתעודה משתנה מיד עם עדכון הסקריפט בלי להמתין ל-push של האתר.
+function isBranchOrder_(data) {
+  return /^RS-/.test(String((data && data.orderId) || ''));
+}
+
 function money_(v) {
   return Number(v || 0).toFixed(2) + ' ₪';
 }
@@ -226,6 +233,28 @@ function buildOrderDoc_(data) {
 
     tight_(body.appendParagraph('')).editAsText().setFontSize(4);
 
+    // ----- שם הסניף בגדול (הזמנות רשת החנויות בלבד) -----
+    // customer.business מכיל "מרכז קניות — חנות" (או שם חנות רחוב), וזה הפרט
+    // שצריך להיקרא במבט אחד בזמן הליקוט — ולכן הוא יושב בשורה משלו ולא בכרטיס.
+    var branchOrder = isBranchOrder_(data);
+    if (branchOrder && customer.business) {
+      var bTbl = body.appendTable([['']]);
+      bTbl.setBorderColor(OD_M).setBorderWidth(1);
+      bTbl.setColumnWidth(0, 535);
+      var bCell = bTbl.getCell(0, 0);
+      bCell.setBackgroundColor(OD_BG).setPaddingTop(8).setPaddingBottom(8)
+        .setPaddingLeft(12).setPaddingRight(12);
+      var pbLabel = tight_(bCell.getChild(0).asParagraph());
+      pbLabel.setAlignment(RIGHT);
+      pbLabel.setText('סניף');
+      pbLabel.editAsText().setFontFamily('Arial').setForegroundColor(OD_GY).setBold(false).setFontSize(9);
+      var pbName = tight_(bCell.appendParagraph(clean_(customer.business, 100)));
+      pbName.setAlignment(RIGHT);
+      pbName.editAsText().setFontFamily('Arial').setForegroundColor(OD_G).setBold(true).setFontSize(20);
+
+      tight_(body.appendParagraph('')).editAsText().setFontSize(4);
+    }
+
     // ----- כרטיסי פרטי לקוח / פרטי הזמנה -----
     // ניסיון קודם צייר פס ירוק עליון על כל כרטיס בנפרד (טבלת "strip" דקה
     // מעל טבלת כרטיס, בתוך תא-עטיפה משותף), אבל זה רינדר כרצועה ירוקה אחת
@@ -240,8 +269,9 @@ function buildOrderDoc_(data) {
 
     var tCust = tight_(custCell.getChild(0).asParagraph()); tCust.setAlignment(RIGHT); tCust.setText('פרטי הלקוח');
     tCust.editAsText().setFontFamily('Arial').setForegroundColor(OD_M).setBold(true).setFontSize(9);
-    if (customer.business) kv_(custCell, 'שם העסק', clean_(customer.business, 100));
-    if (customer.contact) kv_(custCell, 'איש קשר', clean_(customer.contact, 100));
+    // בהזמנת רשת הסניף כבר מוצג בגדול למעלה — כפילות רק מבזבזת מקום
+    if (customer.business && !branchOrder) kv_(custCell, 'שם העסק', clean_(customer.business, 100));
+    if (customer.contact) kv_(custCell, branchOrder ? 'מזמין' : 'איש קשר', clean_(customer.contact, 100));
     if (customer.phone) kv_(custCell, 'טלפון', clean_(customer.phone, 30));
     if (customer.address) kv_(custCell, 'כתובת', clean_(customer.address, 200));
 
