@@ -428,7 +428,10 @@
             // הזיהוי הוא הסניף שנבחר בשער, ולכן אין שדות חובה בטופס
             customerMode: 'branch',
             // קידומת ייחודית — כך מסננים את הזמנות הרשת בגיליון ההזמנות
-            orderPrefix: 'RS'
+            orderPrefix: 'RS',
+            // הזמנה חוזרת לסניף נוחה יותר בשורות מאשר בכרטיסים.
+            // בעל החנות יכול להחליף למצב רשת, והבחירה נשמרת אצלו.
+            defaultView: 'list'
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>

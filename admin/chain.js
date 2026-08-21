@@ -270,7 +270,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     searchInput.addEventListener('input', renderProducts);
-    onlySelectedBox.addEventListener('change', renderProducts);
+
+    // המסנן נזכר בין ביקורים — אחרי שהבחירה נקבעה, העבודה השוטפת היא על
+    // המוצרים שנבחרו (שם ומחיר לרשת) ולא על 176 השורות
+    const ONLY_KEY = 'aroam_chain_only_selected';
+    try { onlySelectedBox.checked = localStorage.getItem(ONLY_KEY) === '1'; } catch (e) { }
+    onlySelectedBox.addEventListener('change', () => {
+        try { localStorage.setItem(ONLY_KEY, onlySelectedBox.checked ? '1' : '0'); } catch (e) { }
+        renderProducts();
+    });
 
     clearBtn.addEventListener('click', () => {
         if (!selected.size) return;

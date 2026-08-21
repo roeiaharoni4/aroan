@@ -310,7 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const productsGrid = document.getElementById('products');
     const catalogSearchContainer = document.querySelector('.main-header .search-container');
     if (productsGrid && catalogSearchContainer && !document.getElementById('view-toggle')) {
-        const VIEW_KEY = 'aroam_catalog_view';
+        // מפתח לפי נתיב, כמו עגלת הקנייה — כך העדפת התצוגה בקטלוג העסקי
+        // לא גוררת את עמוד הרשת (ולהפך), וברירת המחדל של כל עמוד באמת חלה.
+        const VIEW_KEY = 'aroam_catalog_view_' + (window.location.pathname.split('/')[1] || 'root');
         const toggle = document.createElement('div');
         toggle.id = 'view-toggle';
         toggle.className = 'view-toggle';
@@ -327,8 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btn) applyView(btn.dataset.view);
         });
         catalogSearchContainer.appendChild(toggle);
-        let savedView = 'grid';
-        try { savedView = localStorage.getItem(VIEW_KEY) || 'grid'; } catch (e) { }
+        // ברירת המחדל ניתנת לשינוי פר עמוד (CATALOG_CONFIG.defaultView) —
+        // בעמוד רשת החנויות ההזמנה נוחה יותר בשורות מאשר בכרטיסים.
+        const cfgView = (window.CATALOG_CONFIG || {}).defaultView;
+        let savedView = cfgView === 'list' ? 'list' : 'grid';
+        try { savedView = localStorage.getItem(VIEW_KEY) || savedView; } catch (e) { }
         applyView(savedView);
     }
 
