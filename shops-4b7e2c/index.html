@@ -243,7 +243,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            /* safe: כשהתוכן גבוה מהמסך (הרבה מרכזי קניות במובייל) המרכוז מוותר
+               ומתנהג כ-flex-start, אחרת ראש הרשימה נחתך ואי אפשר לגלול אליו */
+            justify-content: safe center;
             gap: 18px;
             padding: 24px;
             text-align: center;
@@ -303,8 +305,7 @@
             letter-spacing: 0.15em;
         }
 
-        #shops-gate button[type="submit"],
-        #branch-continue {
+        #shops-gate button[type="submit"] {
             padding: 0.7rem 1.6rem;
             border: none;
             border-radius: 10px;
@@ -315,36 +316,72 @@
             cursor: pointer;
         }
 
-        #branch-continue:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        /* בורר הסניף: ריבועים בלבן על הרקע הירוק — קודם מרכזי הקניות,
+           ואז החנויות של המרכז שנבחר, באותו עיצוב בדיוק */
+        #gate-branch {
+            max-width: 680px;
         }
 
-        .gate-field {
+        .branch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
             width: 100%;
-            text-align: right;
         }
 
-        .gate-field label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 0.9rem;
-            font-weight: 600;
+        .branch-tile {
+            aspect-ratio: 1 / 1;
+            min-height: 104px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 12px;
+            background: transparent;
+            border: 2px solid #fff;
+            border-radius: 14px;
+            color: #fff;
+            font: inherit;
+            font-size: 1.05rem;
+            font-weight: 700;
+            line-height: 1.35;
+            /* שם ארוך של מרכז קניות נשבר בתוך הריבוע במקום לגלוש ממנו */
+            overflow-wrap: anywhere;
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s;
         }
 
-        .gate-field select {
-            width: 100%;
-            /* 16px נגד זום אוטומטי ב-iOS */
-            font-size: 16px;
-            padding: 0.65rem 0.8rem;
-            border: none;
-            border-radius: 10px;
+        .branch-tile:hover,
+        .branch-tile:focus-visible {
             background: #fff;
-            color: #222;
+            color: var(--primary-dark, #1A4231);
+            outline: none;
         }
 
-        .gate-field select:disabled {
-            opacity: 0.6;
+        /* במובייל שתי עמודות קבועות — עמודה אחת הייתה נותנת ריבוע ענק לכל מרכז
+           ומחייבת גלילה ארוכה רק כדי לראות את הרשימה */
+        @media (max-width: 520px) {
+            .branch-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .branch-tile {
+                min-height: 88px;
+                font-size: 0.95rem;
+                padding: 8px;
+            }
+        }
+
+        .branch-back {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            font-size: 0.95rem;
+            color: #fff;
+            text-decoration: underline;
+            cursor: pointer;
         }
 
         #shops-error,
@@ -408,16 +445,9 @@
 
         <!-- שלב 2: בחירת סניף -->
         <div class="gate-panel" id="gate-branch">
-            <p>בחרו את הסניף שלכם. ההזמנה תישלח בשם הסניף הזה.</p>
-            <div class="gate-field">
-                <label for="branch-mall">מרכז קניות</label>
-                <select id="branch-mall"></select>
-            </div>
-            <div class="gate-field">
-                <label for="branch-store">חנות</label>
-                <select id="branch-store" disabled></select>
-            </div>
-            <button type="button" id="branch-continue" disabled>המשך לקטלוג</button>
+            <p id="branch-prompt">בחרו את מרכז הקניות שלכם.</p>
+            <div class="branch-grid" id="branch-grid"></div>
+            <button type="button" class="branch-back" id="branch-back" style="display:none;">→ חזרה למרכזי הקניות</button>
             <p id="branch-error"></p>
         </div>
     </div>
@@ -437,9 +467,9 @@
             var form = document.getElementById('shops-form');
             var input = document.getElementById('shops-code');
             var codeError = document.getElementById('shops-error');
-            var mallSel = document.getElementById('branch-mall');
-            var storeSel = document.getElementById('branch-store');
-            var continueBtn = document.getElementById('branch-continue');
+            var branchGrid = document.getElementById('branch-grid');
+            var branchPrompt = document.getElementById('branch-prompt');
+            var backBtn = document.getElementById('branch-back');
             var branchError = document.getElementById('branch-error');
 
             var MALLS = [];
@@ -489,51 +519,69 @@
                 document.body.classList.remove('shops-locked');
             }
 
-            // --- שלב 2: בורר הסניף ---
-            function fillStores() {
-                var mall = MALLS.find(function (m) { return m.name === mallSel.value; });
-                storeSel.innerHTML = '';
-                if (!mall || !mall.stores.length) {
-                    storeSel.disabled = true;
-                    continueBtn.disabled = true;
+            // --- שלב 2: בורר הסניף — ריבועים, קודם מרכזי קניות ואז החנויות שבמרכז ---
+            function tile(label, onPick) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'branch-tile';
+                b.textContent = label;
+                b.addEventListener('click', onPick);
+                return b;
+            }
+
+            // מיקוד בריבוע הראשון אחרי כל מעבר, כדי שגם ניווט במקלדת יעבוד
+            function focusFirstTile(fallback) {
+                var first = branchGrid.querySelector('.branch-tile');
+                if (first) first.focus();
+                else if (fallback) fallback.focus();
+            }
+
+            function showMalls() {
+                branchPrompt.textContent = 'בחרו את מרכז הקניות שלכם.';
+                backBtn.style.display = 'none';
+                branchGrid.innerHTML = '';
+                MALLS.forEach(function (m) {
+                    branchGrid.appendChild(tile(m.name, function () { showStores(m); }));
+                });
+                focusFirstTile();
+            }
+
+            function showStores(mall) {
+                backBtn.style.display = '';
+                branchGrid.innerHTML = '';
+                if (!mall.stores.length) {
+                    // מרכז בלי חנויות — העורך מזהיר על זה, אבל שלא ניתקע כאן
+                    branchPrompt.textContent = mall.name + ' — טרם הוגדרו חנויות במרכז הזה.';
+                    backBtn.focus();
                     return;
                 }
-                storeSel.disabled = false;
-                storeSel.appendChild(new Option('בחרו חנות…', ''));
-                mall.stores.forEach(function (s) { storeSel.appendChild(new Option(s, s)); });
-                continueBtn.disabled = true;
+                branchPrompt.textContent = mall.name + ' — בחרו את החנות שלכם.';
+                mall.stores.forEach(function (s) {
+                    branchGrid.appendChild(tile(s, function () {
+                        var b = { mall: mall.name, store: s };
+                        write(BRANCH_KEY, JSON.stringify(b));
+                        unlock(b);
+                    }));
+                });
+                focusFirstTile(backBtn);
             }
+
+            backBtn.addEventListener('click', showMalls);
 
             function showBranchPicker() {
                 panelCode.classList.remove('active');
                 panelBranch.classList.add('active');
 
                 if (!MALLS.length) {
+                    branchPrompt.style.display = 'none';
+                    backBtn.style.display = 'none';
                     branchError.textContent = 'טרם הוגדרו סניפים. אנא פנו לאהרוני שיווק והפצה בטלפון 03-6346236.';
                     branchError.style.display = 'block';
-                    mallSel.disabled = storeSel.disabled = continueBtn.disabled = true;
                     return;
                 }
 
-                mallSel.innerHTML = '';
-                mallSel.appendChild(new Option('בחרו מרכז קניות…', ''));
-                MALLS.forEach(function (m) { mallSel.appendChild(new Option(m.name, m.name)); });
-                mallSel.disabled = false;
-                fillStores();
-                mallSel.focus();
+                showMalls();
             }
-
-            mallSel.addEventListener('change', fillStores);
-            storeSel.addEventListener('change', function () {
-                continueBtn.disabled = !storeSel.value;
-            });
-
-            continueBtn.addEventListener('click', function () {
-                if (!mallSel.value || !storeSel.value) return;
-                var b = { mall: mallSel.value, store: storeSel.value };
-                write(BRANCH_KEY, JSON.stringify(b));
-                unlock(b);
-            });
 
             // "שנה סניף" — משאיר את הקוד ופותח את הבורר מחדש
             window.aroamChangeBranch = function () {
@@ -555,7 +603,9 @@
                         console.error('טעינת רשימת הסניפים נכשלה', err);
                         panelCode.classList.remove('active');
                         panelBranch.classList.add('active');
-                        mallSel.disabled = storeSel.disabled = continueBtn.disabled = true;
+                        branchPrompt.style.display = 'none';
+                        backBtn.style.display = 'none';
+                        branchGrid.innerHTML = '';
                         branchError.textContent = 'לא הצלחנו לטעון את רשימת הסניפים. נסו לרענן את העמוד.';
                         branchError.style.display = 'block';
                     });
