@@ -1973,6 +1973,37 @@ body:has(.fab-container) .scroll-top-btn {
         display: none;
     }
 
+    /* דף הסוכן בלבד: המחיר שם ניתן לעריכה והוא הכלי המרכזי לבניית הצעת
+       מחיר, ולכן הוא נשאר גלוי במובייל — כשורה משלו מתחת לכמות. */
+    body.editable-prices #order-modal .order-table tr {
+        grid-template-areas:
+            "img name name"
+            "img qty total"
+            "price price price";
+    }
+
+    body.editable-prices #order-modal .order-table .oc-price {
+        grid-area: price;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        padding-top: 8px !important;
+        border-top: 1px dashed #e8e8e8 !important;
+    }
+
+    body.editable-prices #order-modal .order-table .oc-price::before {
+        content: 'מחיר ליח׳:';
+        font-size: 0.85rem;
+        color: var(--text-secondary, #666);
+    }
+
+    body.editable-prices #order-modal .order-table .oc-price .order-input {
+        width: 100px;
+        min-height: 42px;
+        text-align: center;
+    }
+
     #order-modal .order-table .oc-qty {
         grid-area: qty;
         display: flex;

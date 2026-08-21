@@ -314,6 +314,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function applyConfiguration() {
+        // דף הסוכן: המחיר בטבלת ההזמנה ניתן לעריכה, ולכן שורת המחיר חייבת
+        // להישאר גלויה גם במובייל (כללי הכרטיסים מסתירים אותה בשאר הקטלוגים,
+        // שם היא לקריאה בלבד). ה-class הוא הגשר בין הקונפיג ל-CSS.
+        document.body.classList.toggle('editable-prices', !!CONFIG.editablePrices);
+
         // Share Buttons
         if (!CONFIG.allowShare) {
             if (sendEmailBtn) sendEmailBtn.style.display = 'none';
