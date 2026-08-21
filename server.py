@@ -1861,6 +1861,14 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         stores.append(sname)
                 malls.append({'name': name, 'stores': stores})
 
+            # חנויות רחוב — לא שייכות לאף מרכז, ומוצגות בעמוד בקבוצה נפרדת
+            street, seen_street = [], set()
+            for s in (data.get('stores') or [])[:200]:
+                sname = clean_name(s)
+                if sname and sname not in seen_street:
+                    seen_street.add(sname)
+                    street.append(sname)
+
             products, seen_ids = [], set()
             for pid in (data.get('products') or [])[:2000]:
                 pid = str(pid or '').strip()
@@ -1869,12 +1877,14 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     products.append(pid)
 
             with open(CHAIN_FILE, 'w', encoding='utf-8') as f:
-                json.dump({'malls': malls, 'products': products}, f, ensure_ascii=False, indent=1)
+                json.dump({'malls': malls, 'stores': street, 'products': products},
+                          f, ensure_ascii=False, indent=1)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True, 'malls': len(malls),
+                                         'stores': len(street),
                                          'products': len(products)}).encode('utf-8'))
         except Exception as e:
             self.send_response(500)

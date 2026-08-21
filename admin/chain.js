@@ -13,10 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const CATALOG_URL = '/data/products.csv';
 
     let malls = [];              // [{name, stores: [שם, ...]}]
+    let street = [];             // חנויות שאינן במרכז קניות
     let selected = new Set();    // מזהי המוצרים הגלויים
     let catalog = [];            // כל שורות products.csv
 
     const mallsList = document.getElementById('malls-list');
+    const streetChips = document.getElementById('street-chips');
     const addMallBtn = document.getElementById('add-mall-btn');
     const productList = document.getElementById('product-list');
     const searchInput = document.getElementById('prod-search');
@@ -124,6 +126,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputs = mallsList.querySelectorAll('.mall-name');
         if (inputs.length) inputs[inputs.length - 1].focus();
         markDirty();
+    });
+
+    // ===================== חנויות רחוב =====================
+
+    function renderStreet() {
+        streetChips.innerHTML = street.map((s, i) => `
+            <span class="store-chip">
+                <input type="text" class="street-name" maxlength="60" data-street="${i}"
+                    value="${esc(s)}" aria-label="שם החנות" size="${Math.max(8, s.length)}">
+                <button type="button" class="chip-x street-del" data-street="${i}" title="מחיקת החנות">✕</button>
+            </span>`).join('') +
+            '<button type="button" class="btn-mini street-add">+ הוסף חנות רחוב</button>';
+    }
+
+    streetChips.addEventListener('input', (e) => {
+        if (!e.target.classList.contains('street-name')) return;
+        street[parseInt(e.target.dataset.street, 10)] = e.target.value;
+        markDirty();
+    });
+
+    streetChips.addEventListener('click', (e) => {
+        if (e.target.classList.contains('street-del')) {
+            street.splice(parseInt(e.target.dataset.street, 10), 1);
+            renderStreet();
+            markDirty();
+        } else if (e.target.classList.contains('street-add')) {
+            street.push('');
+            renderStreet();
+            const inputs = streetChips.querySelectorAll('.street-name');
+            if (inputs.length) inputs[inputs.length - 1].focus();
+            markDirty();
+        }
     });
 
     // ===================== מוצרים גלויים =====================
@@ -239,14 +273,17 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.ok ? r.json() : { malls: [], products: [] })
             .then(data => {
                 malls = (data.malls || []).map(m => ({ name: m.name || '', stores: m.stores || [] }));
+                street = (data.stores || []).slice();
                 selected = new Set((data.products || []).map(String));
                 renderMalls();
+                renderStreet();
                 renderProducts();
                 syncCount();
             })
             .catch(() => {
                 // קובץ חסר או פגום — מתחילים ריק במקום להשאיר עמוד תקוע
                 renderMalls();
+                renderStreet();
                 syncCount();
                 showToast('לא נמצא קובץ סניפים קיים — מתחילים מחדש', 'error');
             });
@@ -258,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             malls: malls
                 .map(m => ({ name: m.name.trim(), stores: m.stores.map(s => s.trim()).filter(Boolean) }))
                 .filter(m => m.name),
+            stores: street.map(s => s.trim()).filter(Boolean),
             products: [...selected]
         };
 
@@ -279,8 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 stateEl.textContent = '';
                 // מציגים חזרה את מה שהשרת באמת שמר (אחרי ניקוי וכפילויות)
                 malls = payload.malls;
+                street = payload.stores;
                 renderMalls();
-                showToast(`נשמר: ${res.malls} מרכזי קניות, ${res.products} מוצרים גלויים`);
+                renderStreet();
+                showToast(`נשמר: ${res.malls} מרכזי קניות, ${res.stores} חנויות רחוב, ${res.products} מוצרים גלויים`);
             })
             .catch(err => {
                 saveBtn.disabled = false;

@@ -322,6 +322,21 @@
             max-width: 680px;
         }
 
+        .branch-section {
+            width: 100%;
+        }
+
+        /* הכותרות מוצגות רק כששתי הקבוצות קיימות — אחרת הן רק רעש */
+        .branch-section-title {
+            margin: 0 0 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            /* site.css צובע כותרות בירוק המותג — על רקע ירוק כהה זה נבלע */
+            color: #fff;
+            opacity: 0.9;
+            text-align: center;
+        }
+
         .branch-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -445,9 +460,16 @@
 
         <!-- שלב 2: בחירת סניף -->
         <div class="gate-panel" id="gate-branch">
-            <p id="branch-prompt">בחרו את מרכז הקניות שלכם.</p>
-            <div class="branch-grid" id="branch-grid"></div>
-            <button type="button" class="branch-back" id="branch-back" style="display:none;">→ חזרה למרכזי הקניות</button>
+            <p id="branch-prompt">בחרו את הסניף שלכם.</p>
+            <div class="branch-section" id="section-malls">
+                <h3 class="branch-section-title" id="malls-title" style="display:none;">מרכזי קניות</h3>
+                <div class="branch-grid" id="branch-grid"></div>
+            </div>
+            <div class="branch-section" id="section-street" style="display:none;">
+                <h3 class="branch-section-title" id="street-title">חנויות רחוב</h3>
+                <div class="branch-grid" id="street-grid"></div>
+            </div>
+            <button type="button" class="branch-back" id="branch-back" style="display:none;">→ חזרה לרשימת הסניפים</button>
             <p id="branch-error"></p>
         </div>
     </div>
@@ -468,11 +490,17 @@
             var input = document.getElementById('shops-code');
             var codeError = document.getElementById('shops-error');
             var branchGrid = document.getElementById('branch-grid');
+            var streetGrid = document.getElementById('street-grid');
+            var mallsTitle = document.getElementById('malls-title');
+            var streetTitle = document.getElementById('street-title');
+            var streetSection = document.getElementById('section-street');
             var branchPrompt = document.getElementById('branch-prompt');
             var backBtn = document.getElementById('branch-back');
             var branchError = document.getElementById('branch-error');
 
             var MALLS = [];
+            // חנויות רחוב — לא שייכות לאף מרכז קניות, ולכן נבחרות בלחיצה אחת
+            var STREET = [];
 
             function normalize(v) { return String(v || '').trim(); }
 
@@ -489,7 +517,8 @@
             // --- הסניף הנבחר ---
             // נכתב ל-cust-business המוסתר, ולכן app.js קורא אותו בלי שינוי:
             // ההזמנה יוצאת מזוהה לפי "מרכז קניות — חנות" בהודעה, בגיליון ובתעודה.
-            function branchLabel(b) { return b.mall + ' — ' + b.store; }
+            // חנות רחוב אינה שייכת למרכז, ולכן מזוהה בשמה בלבד.
+            function branchLabel(b) { return b.mall ? b.mall + ' — ' + b.store : b.store; }
 
             function paintBranch(b) {
                 var hidden = document.getElementById('cust-business');
@@ -506,7 +535,8 @@
 
             // בחירה שהתיישנה: רועי שינה שם או מחק מרכז/חנות בעורך
             function branchExists(b) {
-                if (!b || !b.mall || !b.store) return false;
+                if (!b || !b.store) return false;
+                if (!b.mall) return STREET.indexOf(b.store) !== -1;
                 for (var i = 0; i < MALLS.length; i++) {
                     if (MALLS[i].name === b.mall && MALLS[i].stores.indexOf(b.store) !== -1) return true;
                 }
@@ -536,18 +566,44 @@
                 else if (fallback) fallback.focus();
             }
 
-            function showMalls() {
-                branchPrompt.textContent = 'בחרו את מרכז הקניות שלכם.';
+            // בוחר סניף ונכנס לקטלוג
+            function pick(mallName, storeName) {
+                var b = { mall: mallName, store: storeName };
+                write(BRANCH_KEY, JSON.stringify(b));
+                unlock(b);
+            }
+
+            // focus=true רק כשהמעבר נובע מפעולת משתמש. ברינדור הראשון לא ממקדים:
+            // המיקוד היה צובע את הריבוע הראשון בלבן וזה נראה כאילו הוא כבר נבחר.
+            function showMalls(focus) {
+                branchPrompt.textContent = 'בחרו את הסניף שלכם.';
                 backBtn.style.display = 'none';
+
                 branchGrid.innerHTML = '';
                 MALLS.forEach(function (m) {
                     branchGrid.appendChild(tile(m.name, function () { showStores(m); }));
                 });
-                focusFirstTile();
+
+                streetGrid.innerHTML = '';
+                STREET.forEach(function (s) {
+                    streetGrid.appendChild(tile(s, function () { pick('', s); }));
+                });
+
+                // כותרות הקבוצות מוצגות רק כששתי הקבוצות קיימות
+                var both = MALLS.length > 0 && STREET.length > 0;
+                mallsTitle.style.display = both ? '' : 'none';
+                streetTitle.style.display = both ? '' : 'none';
+                streetSection.style.display = STREET.length ? '' : 'none';
+                document.getElementById('section-malls').style.display = MALLS.length ? '' : 'none';
+
+                if (focus) focusFirstTile();
             }
 
             function showStores(mall) {
                 backBtn.style.display = '';
+                mallsTitle.style.display = 'none';
+                streetSection.style.display = 'none';
+                document.getElementById('section-malls').style.display = '';
                 branchGrid.innerHTML = '';
                 if (!mall.stores.length) {
                     // מרכז בלי חנויות — העורך מזהיר על זה, אבל שלא ניתקע כאן
@@ -557,30 +613,28 @@
                 }
                 branchPrompt.textContent = mall.name + ' — בחרו את החנות שלכם.';
                 mall.stores.forEach(function (s) {
-                    branchGrid.appendChild(tile(s, function () {
-                        var b = { mall: mall.name, store: s };
-                        write(BRANCH_KEY, JSON.stringify(b));
-                        unlock(b);
-                    }));
+                    branchGrid.appendChild(tile(s, function () { pick(mall.name, s); }));
                 });
                 focusFirstTile(backBtn);
             }
 
-            backBtn.addEventListener('click', showMalls);
+            backBtn.addEventListener('click', function () { showMalls(true); });
 
             function showBranchPicker() {
                 panelCode.classList.remove('active');
                 panelBranch.classList.add('active');
 
-                if (!MALLS.length) {
+                if (!MALLS.length && !STREET.length) {
                     branchPrompt.style.display = 'none';
                     backBtn.style.display = 'none';
+                    document.getElementById('section-malls').style.display = 'none';
+                    streetSection.style.display = 'none';
                     branchError.textContent = 'טרם הוגדרו סניפים. אנא פנו לאהרוני שיווק והפצה בטלפון 03-6346236.';
                     branchError.style.display = 'block';
                     return;
                 }
 
-                showMalls();
+                showMalls(false);
             }
 
             // "שנה סניף" — משאיר את הקוד ופותח את הבורר מחדש
@@ -596,6 +650,7 @@
                     .then(function (data) {
                         MALLS = (data.malls || []).filter(function (m) { return m && m.name; })
                             .map(function (m) { return { name: m.name, stores: m.stores || [] }; });
+                        STREET = (data.stores || []).filter(function (s) { return s; });
                         route();
                     })
                     .catch(function (err) {
@@ -605,7 +660,8 @@
                         panelBranch.classList.add('active');
                         branchPrompt.style.display = 'none';
                         backBtn.style.display = 'none';
-                        branchGrid.innerHTML = '';
+                        document.getElementById('section-malls').style.display = 'none';
+                        streetSection.style.display = 'none';
                         branchError.textContent = 'לא הצלחנו לטעון את רשימת הסניפים. נסו לרענן את העמוד.';
                         branchError.style.display = 'block';
                     });
