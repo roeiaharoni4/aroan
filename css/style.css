@@ -2157,3 +2157,230 @@ body:has(.fab-container) .scroll-top-btn {
     .qd-foot-src { color: #7A8A81; }
     .qd-foot-contact { color: #639C7D; font-weight: 700; }
 }
+
+/* ==========================================================================
+   דף הסוכן — בורר הלקוח ושורת הלקוח הפעיל (js/agent.js)
+   הכל מגודר תחת .agent-* ו-body.agent-mode, ולכן לא נוגע בשאר הקטלוגים.
+   ========================================================================== */
+
+/* --- שורת הלקוח הפעיל בכותרת --- */
+.agent-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin: 0.6rem 0 0.2rem;
+    padding: 0.55rem 0.9rem;
+    background: var(--primary-dark);
+    color: #fff;
+    border-radius: var(--radius-md);
+}
+
+.agent-bar-who {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.agent-bar-label {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.agent-bar-who strong {
+    font-size: 1.05rem;
+    color: var(--primary-pastel);
+}
+
+.agent-bar-ago {
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
+
+.agent-bar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.agent-chip {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.agent-chip:hover,
+.agent-chip:focus-visible {
+    background: #fff;
+    color: var(--primary-dark);
+}
+
+.agent-chip-warn {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+/* --- בורר הלקוח (מסך מלא) --- */
+.agent-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 10500;
+    display: flex;
+    align-items: safe center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    background: var(--primary-dark);
+}
+
+body.agent-gate-open {
+    overflow: hidden;
+}
+
+.agent-gate-inner {
+    width: 100%;
+    max-width: 620px;
+    text-align: center;
+    color: #fff;
+}
+
+.agent-gate-logo {
+    height: 46px;
+    width: auto;
+    margin-bottom: 0.8rem;
+}
+
+.agent-gate-inner h2 {
+    margin: 0 0 1rem;
+    font-size: 1.4rem;
+    color: #fff;
+}
+
+.agent-gate-search {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    /* 16px נגד זום אוטומטי ב-iOS */
+    font-size: 16px;
+    font-family: inherit;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+.agent-gate-search::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.agent-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+}
+
+.agent-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    text-align: right;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-radius: var(--radius-md);
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.agent-card strong {
+    font-size: 1rem;
+}
+
+.agent-card span {
+    font-size: 0.8rem;
+    opacity: 0.72;
+}
+
+.agent-card:hover,
+.agent-card:focus-visible {
+    background: #fff;
+    color: var(--primary-dark);
+    border-color: #fff;
+}
+
+/* לקוח שלא הזמין מזמן — סימון בלי להסתמך על צבע בלבד (יש גם טקסט "לפני N ימים") */
+.agent-card-cold {
+    border-color: var(--accent);
+}
+
+.agent-empty {
+    grid-column: 1 / -1;
+    opacity: 0.8;
+    font-size: 0.95rem;
+    margin: 1.5rem 0;
+}
+
+.agent-gate-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.agent-gate-btn {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.agent-gate-btn:hover,
+.agent-gate-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 520px) {
+    .agent-list {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .agent-bar-ago {
+        display: none;
+    }
+}
+
+.agent-new {
+    margin-bottom: 1.2rem;
+    text-align: center;
+}
+
+.agent-new .agent-gate-search {
+    margin-bottom: 0.5rem;
+}
+
+.agent-gate-btn-solid {
+    background: var(--primary-pastel);
+    color: var(--primary-dark);
+    border-color: var(--primary-pastel);
+    font-weight: 600;
+}
+
+.agent-gate-btn-solid:hover,
+.agent-gate-btn-solid:focus-visible {
+    background: #fff;
+    border-color: #fff;
+}

@@ -30,7 +30,10 @@ const DEFAULT_CONFIG = {
     // אופני התשלום המוצגים בבורר. null = ברירת המחדל (מזומן/אשראי במסירה + ביט מראש).
     paymentOptions: null,
     // חישוב מע״מ ואפשרות עיגול לשקל — נחוצים רק להצעת מחיר, ולכן דף הסוכן בלבד.
-    quoteVat: false
+    quoteVat: false,
+    // true = דף הסוכן: כפתור שליחה יחיד במקום וואטסאפ/מייל, בורר לקוח ותור
+    // אופליין (js/agent.js). כל שאר הקטלוגים נשארים false.
+    agentMode: false
 };
 
 // שיעור המע״מ בישראל. שינוי כאן משנה גם את התצוגה בחלון ההזמנה וגם את המסמך
@@ -92,6 +95,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sendEmailBtn = document.getElementById("send-email");
     const sendWhatsappBtn = document.getElementById("send-whatsapp");
     const printPdfBtn = document.getElementById("print-pdf-btn");
+    const submitOrderBtn = document.getElementById("submit-order-btn");
     const searchInput = document.getElementById("search-input");
     const summaryTotalContainer = document.getElementById("summary-total-container");
 
@@ -311,6 +315,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (Object.keys(cart).length > 0) openOrderModal();
             else { try { history.replaceState({}, '', cartUrl(false)); } catch (e) { } }
         }
+
+        // הסימן ש-PRODUCTS נטען, סונן ורונדר. js/agent.js מחכה לזה לפני
+        // שהוא מחיל מחירי לקוח — window.APP קיים כבר קודם, אבל ריק מנתונים.
+        document.dispatchEvent(new CustomEvent('aroam:app-ready'));
     }
 
     function applyConfiguration() {
@@ -318,6 +326,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         // להישאר גלויה גם במובייל (כללי הכרטיסים מסתירים אותה בשאר הקטלוגים,
         // שם היא לקריאה בלבד). ה-class הוא הגשר בין הקונפיג ל-CSS.
         document.body.classList.toggle('editable-prices', !!CONFIG.editablePrices);
+        // מגדיר את כללי ה-CSS של בורר הלקוח, כותרת הלקוח ומונה התור
+        document.body.classList.toggle('agent-mode', !!CONFIG.agentMode);
 
         // Share Buttons
         if (!CONFIG.allowShare) {
@@ -1638,69 +1648,51 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.allowShare) {
             if (sendWhatsappBtn) {
                 sendWhatsappBtn.addEventListener("click", () => {
-                    const customer = getCustomerDetails();
-                    if (customer && !validateCustomerDetails(customer)) return;
+                    const sent = commitOrder('whatsapp');
+                    if (!sent) return;
 
-                    const orderId = generateOrderId();
-                    const { items, totalItems, totalPrice } = getCartItemsData();
-
-                    // Save to recent orders history (הזמנות אחרונות)
-                    if (items.length > 0) saveRecentOrder(items);
-
-                    // Send backup to Google Script in the background.
-                    // נשלח הסכום הסופי (אחרי הנחת סל ודמי משלוח) ולא סכום הביניים.
-                    sendOrderBackupToGoogleScript(orderId, items, orderTotals(), totalItems);
-                    
-                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
-                    window.dataLayer = window.dataLayer || [];
-                    window.dataLayer.push({ event: 'order_sent', order_method: 'whatsapp', order_id: orderId, order_items: totalItems });
-                    if (typeof gtag === 'function') gtag('event', 'order_sent', { order_method: 'whatsapp', order_id: orderId, order_items: totalItems });
-
-                    const text = encodeURIComponent(buildMessage(orderId));
+                    const text = encodeURIComponent(buildMessage(sent.orderId));
                     const phone = "972526000158";
                     window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
 
                     // חלון אישור ללקוח
-                    showOrderConfirmation(orderId, 'whatsapp');
+                    showOrderConfirmation(sent.orderId, 'whatsapp');
                 });
             }
 
             if (sendEmailBtn) {
                 sendEmailBtn.addEventListener("click", () => {
-                    const customer = getCustomerDetails();
-                    if (customer && !validateCustomerDetails(customer)) return;
+                    const sent = commitOrder('email');
+                    if (!sent) return;
 
-                    const orderId = generateOrderId();
-                    const { items, totalItems, totalPrice } = getCartItemsData();
-
-                    // Save to recent orders history (הזמנות אחרונות)
-                    if (items.length > 0) saveRecentOrder(items);
-
-                    // Send backup to Google Script in the background.
-                    // נשלח הסכום הסופי (אחרי הנחת סל ודמי משלוח) ולא סכום הביניים.
-                    sendOrderBackupToGoogleScript(orderId, items, orderTotals(), totalItems);
-                    
-                    // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
-                    window.dataLayer = window.dataLayer || [];
-                    window.dataLayer.push({ event: 'order_sent', order_method: 'email', order_id: orderId, order_items: totalItems });
-                    if (typeof gtag === 'function') gtag('event', 'order_sent', { order_method: 'email', order_id: orderId, order_items: totalItems });
-
-                    const subject = encodeURIComponent(`הצעת מחיר - מספר הזמנה #${orderId}`);
-                    const body = encodeURIComponent(buildMessage(orderId));
+                    const subject = encodeURIComponent(`הצעת מחיר - מספר הזמנה #${sent.orderId}`);
+                    const body = encodeURIComponent(buildMessage(sent.orderId));
                     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent("meiraroam@gmail.com")}&su=${subject}&body=${body}`, "_blank");
 
                     // חלון אישור ללקוח
-                    showOrderConfirmation(orderId, 'email');
+                    showOrderConfirmation(sent.orderId, 'email');
                 });
             }
         }
 
-        // Print Button Logic
-        if (CONFIG.allowPdf && printPdfBtn) {
-            printPdfBtn.addEventListener("click", () => {
-                window.print();
+        // דף הסוכן: כפתור שליחה יחיד. אין כאן וואטסאפ/מייל כי הנמען הוא רועי
+        // עצמו — ההזמנה פשוט נדחפת ל-webhook, וזה גם מה שמאפשר להכניס אותה
+        // לתור כשאין רשת (js/agent.js).
+        if (CONFIG.agentMode && submitOrderBtn) {
+            submitOrderBtn.addEventListener("click", () => {
+                if (Object.keys(cart).length === 0) {
+                    showToast("ההזמנה ריקה");
+                    return;
+                }
+                const sent = commitOrder('agent');
+                if (!sent) return;
+                showOrderConfirmation(sent.orderId, 'agent');
             });
         }
+
+        // כפתור ההדפסה מחווט ל-printQuote בתחתית הקובץ (onclick). לא לרשום כאן
+        // מאזין נוסף — שני ה-handlers היו רצים, והדפסה גולמית של המודאל הייתה
+        // מתווספת למסמך ההצעה המעוצב.
     }
 
     function changeQty(id, delta, inputEl, event) {
@@ -1871,17 +1863,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         const overlay = document.createElement("div");
         overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
 
-        const methodText = method === 'whatsapp'
-            ? 'ההזמנה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.'
-            : 'ההזמנה נפתחה במייל - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.';
+        // דף הסוכן: אין ערוץ שנפתח ואין למי "לחזור" — ההזמנה כבר נקלטה.
+        const isAgent = method === 'agent';
+        const methodText = isAgent
+            ? 'ההזמנה נשלחה למשרד. תעודת ההזמנה תגיע למייל.'
+            : (method === 'whatsapp'
+                ? 'ההזמנה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.'
+                : 'ההזמנה נפתחה במייל - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.');
 
         const box = document.createElement("div");
         box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
         box.innerHTML = `
             <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#639C7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>
-            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">ההזמנה נשלחה!</h2>
+            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${isAgent ? 'ההזמנה נקלטה' : 'ההזמנה נשלחה!'}</h2>
             <p style="margin:0 0 0.4rem; font-weight:700;">מספר הזמנה: ${orderId}</p>
-            <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">${methodText}<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.</p>
+            <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">${methodText}</p>
             <button id="order-confirm-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">סגור</button>
         `;
         overlay.appendChild(box);
@@ -1889,6 +1885,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const close = () => {
             overlay.remove();
+            // דף הסוכן: ההזמנה נסגרה — הסל מתרוקן כדי שהביקור הבא יתחיל נקי
+            if (isAgent) {
+                Object.keys(cart).forEach(k => delete cart[k]);
+                renderProducts();
+                updateSummary();
+            }
             // עובר דרך closeOrderView כדי שגם ?cart=1 ינוקה מהכתובת אחרי השליחה
             closeOrderView();
         };
@@ -1951,14 +1953,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             return false;
         }
-        // שמירת הפרטים במכשיר - ימולאו אוטומטית בהזמנה הבאה
-        try { localStorage.setItem('aroam_customer_details', JSON.stringify(customer)); } catch (e) { }
+        // שמירת הפרטים במכשיר - ימולאו אוטומטית בהזמנה הבאה.
+        // לא בדף הסוכן: המפתח משותף לכל הקטלוגים, ופרטי לקוח של רועי היו
+        // מודלפים לטופס של הקטלוג העסקי באותו דפדפן.
+        if (!CONFIG.agentMode) {
+            try { localStorage.setItem('aroam_customer_details', JSON.stringify(customer)); } catch (e) { }
+        }
         return true;
     }
 
     function prefillCustomerDetails() {
         // במצב סניף אין מה למלא מראש — הסניף מגיע מהשער, לא מהזמנה קודמת בקטלוג אחר
         if (CONFIG.customerMode === 'branch') return;
+        // דף הסוכן: הפרטים מגיעים מהלקוח שנבחר (js/agent.js), ולא מהמפתח
+        // aroam_customer_details המשותף לכל הקטלוגים
+        if (CONFIG.agentMode) return;
         try {
             const saved = JSON.parse(localStorage.getItem('aroam_customer_details') || 'null');
             if (!saved) return;
@@ -2220,32 +2229,36 @@ document.addEventListener("DOMContentLoaded", async () => {
         return { items, totalItems, totalPrice };
     }
 
-    async function sendOrderBackupToGoogleScript(orderId, items, totals, totalItems) {
+    function buildOrderPayload(orderId, items, totals, totalItems) {
+        const orderDate = orderDateInput ? orderDateInput.value : new Date().toLocaleDateString('he-IL');
+        return {
+            orderId: orderId,
+            date: orderDate,
+            items: items,
+            // totalPrice = הסכום הסופי לתשלום; הפירוק נשלח לצדו כדי שבגיליון
+            // יהיה ברור מה מקורו (הסקריפט הישן קורא רק את totalPrice)
+            totalPrice: totals.total.toFixed(2),
+            subtotal: totals.subtotal.toFixed(2),
+            discount: totals.discount.toFixed(2),
+            shipping: totals.shipping.toFixed(2),
+            totalItems: totalItems,
+            // האם הלקוח ראה מחירים. הסקריפט בענן צריך את זה כדי לדעת אם
+            // לצרף למייל קישור "פתח כהצעת מחיר" — הוא לא יכול להסיק את זה
+            // מ-totalPrice, שמחושב מ-products.csv גם כשהמחירים מוסתרים.
+            showPrices: !!CONFIG.showPrices,
+            customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
+        };
+    }
+
+    // מחזירה true כשהבקשה יצאה לדרך. התשובה אטומה (mode: no-cors) ולכן אין
+    // אישור הצלחה אמיתי — false מסמן כשל רשת בלבד, וזה מה שמזין את תור
+    // האופליין של דף הסוכן (js/agent.js).
+    async function postOrderPayload(payload) {
         if (!GOOGLE_SCRIPT_WEBHOOK_URL) {
             console.log("Google Script Webhook URL is not set. Skipping backup email.");
-            return;
+            return false;
         }
-        
         try {
-            const orderDate = orderDateInput ? orderDateInput.value : new Date().toLocaleDateString('he-IL');
-            const payload = {
-                orderId: orderId,
-                date: orderDate,
-                items: items,
-                // totalPrice = הסכום הסופי לתשלום; הפירוק נשלח לצדו כדי שבגיליון
-                // יהיה ברור מה מקורו (הסקריפט הישן קורא רק את totalPrice)
-                totalPrice: totals.total.toFixed(2),
-                subtotal: totals.subtotal.toFixed(2),
-                discount: totals.discount.toFixed(2),
-                shipping: totals.shipping.toFixed(2),
-                totalItems: totalItems,
-                // האם הלקוח ראה מחירים. הסקריפט בענן צריך את זה כדי לדעת אם
-                // לצרף למייל קישור "פתח כהצעת מחיר" — הוא לא יכול להסיק את זה
-                // מ-totalPrice, שמחושב מ-products.csv גם כשהמחירים מוסתרים.
-                showPrices: !!CONFIG.showPrices,
-                customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
-            };
-
             await fetch(GOOGLE_SCRIPT_WEBHOOK_URL, {
                 method: "POST",
                 mode: "no-cors",
@@ -2255,9 +2268,47 @@ document.addEventListener("DOMContentLoaded", async () => {
                 body: JSON.stringify(payload)
             });
             console.log("Successfully sent order data to Google Script Webhook");
+            return true;
         } catch (error) {
             console.error("Error sending order data to Webhook:", error);
+            return false;
         }
+    }
+
+    async function sendOrderBackupToGoogleScript(orderId, items, totals, totalItems) {
+        return postOrderPayload(buildOrderPayload(orderId, items, totals, totalItems));
+    }
+
+    // הליבה המשותפת לכל שליחת הזמנה — ולידציה, מספר הזמנה, שמירה ל"הזמנות
+    // אחרונות", דיווח ל-webhook ולאנליטיקס. הפתיחה של הערוץ (וואטסאפ/מייל)
+    // נשארת אצל הקורא. מחזירה null כשהולידציה נכשלה.
+    function commitOrder(method) {
+        const customer = getCustomerDetails();
+        if (customer && !validateCustomerDetails(customer)) return null;
+
+        const orderId = generateOrderId();
+        const { items, totalItems } = getCartItemsData();
+
+        // Save to recent orders history (הזמנות אחרונות)
+        if (items.length > 0) saveRecentOrder(items);
+
+        // נשלח הסכום הסופי (אחרי הנחת סל ודמי משלוח) ולא סכום הביניים.
+        const totals = orderTotals();
+        const payload = buildOrderPayload(orderId, items, totals, totalItems);
+        const delivery = postOrderPayload(payload);
+
+        // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ event: 'order_sent', order_method: method, order_id: orderId, order_items: totalItems });
+        if (typeof gtag === 'function') gtag('event', 'order_sent', { order_method: method, order_id: orderId, order_items: totalItems });
+
+        // js/agent.js מאזין לזה כדי ללמוד את מחירי הלקוח, לשמור את ההזמנה
+        // האחרונה שלו ולהכניס לתור הזמנה שלא יצאה. שאר הקטלוגים לא מאזינים.
+        document.dispatchEvent(new CustomEvent('aroam:order-sent', {
+            detail: { orderId, method, items, totals, totalItems, customer, payload, delivery }
+        }));
+
+        return { orderId, method, items, totals, totalItems, customer, payload, delivery };
     }
 
     function animateAddToCart(startEl) {
@@ -2642,12 +2693,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return null;
             }
 
+            // הסכום חייב להיות זהה למה שמופיע במסמך המודפס: orderTotals מביא
+            // בחשבון מבצעי חבילה, הנחת סל ודמי משלוח, ו-quoteTotals מוסיף מע"מ
+            // ועיגול. החישוב הישן (sum(price×qty)) התעלם מכולם.
+            const t = orderTotals();
+            const finalTotal = CONFIG.quoteVat ? quoteTotals(t.total).gross : t.total;
+
             newQuote = {
                 id: generateQuoteId(),
                 date: new Date().toISOString().split('T')[0],
                 customer: customerNameOrQuote,
                 items: currentCartItems,
-                total: currentCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                total: Number(finalTotal.toFixed(2))
             };
         }
 
@@ -2708,29 +2765,63 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (Object.keys(cart).length > 0 && !confirm("טעינת הצעה תמחק את העגלה הנוכחית. להמשיך?")) return;
 
-        Object.keys(cart).forEach(k => delete cart[k]); // Clear
-
-        quote.items.forEach(item => {
-            // Restore custom product if needed
-            const exists = PRODUCTS.find(p => p.id === item.id);
-            if (!exists) {
-                PRODUCTS.push({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    unit: item.unit || 'יח׳',
-                    image: item.image || '',
-                    category: 'כללי',
-                    isCustom: true
-                });
-            }
-            cart[item.id] = item.quantity;
-        });
-
-        updateFab();
+        applyOrder(quote.items);
         closeHistoryModal();
         openOrderModal();
         showToast("ההצעה נטענה בהצלחה");
+    }
+
+    // שחזור הזמנה/הצעה לתוך העגלה. משותף להיסטוריית הענן בדף הסוכן ולכפתור
+    // "ההזמנה הקודמת" של לקוח (js/agent.js).
+    //
+    // שני דברים שהמימוש הקודם החמיץ:
+    // 1. המחיר שסוכם לא שוחזר — מוצר שקיים בקטלוג חזר במחיר products.csv,
+    //    כלומר "תזמין כמו פעם שעברה" הציג מחיר אחר ממה שסוכם בפועל.
+    // 2. הקריאה ל-updateFab() (פונקציה שלא קיימת) זרקה ReferenceError אחרי
+    //    שהעגלה כבר נמחקה ולפני שהחלון נפתח — כלומר "טען" נראה כאילו לא עשה כלום.
+    //
+    // מקבל גם { quantity } (סכמת AgentQuotes) וגם { qty } (סכמת getCartItemsData).
+    function applyOrder(items) {
+        if (!Array.isArray(items)) return 0;
+
+        Object.keys(cart).forEach(k => delete cart[k]);
+
+        let restored = 0;
+        items.forEach(item => {
+            if (!item || !item.id) return;
+            const qty = parseInt(item.quantity != null ? item.quantity : item.qty, 10) || 0;
+            if (qty <= 0) return;
+
+            const price = parseFloat(item.price);
+            const hasPrice = isFinite(price) && price > 0;
+            let product = PRODUCTS.find(p => p.id === item.id);
+
+            if (!product) {
+                // מוצר שנמחק מהקטלוג מאז — משוחזר כמוצר כללי כדי שההזמנה
+                // הקודמת תיטען במלואה ולא תשמיט שורות בשקט.
+                product = {
+                    id: item.id,
+                    name: item.name || item.id,
+                    price: hasPrice ? price : 0,
+                    unit: item.unit || 'יח׳',
+                    image: item.image || '',
+                    category: item.category || 'כללי',
+                    isCustom: true
+                };
+                PRODUCTS.push(product);
+            } else if (CONFIG.editablePrices && hasPrice) {
+                // המחיר שסוכם גובר על המחירון — רק היכן שהמחיר ניתן לעריכה
+                // מלכתחילה (דף הסוכן). בשאר הקטלוגים המחיר קובע מה-CSV.
+                product.price = price;
+            }
+
+            cart[item.id] = qty;
+            restored++;
+        });
+
+        renderProducts();
+        updateSummary();
+        return restored;
     }
 
     // --- Custom Product Logic ---
@@ -2992,7 +3083,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Expose functions globally
     window.APP = {
+        // --- ממשק ל-js/agent.js ---
+        applyOrder,          // שחזור הזמנה קודמת (כמויות + מחירים שסוכמו)
+        postOrderPayload,    // שליחה חוזרת של פיילוד מהתור. מחזירה Promise<boolean>
+        getConfig: () => CONFIG,
+        getProducts: () => PRODUCTS,
+        refresh: () => { renderProducts(); updateSummary(); },
+        buildMessage,
+        showToast,
         saveQuote,
+        getQuoteHistory,
         loadQuote,
         deleteQuote,
         openHistoryModal,
