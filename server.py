@@ -1111,6 +1111,7 @@ CATALOG_CATEGORIES = {
     'bags': 'שקיות',
     'air-fresheners': 'מבשמים',
     'crafts': 'מוצרי יצירה',
+    'dispensers': 'מתקנים',
     'misc': 'שונים',
 }
 
