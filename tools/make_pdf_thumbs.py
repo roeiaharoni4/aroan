@@ -49,6 +49,20 @@ def collect_products():
     return out
 
 
+def _relative(rel):
+    """נתיב התמונה מה-CSV -> נתיב יחסי לשורש הפרויקט.
+
+    עמודת image נכתבת בשלוש צורות: "images/...", "/images/..." (העלאה דרך
+    העורך) ו-"./images/...". ב-os.path.join נתיב שמתחיל בלוכסן **מבטל** את
+    השורש שלפניו, ולכן "/images/x.png" הפך ל-"/images/x.png" של המחשב —
+    13 מוצרים דולגו בשקט ונשארו בלי תמונה בתעודת ההזמנה.
+    """
+    rel = rel.strip().replace("\\", "/")
+    while rel.startswith(("./", "/")):
+        rel = rel[2:] if rel.startswith("./") else rel[1:]
+    return rel
+
+
 def make_thumb(src_path, dst_path):
     """ממזער תמונה אחת לריבוע לבן. מחזיר True אם נוצר קובץ."""
     try:
@@ -73,9 +87,10 @@ def main():
 
     created = skipped = missing = 0
     for pid, rel in sorted(products.items()):
-        src = os.path.join(ROOT, rel)
+        src = os.path.join(ROOT, _relative(rel))
         if not os.path.exists(src):
             missing += 1
+            print("  ! אין קובץ תמונה: %s -> %s" % (pid, rel))
             continue
         dst = os.path.join(THUMBS_DIR, pid + ".jpg")
         # מדלגים רק אם הקובץ קיים ולא ישן מהמקור

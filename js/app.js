@@ -31,6 +31,8 @@ const DEFAULT_CONFIG = {
     paymentOptions: null,
     // חישוב מע״מ ואפשרות עיגול לשקל — נחוצים רק להצעת מחיר, ולכן דף הסוכן בלבד.
     quoteVat: false,
+    // פרטי הקשר ברצועה העליונה של תצוגת הסל (מכובה בעמוד רשת החנויות)
+    showContact: true,
     // true = דף הסוכן: כפתור שליחה יחיד במקום וואטסאפ/מייל, בורר לקוח ותור
     // אופליין (js/agent.js). כל שאר הקטלוגים נשארים false.
     agentMode: false
@@ -1563,10 +1565,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!content.querySelector('.cart-utility-bar')) {
             const bar = document.createElement('div');
             bar.className = 'cart-utility-bar';
+            // עמוד רשת החנויות מכבה את פרטי הקשר (showContact: false): שם אין
+            // ערוץ פנייה ישיר, וההזמנה נשלחת דרך כפתור השליחה בלבד.
+            const contact = CONFIG.showContact === false ? ''
+                : '<a href="tel:036346236">03-6346236</a>';
             bar.innerHTML = `
                 <div class="cub-inner">
                     <span>אור יהודה · משלוחים בגוש דן והמרכז</span>
-                    <a href="tel:036346236">03-6346236</a>
+                    ${contact}
                 </div>
             `;
             content.insertBefore(bar, content.firstChild);
