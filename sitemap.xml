@@ -109,6 +109,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://aroam.co.il/catalog/dispensers/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://aroam.co.il/catalog/misc/</loc>
     <lastmod>2026-07-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -1727,6 +1733,48 @@
   </url>
   <url>
     <loc>https://aroam.co.il/catalog/product/%D7%AA%D7%94-%D7%95%D7%99%D7%A1%D7%95%D7%A6%D7%A7%D7%99-2000-%D7%99%D7%97/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%99%D7%99%D7%91%D7%A9-%D7%99%D7%93%D7%99%D7%99%D7%9D-%D7%97%D7%A9%D7%9E%D7%9C%D7%99-%D7%A1%D7%A0%D7%95/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%AA%D7%A7%D7%9F-%D7%90%D7%9C%D7%A7%D7%98%D7%A8%D7%95%D7%A0%D7%99-%D7%9C%D7%9E%D7%91%D7%A9%D7%9D-%D7%90%D7%95%D7%95%D7%99%D7%A8/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%AA%D7%A7%D7%9F-%D7%9C%D7%A1%D7%91%D7%95%D7%9F-%D7%99%D7%93%D7%99%D7%99%D7%9D-%D7%A1%D7%A0%D7%95/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%AA%D7%A7%D7%9F-%D7%A0%D7%99%D7%99%D7%A8-%D7%98%D7%95%D7%90%D7%9C%D7%98-%D7%A1%D7%A0%D7%95/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%AA%D7%A7%D7%9F-%D7%A1%D7%91%D7%95%D7%9F-%D7%99%D7%93%D7%99%D7%99%D7%9D-%D7%A1%D7%A0%D7%95/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%AA%D7%A7%D7%9F-%D7%A1%D7%91%D7%95%D7%9F-%D7%99%D7%93%D7%99%D7%99%D7%9D-%D7%A7%D7%A6%D7%A3-%D7%A1%D7%A0%D7%95/</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://aroam.co.il/catalog/product/%D7%9E%D7%AA%D7%A7%D7%9F-%D7%A6%D7%A5-%D7%A8%D7%A5-%D7%9C%D7%91%D7%9F-%D7%A1%D7%A0%D7%95/</loc>
     <lastmod>2026-08-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
