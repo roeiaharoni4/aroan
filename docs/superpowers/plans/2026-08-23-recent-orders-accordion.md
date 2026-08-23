@@ -449,7 +449,9 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
     border-bottom: 1px solid var(--primary-light);
 }
 
-.ro-line:last-of-type {
+/* .ro-actions הוא ה-div האחרון בגוף השורה, ולכן :last-child/:last-of-type
+   לא היו תופסים את שורת המוצר האחרונה — nth-last-child(2) כן */
+.ro-line:nth-last-child(2) {
     border-bottom: none;
 }
 
