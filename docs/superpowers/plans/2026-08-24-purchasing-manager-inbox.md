@@ -447,6 +447,23 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
             // אישור רכש: מספר ההזמנה המקורי של הסניף, כדי שאפשר יהיה לקשר
             // בין השורה בגיליון הממתינות לבין ההזמנה שנוצרה אצל רועי.
             pendingId: PENDING_APPROVAL || '',
+            // הסניף כפי שהסניף עצמו שלח. כשמנהלת הרכש מחליפה סניף, השדה
+            // business נושא את החדש והשדה הזה את המקורי — אחרת אי אפשר לדעת
+            // במשלוח לאיזו חנות ההזמנה נועדה במקור.
+            originalBranch: ORIGINAL_BRANCH || '',
+```
+
+ובאותו מקום שבו הוגדר `PENDING_APPROVAL` (Step 3), להוסיף לצדו:
+
+```js
+    // הסניף שנשלח בקישור העריכה — הערך המקורי לפני שמנהלת הרכש נגעה בו.
+    let ORIGINAL_BRANCH = null;
+```
+
+ובתוך `init`, לצד `PENDING_APPROVAL`:
+
+```js
+        ORIGINAL_BRANCH = urlParams.get('branch');
 ```
 
 - [ ] **Step 5: לאמת בדפדפן שהיעד מתחלף**
@@ -530,7 +547,15 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
             // וואטסאפ ובלי מייל, והיעד הוא גיליון ההזמנות הממתינות.
             allowShare: false,
             directSend: true,
-            webhookUrl: 'PUT_THE_PENDING_WEBHOOK_URL_HERE',
+            webhookUrl: PENDING_API,
+```
+
+ומעל בלוק ה-`CATALOG_CONFIG`, בסקריפט של אותו עמוד, להגדיר את הקבוע פעם אחת —
+הוא משמש גם כיעד השליחה וגם לסימון "נשלחה" במשימה 5:
+
+```js
+        // כתובת הסקריפט "הזמנות ממתינות". עד שרועי פורס — מציין מקום.
+        const PENDING_API = 'PUT_THE_PENDING_WEBHOOK_URL_HERE';
 ```
 
 **זו כתובת מציין-מקום עד שרועי פורס את הסקריפט.** לרשום את זה בדוח.
@@ -547,7 +572,66 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 כפתורי הוואטסאפ והמייל נשארים ב-HTML — `allowShare: false` מסתיר אותם, וזה המנגנון הקיים.
 
-- [ ] **Step 3: לאמת שהעמוד שולח ליעד הממתינות**
+- [ ] **Step 3: לקבל את הסניף מהכתובת במצב אישור רכש**
+
+השער של העמוד מאמת את הסניף השמור מול `data/chain.json` ומחזיר את הבורר כשהוא
+לא נמצא. במצב אישור רכש זה שגוי: מנהלת הרכש מגיעה עם סניף שנקבע בהזמנה המקורית,
+והוא חייב להיצבע גם אם שמו שונה בינתיים בקובץ.
+
+בסקריפט של `shops-4b7e2c/index.html`, אחרי הגדרת `ACCESS_CODE`:
+
+```js
+        // מצב אישור רכש: מנהלת הרכש נכנסת עם קישור שנושא את הסניף ואת מספר
+        // ההזמנה הממתינה. הסניף מגיע מההזמנה עצמה ולא מהבורר, ולכן הוא נצבע
+        // ישירות ואינו מאומת מול chain.json — סניף ששמו שונה בקובץ אחרי
+        // שההזמנה נשלחה עדיין צריך להיפתח.
+        const PENDING_ID = new URLSearchParams(location.search).get('pending');
+        const PENDING_BRANCH = new URLSearchParams(location.search).get('branch');
+```
+
+ובנקודה שבה העמוד צובע את הסניף (הפונקציה שכותבת ל-`#cust-business` ולתווית
+בכותרת), להקדים לה:
+
+```js
+        function applyPendingBranch() {
+            if (!PENDING_ID || !PENDING_BRANCH) return false;
+            const el = document.getElementById('cust-business');
+            if (el) el.value = PENDING_BRANCH;
+            document.querySelectorAll('.branch-label').forEach(l => { l.textContent = PENDING_BRANCH; });
+            document.querySelectorAll('.branch-bar').forEach(b => { b.style.display = ''; });
+            hideGate();
+            return true;
+        }
+```
+
+ולקרוא לה במסלול הכניסה **לפני** בדיקת הסניף השמור, כך שכשהיא מחזירה `true`
+העמוד לא פותח את בורר הסניפים. הקישור "שנה סניף" נשאר פעיל — כך היא עדיין
+יכולה להחליף סניף, וזו הדרישה מהמסמך.
+
+**מלכודת מוכרת מסבב קודם:** ה-fetch של `chain.json` עשוי להסתיים לפני
+`DOMContentLoaded`, ואז `#cust-business` עדיין לא קיים. לכן `applyPendingBranch`
+חייבת להיקרא שוב במאזין `DOMContentLoaded`, בדיוק כפי שהעמוד כבר עושה לסניף השמור.
+
+- [ ] **Step 4: לאמת את מצב אישור הרכש**
+
+לפתוח ידנית כתובת עם שלושת הפרמטרים (המזהים מקודדים):
+
+```
+http://localhost:8080/shops-4b7e2c/?k=3160&cart=%D7%A0%D7%99%D7%A7001:6&pending=RS-TEST-1&branch=%D7%A7%D7%A0%D7%99%D7%95%D7%9F%20%D7%90%D7%99%D7%99%D7%9C%D7%95%D7%9F
+```
+
+```js
+JSON.stringify({
+  gate: getComputedStyle(document.getElementById('shops-gate')).display,
+  business: document.getElementById('cust-business')?.value,
+  label: document.querySelector('.branch-label')?.textContent,
+  cartRows: Object.keys(window.APP?.cart || {}).length || document.querySelectorAll('#order-table-body tr').length
+})
+```
+
+Expected: ‏`gate: "none"`; ‏`business` ו-`label` שניהם `קניון איילון`; הסל מכיל פריט אחד.
+
+- [ ] **Step 5: לאמת שהעמוד שולח ליעד הממתינות**
 
 לפתוח `http://localhost:8080/shops-4b7e2c/` (קוד ‏`3160`), לבחור סניף, **ליירט את ה-fetch** (אותו קטע מהמשימה הקודמת), להוסיף מוצר, לפתוח את הסל, למלא שם מזמין, ללחוץ "שלח הזמנה", ואז:
 
@@ -562,7 +646,7 @@ JSON.stringify({
 
 Expected: ‏`targets` מכיל את כתובת הממתינות (או את מציין המקום, אם רועי טרם פרס) ו**לא** את `AKfycbz_rRjFdy2MqP`; ‏`wa` ו-`email` שניהם `"none"`; ‏`submit: true`.
 
-- [ ] **Step 4: לאמת שאין דליפה לשאר הקטלוגים**
+- [ ] **Step 6: לאמת שאין דליפה לשאר הקטלוגים**
 
 ```bash
 grep -rn "webhookUrl\|directSend" --include="*.html" . | grep -v node_modules
@@ -570,7 +654,7 @@ grep -rn "webhookUrl\|directSend" --include="*.html" . | grep -v node_modules
 
 Expected: שורות רק מ-`shops-4b7e2c/index.html`.
 
-- [ ] **Step 5: לנקות ולעשות Commit**
+- [ ] **Step 7: לנקות ולעשות Commit**
 
 ```js
 ['aroam_cart_shops-4b7e2c','aroam_recent_orders_shops-4b7e2c'].forEach(k => localStorage.removeItem(k));
@@ -776,7 +860,7 @@ JSON.stringify({
 })
 ```
 
-Expected: השער סגור (`"none"`), הסניף הוא `קניון איילון — סניף 12`, הסל מכיל 2 שורות, ו-`pending` הוא `RS-20260824-1234`. אם הסניף לא נצבע — לבדוק את ההתנהגות של `?branch=` בעמוד ולתקן שם, ולדווח.
+Expected: השער סגור (`"none"`), הסניף הוא `קניון איילון — סניף 12`, הסל מכיל 2 שורות, ו-`pending` הוא `RS-20260824-1234`. המנגנון שצובע את הסניף מהכתובת נבנה במשימה 3 — אם זה נכשל כאן, הבאג שם ולא בעמוד הזה.
 
 - [ ] **Step 6: לאמת שהשליחה מהמצב הזה הולכת ליעד הנכון**
 
