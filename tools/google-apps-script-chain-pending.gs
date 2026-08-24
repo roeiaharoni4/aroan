@@ -97,8 +97,27 @@ function json_(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// הגבלת קצב: עד 200 בקשות בשעה. תקרה גבוהה מ-30 (כמו בסקריפט ההזמנות)
+// כי דפוס השימוש האמיתי כאן הוא גל של כ-60 סניפים שמזמינים יחד פעם
+// בחודשיים — תקרה נמוכה יותר הייתה דוחה הזמנות אמיתיות באמצע הגל.
+// מפתח קאש נפרד (order_count שייך לפרויקט האחר) — הפרויקטים לא חולקים
+// קאש בפועל, אבל מפתח ייעודי שומר את הכוונה ברורה ומונע כל צימוד.
+function rateLimitOk_() {
+  var cache = CacheService.getScriptCache();
+  var count = Number(cache.get('chain_pending_count') || 0);
+  if (count >= 200) return false;
+  cache.put('chain_pending_count', String(count + 1), 3600);
+  return true;
+}
+
 function doPost(e) {
   try {
+    if (!rateLimitOk_()) return json_({ ok: false, error: 'rate limit' });
+
+    if (!e.postData || !e.postData.contents || e.postData.contents.length > 100000) {
+      return json_({ ok: false, error: 'bad request' });
+    }
+
     var data = JSON.parse(e.postData.contents);
     sheet_().appendRow(pendingRow_(data));
     return json_({ ok: true });

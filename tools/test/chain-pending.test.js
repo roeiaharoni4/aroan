@@ -8,18 +8,24 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-function loadGs() {
+// fakeCache, כשמסופק, הוא מה ש-CacheService.getScriptCache() יחזיר בתוך
+// המופע הזה של הקובץ — צריך להיות אותו אובייקט בין קריאות, בדיוק כמו
+// שה-cache האמיתי של גוגל משותף בין הפעלות של אותו סקריפט.
+function loadGs(fakeCache) {
   const src = fs.readFileSync(
     path.join(__dirname, '..', 'google-apps-script-chain-pending.gs'), 'utf8');
   const stubs = `
-    var SpreadsheetApp = {}, CacheService = {}, ContentService = {},
+    var SpreadsheetApp = {}, ContentService = {},
         Utilities = {}, Logger = { log: function () {} };
+    var CacheService = { getScriptCache: function () { return __fakeCache__; } };
   `;
   return new Function(
+    '__fakeCache__',
     stubs + src +
     '; return { pendingRow_: pendingRow_, rowToOrder_: rowToOrder_,' +
-    '   sanitize_: sanitize_, PENDING_HEADERS: PENDING_HEADERS };'
-  )();
+    '   sanitize_: sanitize_, rateLimitOk_: rateLimitOk_,' +
+    '   PENDING_HEADERS: PENDING_HEADERS };'
+  )(fakeCache || null);
 }
 
 const gs = loadGs();
@@ -115,6 +121,37 @@ test('שורה עם JSON פגום מחזירה רשימת פריטים ריקה 
   row[gs.PENDING_HEADERS.indexOf('פריטים')] = '{לא JSON';
   const order = gs.rowToOrder_(row);
   assert.deepStrictEqual(order.items, []);
+});
+
+console.log('rateLimitOk_');
+
+// דמות קאש מינימלית: get/put על מפה בזיכרון, כמו CacheService.getScriptCache()
+function makeFakeCache() {
+  const store = {};
+  const puts = [];
+  return {
+    get: (key) => (key in store ? store[key] : null),
+    put: (key, value, ttl) => { store[key] = value; puts.push({ key, value, ttl }); },
+    puts
+  };
+}
+
+test('200 הבקשות הראשונות מותרות והבאה אחריהן נדחית', () => {
+  const cache = makeFakeCache();
+  const scoped = loadGs(cache);
+  for (let i = 0; i < 200; i++) {
+    assert.strictEqual(scoped.rateLimitOk_(), true, 'בקשה מספר ' + (i + 1) + ' אמורה להיות מותרת');
+  }
+  assert.strictEqual(scoped.rateLimitOk_(), false, 'הבקשה ה-201 אמורה להידחות');
+});
+
+test('המונה נכתב בחזרה לקאש עם TTL של 3600 שניות', () => {
+  const cache = makeFakeCache();
+  const scoped = loadGs(cache);
+  scoped.rateLimitOk_();
+  assert.strictEqual(cache.puts.length, 1);
+  assert.strictEqual(cache.puts[0].ttl, 3600);
+  assert.strictEqual(cache.puts[0].value, '1');
 });
 
 console.log('\n' + passed + ' בדיקות עברו');
