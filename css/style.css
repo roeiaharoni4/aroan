@@ -1464,6 +1464,128 @@ body:has(.fab-container) .scroll-top-btn {
     background: #ffebee;
 }
 
+/* --- הזמנות אחרונות: רשימת תאריכים נפתחת --- */
+/* העטיפה יושבת בתוך .products-grid ולכן חייבת לפרוש על כל העמודות */
+.recent-orders {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ro-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.ro-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text-main);
+    text-align: start;
+}
+
+.ro-head:hover {
+    background: var(--primary-light);
+}
+
+/* משולש CSS — בלי אימוג'י ובלי קובץ אייקון */
+.ro-caret {
+    width: 0;
+    height: 0;
+    border-inline-start: 6px solid var(--primary-dark);
+    border-block: 5px solid transparent;
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+.ro-head[aria-expanded="true"] .ro-caret {
+    transform: rotate(-90deg);
+}
+
+.ro-date {
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.ro-count {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.ro-body[hidden] {
+    display: none;
+}
+
+.ro-body {
+    border-top: 1px solid var(--border-color);
+    padding: 0.5rem 1rem 1rem;
+}
+
+.ro-line {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--primary-light);
+}
+
+/* .ro-actions הוא ה-div האחרון בגוף השורה, ולכן :last-child/:last-of-type
+   לא היו תופסים את שורת המוצר האחרונה — nth-last-child(2) כן */
+.ro-line:nth-last-child(2) {
+    border-bottom: none;
+}
+
+.ro-thumb {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    background: var(--card-img-bg);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.ro-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.ro-qty {
+    font-weight: 700;
+    color: var(--primary-dark);
+    white-space: nowrap;
+}
+
+.ro-line-missing {
+    opacity: 0.55;
+}
+
+.ro-line-missing .ro-qty {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.ro-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ro-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .products-grid {
@@ -1602,6 +1724,29 @@ body:has(.fab-container) .scroll-top-btn {
 
     .fab-container {
         padding: 0.5rem 0.75rem;
+    }
+
+    .ro-head {
+        padding: 0.75rem 0.75rem;
+        font-size: 0.95rem;
+        gap: 0.5rem;
+    }
+
+    .ro-body {
+        padding: 0.4rem 0.75rem 0.85rem;
+    }
+
+    .ro-thumb {
+        width: 34px;
+        height: 34px;
+    }
+
+    .ro-name {
+        font-size: 0.9rem;
+    }
+
+    .ro-actions button {
+        width: 100%;
     }
 }
 
