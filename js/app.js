@@ -2044,7 +2044,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             let available = 0;
             items.forEach(item => {
                 const product = PRODUCTS.find(p => p.id === item.id);
-                if (product) available++;
+                // אותו תנאי בדיוק כמו בלולאת ההוספה בפועל (למטה) — אחרת הכפתור
+                // יכול להיות פעיל בשביל הזמנה שכל הפריטים בה קיימים אבל בכמות 0,
+                // ואז ה"הוספה" לא מוסיפה כלום ומציגה הודעה שגויה ("אין מוצרים זמינים").
+                if (product && parseInt(item.qty, 10) > 0) available++;
 
                 const line = document.createElement('div');
                 line.className = 'ro-line' + (product ? '' : ' ro-line-missing');
@@ -2056,7 +2059,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 img.height = 40;
                 img.alt = '';
                 img.src = (product && product.image) || '/images/logo.png';
-                img.onerror = function () { this.src = '/images/logo.png'; };
+                img.onerror = function () {
+                    // מנקים את ה-handler לפני ההחלפה: כשאין product.image ה-src כבר
+                    // logo.png, והחלפה לאותו ערך לא מרעננת את הבקשה — אם גם היא נכשלת
+                    // (אופליין/קאש קר) הדפדפן ממשיך לירות error על אותו handler ללא סוף.
+                    this.onerror = null;
+                    this.src = '/images/logo.png';
+                };
 
                 const name = document.createElement('span');
                 name.className = 'ro-name';
