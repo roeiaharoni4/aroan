@@ -35,7 +35,12 @@ const DEFAULT_CONFIG = {
     showContact: true,
     // true = דף הסוכן: כפתור שליחה יחיד במקום וואטסאפ/מייל, בורר לקוח ותור
     // אופליין (js/agent.js). כל שאר הקטלוגים נשארים false.
-    agentMode: false
+    agentMode: false,
+    // "הזמנות אחרונות" כרשימת תאריכים נפתחת במקום ערימת כרטיסים שטוחה.
+    // מכובה ב-/care/ (לקוחה פרטית לא חוזרת על אותו סל) וב-/agent/ (המפתח
+    // הוא פר-עמוד ולא פר-לקוח, ולכן הרשימה הייתה מערבבת לקוחות; שם יש
+    // צ'יפ "ההזמנה הקודמת" פר-לקוח ב-js/agent.js).
+    recentOrdersList: true
 };
 
 // שיעור המע״מ בישראל. שינוי כאן משנה גם את התצוגה בחלון ההזמנה וגם את המסמך
@@ -1007,6 +1012,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 renderProducts();
             });
         }
+        // הרשימה הנפתחת מסתירה את הסרגל (אין "N מוצרים" כשמוצגות הזמנות),
+        // ולכן כל רינדור רגיל חייב להחזיר אותו
+        bar.style.display = '';
         bar.querySelector('.results-count').textContent =
             count === 1 ? "מוצר אחד" : count + " מוצרים";
     }
@@ -1015,6 +1023,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!productsEl) return;
         const searchQuery = (searchInput?.value || "").trim();
         productsEl.innerHTML = "";
+
+        // "הזמנות אחרונות": רשימת תאריכים נפתחת במקום ערימת כרטיסים.
+        // חיפוש או בחירת מותג גוברים וחוזרים לתצוגת הכרטיסים הרגילה.
+        if (CONFIG.recentOrdersList && activeCategory === 'recent' && searchQuery === "" && !activeBrand) {
+            const resultsBar = document.getElementById('results-bar');
+            if (resultsBar) resultsBar.style.display = 'none';
+            productsEl.appendChild(renderRecentOrdersList());
+            return;
+        }
+
         let filtered = PRODUCTS;
 
         if (searchQuery !== "") {
@@ -1062,39 +1080,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (filtered.length === 0) {
             productsEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;">לא נמצאו מוצרים.</div>';
             return;
-        }
-
-        // בקטגוריית "הזמנות אחרונות": כפתור למילוי הכמויות מההזמנה האחרונה בבת אחת.
-        // רוב ההזמנות ב-B2B הן חזרה על הזמנה קודמת, ולכן זה מקצר את התהליך משמעותית.
-        if (activeCategory === 'recent' && searchQuery === "" && !activeBrand) {
-            const lastOrder = getRecentOrders()[0];
-            if (lastOrder && (lastOrder.items || []).length) {
-                const bar = document.createElement('div');
-                bar.style.cssText = 'grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--bg-light, #f6faf8); border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 10px 14px;';
-                const label = document.createElement('span');
-                label.textContent = `ההזמנה האחרונה שלך (${lastOrder.date}) — ${lastOrder.items.length} פריטים`;
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'btn btn-primary';
-                btn.textContent = 'הוסף הכל לסל';
-                btn.addEventListener('click', () => {
-                    let added = 0;
-                    lastOrder.items.forEach(i => {
-                        // רק מוצרים שעדיין קיימים בקטלוג
-                        if (!PRODUCTS.some(p => p.id === i.id)) return;
-                        const qty = parseInt(i.qty, 10);
-                        if (!qty || qty <= 0) return;
-                        cart[i.id] = qty;
-                        added++;
-                    });
-                    updateSummary();
-                    renderProducts();
-                    if (added) trackEvent('add_to_cart', { order_items: added, source: 'recent_order' });
-                });
-                bar.appendChild(label);
-                bar.appendChild(btn);
-                productsEl.appendChild(bar);
-            }
         }
 
         // בקטגוריית המבצעים: שורת הסבר על מבצע הסל (קנייה מעל סכום/כמות)
@@ -2009,6 +1994,117 @@ document.addEventListener("DOMContentLoaded", async () => {
         const ids = new Set();
         getRecentOrders().forEach(o => (o.items || []).forEach(i => ids.add(i.id)));
         return ids;
+    }
+
+    // --- הזמנות אחרונות כרשימת תאריכים נפתחת ---
+    // הכמויות נשמרו מאז ומעולם ב-saveRecentOrder אבל אף פעם לא הוצגו:
+    // הקטגוריה הראתה ערימה שטוחה של כל המוצרים מ-5 ההזמנות מעורבבים יחד.
+    // מצב הפתיחה נשמר ב-Set כדי שהוספה לסל לא תסגור את השורה.
+    const openRecentRows = new Set([0]);
+
+    function formatOrderDate(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+        return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso || '');
+    }
+
+    function renderRecentOrdersList() {
+        const wrap = document.createElement('div');
+        wrap.className = 'recent-orders';
+
+        getRecentOrders().forEach((order, index) => {
+            const items = (order.items || []).filter(i => i && i.id);
+            const isOpen = openRecentRows.has(index);
+
+            const row = document.createElement('div');
+            row.className = 'ro-row';
+
+            const head = document.createElement('button');
+            head.type = 'button';
+            head.className = 'ro-head';
+            head.setAttribute('aria-expanded', String(isOpen));
+            head.innerHTML =
+                '<span class="ro-caret" aria-hidden="true"></span>' +
+                '<span class="ro-date"></span>' +
+                '<span class="ro-count"></span>';
+            head.querySelector('.ro-date').textContent = formatOrderDate(order.date);
+            head.querySelector('.ro-count').textContent =
+                items.length === 1 ? 'פריט אחד' : items.length + ' פריטים';
+
+            const body = document.createElement('div');
+            body.className = 'ro-body';
+            body.hidden = !isOpen;
+
+            head.addEventListener('click', () => {
+                const open = !openRecentRows.has(index);
+                if (open) openRecentRows.add(index); else openRecentRows.delete(index);
+                head.setAttribute('aria-expanded', String(open));
+                body.hidden = !open;
+            });
+
+            let available = 0;
+            items.forEach(item => {
+                const product = PRODUCTS.find(p => p.id === item.id);
+                if (product) available++;
+
+                const line = document.createElement('div');
+                line.className = 'ro-line' + (product ? '' : ' ro-line-missing');
+
+                const img = document.createElement('img');
+                img.className = 'ro-thumb';
+                img.loading = 'lazy';
+                img.width = 40;
+                img.height = 40;
+                img.alt = '';
+                img.src = (product && product.image) || '/images/logo.png';
+                img.onerror = function () { this.src = '/images/logo.png'; };
+
+                const name = document.createElement('span');
+                name.className = 'ro-name';
+                name.textContent = product ? product.name : 'מק״ט ' + item.id;
+
+                const qty = document.createElement('span');
+                qty.className = 'ro-qty';
+                qty.textContent = product ? '× ' + item.qty : 'לא זמין';
+
+                line.appendChild(img);
+                line.appendChild(name);
+                line.appendChild(qty);
+                body.appendChild(line);
+            });
+
+            const actions = document.createElement('div');
+            actions.className = 'ro-actions';
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-primary';
+            addBtn.textContent = 'הוסף הכל לסל';
+            addBtn.disabled = available === 0;
+            addBtn.addEventListener('click', () => {
+                let added = 0;
+                items.forEach(i => {
+                    // רק מוצרים שעדיין קיימים בקטלוג (נמחקו, או לא נכללים
+                    // ברשימת הרשת ב-allowedProductsSource)
+                    if (!PRODUCTS.some(p => p.id === i.id)) return;
+                    const qty = parseInt(i.qty, 10);
+                    if (!qty || qty <= 0) return;
+                    cart[i.id] = qty;
+                    added++;
+                });
+                // בכוונה בלי renderProducts(): רינדור מחדש היה סוגר את השורה
+                // הפתוחה בכל לחיצה. הסל והבר התחתון מתעדכנים מ-updateSummary.
+                updateSummary();
+                if (added) trackEvent('add_to_cart', { order_items: added, source: 'recent_order' });
+                showToast(added ? `נוספו ${added} פריטים לסל` : 'אין מוצרים זמינים בהזמנה הזאת');
+            });
+            actions.appendChild(addBtn);
+            body.appendChild(actions);
+
+            row.appendChild(head);
+            row.appendChild(body);
+            wrap.appendChild(row);
+        });
+
+        return wrap;
     }
 
     function fillOrderTable() {
