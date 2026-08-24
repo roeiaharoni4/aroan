@@ -1509,6 +1509,12 @@ body:has(.fab-container) .scroll-top-btn {
     flex-shrink: 0;
 }
 
+/* --primary-dark אינו מתחלף במצב כהה בעוד --bg-surface כן —
+   בלי דריסה המשולש כמעט נבלע ברקע הכהה */
+[data-theme="dark"] .ro-caret {
+    border-inline-start-color: var(--primary-pastel);
+}
+
 .ro-head[aria-expanded="true"] .ro-caret {
     transform: rotate(-90deg);
 }
@@ -1516,6 +1522,12 @@ body:has(.fab-container) .scroll-top-btn {
 .ro-date {
     font-weight: 700;
     color: var(--primary-dark);
+}
+
+/* --primary-dark אינו מתחלף במצב כהה בעוד --bg-surface כן —
+   בלי דריסה התאריך יוצא כמעט בלתי קריא על הרקע הכהה */
+[data-theme="dark"] .ro-date {
+    color: var(--primary-pastel);
 }
 
 .ro-count {
@@ -1564,6 +1576,12 @@ body:has(.fab-container) .scroll-top-btn {
     font-weight: 700;
     color: var(--primary-dark);
     white-space: nowrap;
+}
+
+/* --primary-dark אינו מתחלף במצב כהה בעוד --bg-surface כן —
+   בלי דריסה הכמות יוצאת כמעט בלתי קריאה על הרקע הכהה */
+[data-theme="dark"] .ro-qty {
+    color: var(--primary-pastel);
 }
 
 .ro-line-missing {
