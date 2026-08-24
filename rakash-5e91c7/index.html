@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>אישור הזמנות סניפים | אהרוני שיווק והפצה</title>
+    <!-- עמוד סגור למנהלת הרכש של הרשת: נגיש רק דרך קישור + קוד. לא מאונדקס,
+         לא ב-sitemap, ובכוונה לא ב-robots.txt (חסימה שם הייתה חושפת את הכתובת). -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap"></noscript>
+
+    <!-- Styles — style.css מביא את הטוקנים ואת כללי הרשימה הנפתחת (.ro-*),
+         שנבנו ל"הזמנות אחרונות" ומשמשים כאן שימוש חוזר בלי CSS חדש -->
+    <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="/css/style.css?v=37">
+    <style>
+        body {
+            background: var(--primary-light, #EAF3EE);
+            min-height: 100vh;
+        }
+
+        /* --- שער הכניסה --- */
+        #rakash-gate {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: var(--primary-dark, #1A4231);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: safe center;
+            gap: 18px;
+            padding: 24px;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        #rakash-form {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #rakash-code {
+            padding: 0.7rem 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+            width: 190px;
+            letter-spacing: 0.15em;
+        }
+
+        #rakash-gate button[type="submit"] {
+            padding: 0.7rem 1.6rem;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary-pastel, #8FD6A3);
+            color: var(--primary-dark, #1A4231);
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #rakash-error {
+            display: none;
+            color: #ffd6d1;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        body.rakash-locked {
+            overflow: hidden;
+        }
+
+        /* --- כותרת --- */
+        .rakash-header {
+            background: var(--bg-surface, #fff);
+            border-bottom: 1px solid var(--border-color, #e0e0e0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .rakash-header-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .rakash-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--primary-dark, #1A4231);
+        }
+
+        /* --- גוף --- */
+        .rakash-main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.2rem 1rem 2rem;
+        }
+
+        .rakash-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .rakash-filters button {
+            padding: 0.5rem 1.1rem;
+            border-radius: 999px;
+            border: 1px solid var(--primary, #639C7D);
+            background: var(--bg-surface, #fff);
+            color: var(--primary-dark, #1A4231);
+            font-family: inherit;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .rakash-filters button.active {
+            background: var(--primary-dark, #1A4231);
+            border-color: var(--primary-dark, #1A4231);
+            color: #fff;
+        }
+
+        .rakash-count {
+            color: var(--text-secondary, #6B6B6B);
+            font-size: 0.95rem;
+            margin: 0 0 0.8rem;
+        }
+
+        /* פרטי המזמין וההערות בראש השורה הפתוחה */
+        .order-meta {
+            margin: 0 0 0.6rem;
+            color: var(--text-secondary, #6B6B6B);
+            font-size: 0.9rem;
+        }
+
+        .rakash-state {
+            background: var(--bg-surface, #fff);
+            border: 1px solid var(--border-color, #e0e0e0);
+            border-radius: var(--radius-md, 12px);
+            padding: 1.6rem 1rem;
+            text-align: center;
+            color: var(--text-secondary, #6B6B6B);
+        }
+
+        .rakash-state.error {
+            border-color: #d32f2f;
+            color: #d32f2f;
+        }
+
+        /* השורה נפתחת בלי תמונות — הרשימה כאן היא לסקירה מהירה של 60 הזמנות */
+        .ro-line {
+            justify-content: space-between;
+        }
+
+        /* --- פוטר --- */
+        .rakash-footer {
+            background: var(--primary-dark, #1A4231);
+            color: #fff;
+            margin-top: 2rem;
+            padding: 1.2rem 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .rakash-footer a {
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- שער כניסה -->
+    <div id="rakash-gate" role="dialog" aria-modal="true" aria-labelledby="rakash-gate-title">
+        <img src="/images/logo.png" alt="אהרוני שיווק והפצה" width="120" height="65">
+        <h2 id="rakash-gate-title">אישור הזמנות סניפים</h2>
+        <p>הזינו את קוד הכניסה.</p>
+        <form id="rakash-form">
+            <input type="text" id="rakash-code" inputmode="numeric" autocomplete="off" placeholder="קוד כניסה"
+                aria-label="קוד כניסה">
+            <button type="submit">כניסה</button>
+        </form>
+        <p id="rakash-error">הקוד שגוי — נסו שוב</p>
+    </div>
+
+    <header class="rakash-header">
+        <div class="rakash-header-inner">
+            <img src="/images/logo.png" alt="אהרוני שיווק והפצה" width="100" height="54"
+                style="height:48px; width:auto;">
+            <span class="rakash-title">אישור הזמנות סניפים</span>
+        </div>
+    </header>
+
+    <main class="rakash-main">
+        <div class="rakash-filters">
+            <button type="button" data-status="pending" class="active">ממתינות</button>
+            <button type="button" data-status="sent">נשלחו</button>
+            <button type="button" data-status="all">הכל</button>
+        </div>
+        <p class="rakash-count" id="rakash-count"></p>
+        <div id="orders"></div>
+    </main>
+
+    <footer class="rakash-footer">
+        <div>אהרוני שיווק והפצה</div>
+        <div style="margin-top:6px; opacity:0.75;">
+            <a href="/accessibility/">הצהרת נגישות</a>
+            <span>·</span>
+            <a href="/privacy/">מדיניות פרטיות</a>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            // ===== קוד הכניסה — לשינוי כאן בלבד =====
+            var ACCESS_CODE = '8264';
+            // =========================================
+            // כתובת הסקריפט "הזמנות ממתינות". מציין מקום עד שרועי פורס אותו.
+            var API_URL = 'PUT_THE_PENDING_WEBHOOK_URL_HERE';
+            // הקישור לעריכה נכנס לעמוד החנויות עם הקוד שלו, כדי שלא תצטרך
+            // להקליד קוד שני בכל הזמנה
+            var SHOPS_URL = '/shops-4b7e2c/';
+            var SHOPS_CODE = '3160';
+            var CODE_KEY = 'aroam_rakash_ok';
+
+            var gate = document.getElementById('rakash-gate');
+            var form = document.getElementById('rakash-form');
+            var input = document.getElementById('rakash-code');
+            var codeError = document.getElementById('rakash-error');
+            var ordersEl = document.getElementById('orders');
+            var countEl = document.getElementById('rakash-count');
+            var filters = document.querySelectorAll('.rakash-filters button');
+
+            var currentStatus = 'pending';
+
+            document.body.classList.add('rakash-locked');
+
+            function normalize(v) { return String(v || '').trim(); }
+            function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+            function write(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+
+            function hideGate() {
+                gate.style.display = 'none';
+                document.body.classList.remove('rakash-locked');
+            }
+
+            // סיסמת ה-API נפרדת מקוד הכניסה לעמוד: הקוד פותח את המסך, הסיסמה
+            // נשלחת לסקריפט. נשמרת ל-session בלבד — אותו דפוס כמו היסטוריית
+            // ההצעות בדף הסוכן, ולא ב-localStorage.
+            function apiPassword() {
+                var pw = sessionStorage.getItem('aroam_rakash_key') || '';
+                if (!pw) {
+                    pw = prompt('קוד גישה לרשימת ההזמנות:') || '';
+                    if (pw) sessionStorage.setItem('aroam_rakash_key', pw);
+                }
+                return pw;
+            }
+
+            function fetchOrders(status) {
+                // מגבלת זמן: בלי זה בקשה שנתקעת (רשת גרועה, או הכתובת עדיין
+                // מציין מקום) משאירה את המסך על "טוען" לנצח בלי שום הסבר.
+                var ctrl = new AbortController();
+                var timer = setTimeout(function () { ctrl.abort(); }, 15000);
+                return fetch(API_URL + '?action=list&status=' + encodeURIComponent(status) +
+                    '&password=' + encodeURIComponent(apiPassword()), { signal: ctrl.signal })
+                    .then(function (r) { clearTimeout(timer); return r.json(); })
+                    .then(function (data) {
+                        if (!data.ok) {
+                            // סיסמה שגויה — מוחקים כדי שהניסיון הבא ישאל מחדש
+                            if (data.error === 'unauthorized') sessionStorage.removeItem('aroam_rakash_key');
+                            throw new Error(data.error || 'שגיאה בטעינת ההזמנות');
+                        }
+                        return data.orders || [];
+                    });
+            }
+
+            // הקישור פותח את עמוד החנויות עם ההזמנה טעונה בסל. הפרמטר pending
+            // הוא מה שהופך את השליחה שם ל"אישור רכש": קידומת RA והיעד חוזר
+            // ל-webhook הרגיל של אהרוני.
+            function editUrl(order) {
+                var cart = (order.items || [])
+                    .filter(function (i) { return i.id && Number(i.qty) > 0; })
+                    .map(function (i) { return encodeURIComponent(i.id) + ':' + i.qty; })
+                    .join(',');
+                return SHOPS_URL + '?k=' + encodeURIComponent(SHOPS_CODE) +
+                    '&cart=' + cart +
+                    '&pending=' + encodeURIComponent(order.orderId) +
+                    '&branch=' + encodeURIComponent(order.branch || '');
+            }
+
+            function renderOrders(orders) {
+                ordersEl.innerHTML = '';
+                countEl.textContent = orders.length === 1
+                    ? 'הזמנה אחת' : orders.length + ' הזמנות';
+
+                if (!orders.length) {
+                    var empty = document.createElement('div');
+                    empty.className = 'rakash-state';
+                    empty.textContent = 'אין הזמנות בקטגוריה הזאת.';
+                    ordersEl.appendChild(empty);
+                    return;
+                }
+
+                var list = document.createElement('div');
+                list.className = 'recent-orders';
+
+                orders.forEach(function (order) {
+                    var row = document.createElement('div');
+                    row.className = 'ro-row';
+
+                    var head = document.createElement('button');
+                    head.type = 'button';
+                    head.className = 'ro-head';
+                    head.setAttribute('aria-expanded', 'false');
+                    head.innerHTML = '<span class="ro-caret" aria-hidden="true"></span>' +
+                        '<span class="ro-date"></span><span class="ro-count"></span>';
+                    head.querySelector('.ro-date').textContent = order.branch || '(בלי סניף)';
+                    head.querySelector('.ro-count').textContent =
+                        order.itemCount + ' פריטים · ' + order.status;
+
+                    var body = document.createElement('div');
+                    body.className = 'ro-body';
+                    body.hidden = true;
+
+                    head.addEventListener('click', function () {
+                        body.hidden = !body.hidden;
+                        head.setAttribute('aria-expanded', String(!body.hidden));
+                    });
+
+                    var metaParts = [];
+                    if (order.orderer) metaParts.push('מזמין: ' + order.orderer);
+                    if (order.receivedAt) metaParts.push('התקבלה: ' + order.receivedAt);
+                    if (order.notes) metaParts.push('הערות: ' + order.notes);
+                    if (metaParts.length) {
+                        var meta = document.createElement('p');
+                        meta.className = 'order-meta';
+                        meta.textContent = metaParts.join(' · ');
+                        body.appendChild(meta);
+                    }
+
+                    (order.items || []).forEach(function (item) {
+                        var line = document.createElement('div');
+                        line.className = 'ro-line';
+                        var name = document.createElement('span');
+                        name.className = 'ro-name';
+                        name.textContent = item.name || item.id;
+                        var qty = document.createElement('span');
+                        qty.className = 'ro-qty';
+                        qty.textContent = '× ' + item.qty;
+                        line.appendChild(name);
+                        line.appendChild(qty);
+                        body.appendChild(line);
+                    });
+
+                    var actions = document.createElement('div');
+                    actions.className = 'ro-actions';
+                    var edit = document.createElement('a');
+                    edit.className = 'btn btn-primary';
+                    edit.href = editUrl(order);
+                    edit.textContent = order.status === 'נשלחה' ? 'פתח שוב' : 'ערוך ושלח';
+                    actions.appendChild(edit);
+                    body.appendChild(actions);
+
+                    row.appendChild(head);
+                    row.appendChild(body);
+                    list.appendChild(row);
+                });
+
+                ordersEl.appendChild(list);
+            }
+
+            function showError(message) {
+                countEl.textContent = '';
+                ordersEl.innerHTML = '';
+                var box = document.createElement('div');
+                box.className = 'rakash-state error';
+                box.textContent = message;
+                ordersEl.appendChild(box);
+            }
+
+            function load() {
+                ordersEl.innerHTML = '<div class="rakash-state">טוען הזמנות…</div>';
+                countEl.textContent = '';
+                fetchOrders(currentStatus)
+                    .then(renderOrders)
+                    .catch(function (err) {
+                        console.error(err);
+                        showError('לא הצלחנו לטעון את ההזמנות. נסו לרענן את העמוד.');
+                    });
+            }
+
+            filters.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    filters.forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    currentStatus = btn.dataset.status;
+                    load();
+                });
+            });
+
+            function unlock() {
+                hideGate();
+                load();
+            }
+
+            // קוד בכתובת (?k=) — נמחק מיד כדי שלא ידלוף בצילום מסך או בשיתוף
+            var fromUrl = normalize(new URLSearchParams(location.search).get('k'));
+            if (fromUrl === ACCESS_CODE) {
+                var url = new URL(location.href);
+                url.searchParams.delete('k');
+                history.replaceState(null, '', url.pathname + url.search + url.hash);
+                write(CODE_KEY, ACCESS_CODE);
+                unlock();
+            } else if (normalize(read(CODE_KEY)) === ACCESS_CODE) {
+                unlock();
+            } else {
+                setTimeout(function () { input.focus(); }, 100);
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (normalize(input.value) !== ACCESS_CODE) {
+                    codeError.style.display = 'block';
+                    input.select();
+                    return;
+                }
+                write(CODE_KEY, ACCESS_CODE);
+                codeError.style.display = 'none';
+                unlock();
+            });
+        })();
+    </script>
+</body>
+
+</html>
