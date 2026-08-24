@@ -445,7 +445,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=51" defer></script>
+    <script src="/js/app.js?v=52" defer></script>
 </head>
 
 <body>
@@ -813,6 +813,21 @@
                 nameEl.addEventListener('input', function () {
                     write(NAME_KEY, nameEl.value.trim());
                 });
+            });
+
+            // אחרי שמנהלת הרכש שלחה — מסמנים את השורה בגיליון הממתינות.
+            // נכשל בשקט בכוונה: ההזמנה כבר יצאה לאהרוני, וכישלון סימון הוא
+            // אי-נוחות ברשימה שלה ולא אובדן הזמנה.
+            document.addEventListener('aroam:order-sent', function (ev) {
+                if (!PENDING_ID) return;
+                var pw = '';
+                try { pw = sessionStorage.getItem('aroam_rakash_key') || ''; } catch (e) { }
+                if (!pw) return;
+                var approved = (ev.detail && ev.detail.orderId) || '';
+                fetch(window.PENDING_API + '?action=mark&status=sent' +
+                    '&id=' + encodeURIComponent(PENDING_ID) +
+                    '&approvedId=' + encodeURIComponent(approved) +
+                    '&password=' + encodeURIComponent(pw)).catch(function () { });
             });
 
             start();
