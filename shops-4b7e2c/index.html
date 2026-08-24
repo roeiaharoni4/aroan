@@ -414,6 +414,9 @@
 
     <!-- Scripts -->
     <script>
+        // כתובת הסקריפט "הזמנות ממתינות". ההזמנה של הסניף נעצרת שם ומחכה
+        // למנהלת הרכש. מציין מקום עד שרועי פורס את הסקריפט בחשבון שלו.
+        window.PENDING_API = 'PUT_THE_PENDING_WEBHOOK_URL_HERE';
         window.CATALOG_CONFIG = {
             // סיכום ההזמנה נפתח כתצוגה מלאת-מסך עם כתובת משלה
             cartView: true,
@@ -421,7 +424,11 @@
             showPrices: false,
             showAddButton: true,
             allowPdf: false,
-            allowShare: true,
+            // הזמנת סניף נעצרת אצל מנהלת הרכש: כפתור שליחה יחיד, בלי
+            // וואטסאפ ובלי מייל, והיעד הוא גיליון ההזמנות הממתינות.
+            allowShare: false,
+            directSend: true,
+            webhookUrl: window.PENDING_API,
             // הקטלוג הוא products.csv הרגיל, מסונן לרשימת המזהים שרועי בחר.
             // אין כאן מחירון נפרד — כך שם/תמונה/תיאור אף פעם לא מתיישנים.
             allowedProductsSource: '/data/chain.json',
@@ -573,6 +580,31 @@
             function unlock(b) {
                 paintBranch(b);
                 hideGate();
+            }
+
+            // --- מצב אישור רכש ---
+            // מנהלת הרכש נכנסת מהמסך שלה עם קישור שנושא את הסניף ואת מספר
+            // ההזמנה הממתינה. הסניף מגיע מההזמנה עצמה ולא מהבורר, ולכן הוא
+            // נצבע ישירות ואינו מאומת מול chain.json: סניף ששמו שונה בקובץ
+            // אחרי שההזמנה נשלחה עדיין חייב להיפתח לעריכה.
+            var PENDING_ID = new URLSearchParams(location.search).get('pending');
+            var PENDING_BRANCH = new URLSearchParams(location.search).get('branch');
+
+            function pendingBranchObj() {
+                if (!PENDING_ID || !PENDING_BRANCH) return null;
+                // אותה תבנית שבה branchLabel מרכיב את השם, בכיוון ההפוך
+                var sep = PENDING_BRANCH.indexOf(' — ');
+                return sep === -1
+                    ? { mall: '', store: PENDING_BRANCH }
+                    : { mall: PENDING_BRANCH.slice(0, sep), store: PENDING_BRANCH.slice(sep + 3) };
+            }
+
+            function applyPendingBranch() {
+                var b = pendingBranchObj();
+                if (!b) return false;
+                paintBranch(b);
+                hideGate();
+                return true;
             }
 
             // --- שלב 2: בורר הסניף — ריבועים, קודם מרכזי קניות ואז החנויות שבמרכז ---
@@ -740,7 +772,11 @@
 
                 if (!hasCode) { setTimeout(function () { input.focus(); }, 100); return; }
 
-                // 3. סניף ששמור מכניסה קודמת — ועדיין קיים בקובץ
+                // 3. אישור רכש גובר על הסניף השמור במכשיר: מנהלת הרכש עשויה
+                //    לפתוח הזמנות של סניפים שונים בזה אחר זה מאותו דפדפן.
+                if (applyPendingBranch()) return;
+
+                // 4. סניף ששמור מכניסה קודמת — ועדיין קיים בקובץ
                 var b = savedBranch();
                 if (branchExists(b)) unlock(b);
                 else showBranchPicker();
@@ -764,8 +800,10 @@
             // הסניף נכתב ל-DOM רק אחרי שהוא נבנה. כשהמשתמש לוחץ "המשך" ה-DOM
             // כבר קיים; במסלול "סניף שמור" הכניסה עשויה לקרות לפני כן, ולכן צובעים שוב.
             document.addEventListener('DOMContentLoaded', function () {
-                var b = savedBranch();
-                if (b && b.store && !gateOpen) paintBranch(b);
+                if (!applyPendingBranch()) {
+                    var b = savedBranch();
+                    if (b && b.store && !gateOpen) paintBranch(b);
+                }
 
                 // שם המזמין נזכר במכשיר — בעל החנות מזמין שוב ושוב מאותו טלפון
                 var nameEl = document.getElementById('cust-contact');
@@ -929,6 +967,9 @@
 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
                     <button id="clear-cart-btn" class="btn btn-danger">נקה הזמנה</button>
+                    <button id="submit-order-btn" class="btn btn-primary" style="min-width: 160px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4z"></path></svg>שלח הזמנה
+                    </button>
                     <button id="send-email" class="btn btn-outline" style="min-width: 120px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-10 5L2 7"></path></svg>שלח במייל
                     </button>

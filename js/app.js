@@ -206,6 +206,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     init();
 
     async function init() {
+        // נקרא ראשון: שחזור העגלה השמורה מדלג על עצמו במצב אישור רכש,
+        // והוא רץ הרבה לפני שאר קריאת הפרמטרים.
+        const initParams = new URLSearchParams(window.location.search);
+        PENDING_APPROVAL = initParams.get('pending');
+        ORIGINAL_BRANCH = initParams.get('branch');
+
         // Create Skeleton
         renderSkeleton(8);
 
@@ -244,9 +250,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         // שיטות אספקה ודמי משלוח (רק כשמוגדר shippingSource — קטלוג הטיפוח)
         await loadShipping();
 
-        // שחזור עגלה שמורה מהמכשיר (פרמטר cart ב-URL גובר עליה בהמשך)
+        // שחזור עגלה שמורה מהמכשיר (פרמטר cart ב-URL גובר עליה בהמשך).
+        // באישור רכש מדלגים עליה בכוונה: מנהלת הרכש פותחת הזמנה של סניף אחד
+        // אחרי השני מאותו דפדפן, ושארית מהזמנה קודמת הייתה נדבקת לזו הבאה —
+        // ההזמנה שבקישור היא המקור היחיד.
         try {
-            const savedCart = JSON.parse(localStorage.getItem(CART_KEY) || 'null');
+            const savedCart = PENDING_APPROVAL
+                ? null
+                : JSON.parse(localStorage.getItem(CART_KEY) || 'null');
             if (savedCart) {
                 Object.entries(savedCart).forEach(([id, q]) => {
                     if (q > 0 && PRODUCTS.some(p => p.id === id)) cart[id] = q;
@@ -269,8 +280,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const categoryParam = urlParams.get('category') || CONFIG.presetCategory || null;
         const searchParam = urlParams.get('search');
         const cartParam = urlParams.get('cart');
-        PENDING_APPROVAL = urlParams.get('pending');
-        ORIGINAL_BRANCH = urlParams.get('branch');
 
         // Restore Cart from URL
         if (cartParam) {
@@ -1681,18 +1690,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        // דף הסוכן: כפתור שליחה יחיד. אין כאן וואטסאפ/מייל כי הנמען הוא רועי
-        // עצמו — ההזמנה פשוט נדחפת ל-webhook, וזה גם מה שמאפשר להכניס אותה
-        // לתור כשאין רשת (js/agent.js).
-        if (CONFIG.agentMode && submitOrderBtn) {
+        // כפתור שליחה יחיד. שני מקרים: דף הסוכן, שבו הנמען הוא רועי עצמו
+        // וההזמנה נדחפת ל-webhook (וזה גם מה שמאפשר תור כשאין רשת,
+        // js/agent.js), ועמוד רשת החנויות, שבו ההזמנה נעצרת אצל מנהלת הרכש
+        // ולכן אין למי לשלוח בוואטסאפ או במייל.
+        if ((CONFIG.agentMode || CONFIG.directSend) && submitOrderBtn) {
             submitOrderBtn.addEventListener("click", () => {
                 if (Object.keys(cart).length === 0) {
                     showToast("ההזמנה ריקה");
                     return;
                 }
-                const sent = commitOrder('agent');
+                const method = CONFIG.agentMode ? 'agent' : 'direct';
+                const sent = commitOrder(method);
                 if (!sent) return;
-                showOrderConfirmation(sent.orderId, 'agent');
+                showOrderConfirmation(sent.orderId, method);
             });
         }
 
@@ -1869,19 +1880,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         const overlay = document.createElement("div");
         overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
 
-        // דף הסוכן: אין ערוץ שנפתח ואין למי "לחזור" — ההזמנה כבר נקלטה.
-        const isAgent = method === 'agent';
-        const methodText = isAgent
-            ? 'ההזמנה נשלחה למשרד. תעודת ההזמנה תגיע למייל.'
-            : (method === 'whatsapp'
-                ? 'ההזמנה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.'
-                : 'ההזמנה נפתחה במייל - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.');
+        // שני מסלולים שבהם לא נפתח שום ערוץ חיצוני: דף הסוכן ועמוד רשת
+        // החנויות דוחפים ישירות ל-webhook, ולכן אין חלון לוודא בו שנשלח.
+        const isDirect = method === 'agent' || method === 'direct';
+        let methodText;
+        if (method === 'agent') {
+            methodText = 'ההזמנה נשלחה למשרד. תעודת ההזמנה תגיע למייל.';
+        } else if (method === 'direct') {
+            // אותו כפתור משמש את הסניף ואת מנהלת הרכש, ולכל אחד היעד שונה
+            methodText = PENDING_APPROVAL
+                ? 'ההזמנה נשלחה לאהרוני שיווק והפצה.'
+                : 'ההזמנה נשלחה ותעבור לאישור מנהלת הרכש של הרשת.';
+        } else if (method === 'whatsapp') {
+            methodText = 'ההזמנה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.';
+        } else {
+            methodText = 'ההזמנה נפתחה במייל - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.';
+        }
 
         const box = document.createElement("div");
         box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
         box.innerHTML = `
             <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#639C7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>
-            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${isAgent ? 'ההזמנה נקלטה' : 'ההזמנה נשלחה!'}</h2>
+            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${isDirect ? 'ההזמנה נקלטה' : 'ההזמנה נשלחה!'}</h2>
             <p style="margin:0 0 0.4rem; font-weight:700;">מספר הזמנה: ${orderId}</p>
             <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">${methodText}</p>
             <button id="order-confirm-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">סגור</button>
@@ -1891,8 +1911,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const close = () => {
             overlay.remove();
-            // דף הסוכן: ההזמנה נסגרה — הסל מתרוקן כדי שהביקור הבא יתחיל נקי
-            if (isAgent) {
+            // מסלול ישיר: ההזמנה כבר נקלטה — הסל מתרוקן כדי שהביקור הבא
+            // (לקוח אחר אצל הסוכן, או הזמנה חדשה של הסניף) יתחיל נקי
+            if (isDirect) {
                 Object.keys(cart).forEach(k => delete cart[k]);
                 renderProducts();
                 updateSummary();
