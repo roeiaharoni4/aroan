@@ -33,6 +33,13 @@ const DEFAULT_CONFIG = {
     quoteVat: false,
     // פרטי הקשר ברצועה העליונה של תצוגת הסל (מכובה בעמוד רשת החנויות)
     showContact: true,
+    // יעד ה-webhook. null = הסקריפט הרגיל של ההזמנות (GOOGLE_SCRIPT_WEBHOOK_URL).
+    // עמוד רשת החנויות מפנה את הזמנות הסניפים לסקריפט "הזמנות ממתינות",
+    // כדי שהן ייעצרו אצל מנהלת הרכש ולא יגיעו ישירות לרועי.
+    webhookUrl: null,
+    // כפתור שליחה יחיד במקום וואטסאפ/מייל. עד כה ההתנהגות הזאת הייתה קשורה
+    // ל-agentMode, שגורר איתו גם את בורר הלקוח ואת ה-class agent-mode.
+    directSend: false,
     // true = דף הסוכן: כפתור שליחה יחיד במקום וואטסאפ/מייל, בורר לקוח ותור
     // אופליין (js/agent.js). כל שאר הקטלוגים נשארים false.
     agentMode: false,
@@ -54,6 +61,12 @@ let CART_PROMO = null;
 let PROMO_WINDOW = { starts: '', ends: '' }; // חלון תוקף גלובלי למבצעים (ריק = בלי הגבלה)
 
 let IMAGE_BASE_URL = '';
+
+// מצב "אישור רכש": מנהלת הרכש פתחה הזמנת סניף ממתינה לעריכה. הערך הוא
+// מספר ההזמנה המקורי (RS-...), והוא מה שמסמן לסקריפט הממתינות שההזמנה טופלה.
+let PENDING_APPROVAL = null;
+// הסניף שנשלח בקישור העריכה — הערך המקורי לפני שמנהלת הרכש נגעה בו.
+let ORIGINAL_BRANCH = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
     // Determine Image Base URL dynamically
@@ -256,6 +269,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const categoryParam = urlParams.get('category') || CONFIG.presetCategory || null;
         const searchParam = urlParams.get('search');
         const cartParam = urlParams.get('cart');
+        PENDING_APPROVAL = urlParams.get('pending');
+        ORIGINAL_BRANCH = urlParams.get('branch');
 
         // Restore Cart from URL
         if (cartParam) {
@@ -2294,7 +2309,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             String(today.getMonth() + 1).padStart(2, '0') +
             String(today.getDate()).padStart(2, '0');
         const rand = Math.floor(1000 + Math.random() * 9000);
-        return `${CONFIG.orderPrefix || 'AR'}-${yyyymmdd}-${rand}`;
+        // הזמנה שעברה את מנהלת הרכש מקבלת קידומת משלה, כדי שבגיליון של רועי
+        // יהיה ברור מיד שהיא אושרה ולא הגיעה ישירות מסניף.
+        const prefix = PENDING_APPROVAL ? 'RA' : (CONFIG.orderPrefix || 'AR');
+        return `${prefix}-${yyyymmdd}-${rand}`;
     }
 
     // מספר הצעה באותה תבנית כמו מספר ההזמנה (AR-20260820-4437), במקום
@@ -2357,6 +2375,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             // לצרף למייל קישור "פתח כהצעת מחיר" — הוא לא יכול להסיק את זה
             // מ-totalPrice, שמחושב מ-products.csv גם כשהמחירים מוסתרים.
             showPrices: !!CONFIG.showPrices,
+            // אישור רכש: מספר ההזמנה המקורי של הסניף, כדי שאפשר יהיה לקשר
+            // בין השורה בגיליון הממתינות לבין ההזמנה שנוצרה אצל רועי.
+            pendingId: PENDING_APPROVAL || '',
+            // הסניף כפי שהסניף עצמו שלח. כשמנהלת הרכש מחליפה סניף, השדה
+            // business נושא את החדש והשדה הזה את המקורי — אחרת אי אפשר לדעת
+            // במשלוח לאיזו חנות ההזמנה נועדה במקור.
+            originalBranch: ORIGINAL_BRANCH || '',
             customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
         };
     }
@@ -2365,12 +2390,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     // אישור הצלחה אמיתי — false מסמן כשל רשת בלבד, וזה מה שמזין את תור
     // האופליין של דף הסוכן (js/agent.js).
     async function postOrderPayload(payload) {
-        if (!GOOGLE_SCRIPT_WEBHOOK_URL) {
+        // אחרי אישור של מנהלת הרכש ההזמנה חוזרת ל-webhook הרגיל, גם בעמוד
+        // שמוגדר לשלוח לגיליון הממתינות — לכן PENDING_APPROVAL גובר.
+        const target = PENDING_APPROVAL
+            ? GOOGLE_SCRIPT_WEBHOOK_URL
+            : (CONFIG.webhookUrl || GOOGLE_SCRIPT_WEBHOOK_URL);
+        if (!target) {
             console.log("Google Script Webhook URL is not set. Skipping backup email.");
             return false;
         }
         try {
-            await fetch(GOOGLE_SCRIPT_WEBHOOK_URL, {
+            await fetch(target, {
                 method: "POST",
                 mode: "no-cors",
                 headers: {
