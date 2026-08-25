@@ -1946,6 +1946,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
     }
 
+    // סימון שדה חסר. הטוסט לבדו לא מספיק: הוא נעלם אחרי 3 שניות ומופיע
+    // בתחתית המסך, ואם השדה מחוץ לתצוגה זה נראה כאילו כפתור השליחה שבור.
+    // לכן גוללים אליו, ממקדים אותו, ומשאירים הודעה צמודה עד שממלאים.
+    function markMissingField(id, message) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus({ preventScroll: true });
+        el.style.borderColor = "#d32f2f";
+
+        let note = el.parentNode.querySelector('.field-error');
+        if (!note) {
+            note = document.createElement('div');
+            note.className = 'field-error';
+            note.style.cssText = 'color:#d32f2f; font-size:0.85rem; margin-top:0.25rem;';
+            el.parentNode.appendChild(note);
+        }
+        note.textContent = message;
+
+        const clear = () => {
+            el.style.borderColor = "";
+            if (note && note.parentNode) note.parentNode.removeChild(note);
+            el.removeEventListener('input', clear);
+        };
+        el.addEventListener('input', clear);
+    }
+
     function validateCustomerDetails(customer) {
         // עמוד רשת החנויות: הסניף נבחר בשער ולכן תמיד קיים, והשדה היחיד שנדרש
         // הוא שם המזמין. לא שומרים ל-aroam_customer_details — המפתח משותף לכל
@@ -1954,12 +1981,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.customerMode === 'branch') {
             if (!customer.contact) {
                 showToast("נא למלא את שם המזמין לפני שליחת ההזמנה");
-                const el = document.getElementById("cust-contact");
-                if (el) {
-                    el.focus();
-                    el.style.borderColor = "red";
-                    setTimeout(() => { el.style.borderColor = ""; }, 2500);
-                }
+                markMissingField("cust-contact", "שדה חובה — מי מזמין מהסניף?");
                 return false;
             }
             return true;
@@ -1973,12 +1995,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             showToast(isB2C
                 ? "נא למלא שם מלא וטלפון לפני שליחת ההזמנה"
                 : "נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
-            const el = document.getElementById(!nameValue ? nameField : "cust-phone");
-            if (el) {
-                el.focus();
-                el.style.borderColor = "red";
-                setTimeout(() => { el.style.borderColor = ""; }, 2500);
-            }
+            markMissingField(!nameValue ? nameField : "cust-phone", "שדה חובה");
             return false;
         }
         // שמירת הפרטים במכשיר - ימולאו אוטומטית בהזמנה הבאה.
