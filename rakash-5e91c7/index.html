@@ -412,7 +412,10 @@
                     .then(function (data) {
                         if (!data.ok) {
                             // סיסמה שגויה — מוחקים כדי שהניסיון הבא ישאל מחדש
-                            if (data.error === 'unauthorized') sessionStorage.removeItem('aroam_rakash_key');
+                            if (data.error === 'unauthorized') {
+                                sessionStorage.removeItem('aroam_rakash_key');
+                                throw new Error('קוד הגישה לרשימה שגוי. רעננו את העמוד והזינו אותו מחדש.');
+                            }
                             throw new Error(data.error || 'שגיאה בטעינת ההזמנות');
                         }
                         return data.orders || [];
@@ -690,7 +693,10 @@
                     })
                     .catch(function (err) {
                         console.error(err);
-                        showError('לא הצלחנו לטעון את ההזמנות. נסו לרענן את העמוד.');
+                        // שגיאת סיסמה מקבלת נוסח משלה — "נסו לרענן" לא עוזר שם
+                        showError(/קוד הגישה/.test(err.message)
+                            ? err.message
+                            : 'לא הצלחנו לטעון את ההזמנות. נסו לרענן את העמוד.');
                     });
             }
 

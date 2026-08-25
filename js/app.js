@@ -1471,6 +1471,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // סגירה: נתיב יחיד לכל דרכי הסגירה (כפתור, Esc, אחרי שליחה)
     function closeOrderView(fromPopstate) {
         if (!orderModal) return;
+        // משחררים את נעילת השליחה — ההזמנה הקודמת הסתיימה
+        if (submitOrderBtn) submitOrderBtn.disabled = false;
         orderModal.classList.remove("open");
         orderModal.classList.remove("cart-page");
         orderModal.classList.remove("cart-rich");
@@ -1705,13 +1707,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         // ולכן אין למי לשלוח בוואטסאפ או במייל.
         if ((CONFIG.agentMode || CONFIG.directSend) && submitOrderBtn) {
             submitOrderBtn.addEventListener("click", () => {
+                // נעילה מיידית: בלעדיה שתי לחיצות מהירות יצרו שתי הזמנות
+                // נפרדות עם שני מספרים — במובייל, כשאין משוב מיידי, זה קורה.
+                // משתחרר בסגירת הסל, או מיד כשהולידציה נכשלת.
+                if (submitOrderBtn.disabled) return;
                 if (Object.keys(cart).length === 0) {
                     showToast("ההזמנה ריקה");
                     return;
                 }
+                submitOrderBtn.disabled = true;
                 const method = CONFIG.agentMode ? 'agent' : 'direct';
                 const sent = commitOrder(method);
-                if (!sent) return;
+                if (!sent) {
+                    submitOrderBtn.disabled = false;
+                    return;
+                }
                 showOrderConfirmation(sent.orderId, method);
             });
         }
