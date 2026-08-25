@@ -178,6 +178,17 @@
             flex-wrap: wrap;
         }
 
+        /* ביטול — פעולה הרסנית, ולכן נבדלת ויזואלית משאר הכפתורים */
+        .ro-actions .btn-cancel {
+            background: var(--bg-surface, #fff);
+            color: #b3261e;
+            border: 1px solid #e5b4b0;
+        }
+
+        .ro-actions .btn-cancel:hover {
+            background: #fdeceb;
+        }
+
         .ro-actions .btn-secondary {
             background: var(--bg-surface, #fff);
             color: var(--primary-dark, #1A4231);
@@ -592,6 +603,20 @@
                             });
                             actions.appendChild(approve);
                         }
+
+                        var cancel = document.createElement('button');
+                        cancel.type = 'button';
+                        cancel.className = 'btn btn-cancel';
+                        cancel.textContent = 'בטל';
+                        cancel.addEventListener('click', function () {
+                            if (!confirm('לבטל לגמרי את ההזמנה של ' + (order.branch || 'הסניף') +
+                                '?\n\nההזמנה תרד מהרשימה ולא תישלח לאהרוני.')) return;
+                            cancel.disabled = true;
+                            apiAction('action=cancel&id=' + encodeURIComponent(order.orderId))
+                                .then(function () { load(true); })
+                                .catch(function (err) { cancel.disabled = false; showError(err.message); });
+                        });
+                        actions.appendChild(cancel);
 
                         var sendNow = document.createElement('button');
                         sendNow.type = 'button';

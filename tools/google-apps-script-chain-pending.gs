@@ -32,6 +32,9 @@ var SUMMARY_EMAIL = 'meiraroam@gmail.com';
 var STATUS_PENDING = 'ממתין';
 var STATUS_APPROVED = 'מאושרת';
 var STATUS_SENT = 'נשלחה';
+// הזמנה שמנהלת הרכש ביטלה. השורה נשארת בגיליון לתיעוד, אבל נעלמת מהמסך
+// שלה — גם מ"הכל" — כדי שהיא לא תתבלבל בגל הבא.
+var STATUS_CANCELLED = 'בוטלה';
 
 // עמודת "סה״כ" נוספה בסוף בכוונה: כך אינדקסי העמודות הקיימות לא זזים,
 // ושורות ישנות פשוט מחזירות ערך ריק.
@@ -328,6 +331,79 @@ function summaryBody_(sent, failed) {
   return lines.join('\n');
 }
 
+/**
+ * ריכוז כמויות לפי מוצר על פני כל הסניפים בגל — זה מה שקובע מה להזמין
+ * מהספק ומה להכין במחסן.
+ */
+function productTotals_(sent) {
+  var byId = {}, order = [];
+  for (var i = 0; i < sent.length; i++) {
+    var items = sent[i].items || [];
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      var key = String(it.id || it.name || '');
+      if (!key) continue;
+      if (!byId[key]) {
+        byId[key] = { id: it.id || '', name: it.name || '', unit: it.unit || '', qty: 0, total: 0 };
+        order.push(key);
+      }
+      byId[key].qty += Number(it.qty) || 0;
+      byId[key].total += (Number(it.qty) || 0) * (Number(it.price) || 0);
+    }
+  }
+  return order.map(function (k) { return byId[k]; });
+}
+
+/**
+ * סיכום הגל כקובץ אקסל. נבנה כגיליון גוגל זמני ומיוצא ל-xlsx — אותה שיטה
+ * שבה נבנית תעודת ההזמנה (Doc ⇒ PDF), כי היא היחידה שנותנת קובץ אמיתי
+ * בלי בעיות קידוד בעברית. הגיליון הזמני נמחק תמיד, גם כשהייצוא נכשל.
+ */
+function summaryXlsx_(sent) {
+  var ss = null;
+  try {
+    var stamp = Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'dd.MM.yyyy');
+    ss = SpreadsheetApp.create('סיכום הזמנות רשת ' + stamp);
+
+    var branchSheet = ss.getSheets()[0].setName('לפי סניף');
+    var branchRows = [['סניף', 'מזמין', 'מספר הזמנה', 'פריטים', 'סה״כ']];
+    var grand = 0;
+    for (var i = 0; i < sent.length; i++) {
+      branchRows.push([sent[i].branch || '', sent[i].orderer || '', sent[i].approvedId || '',
+        Number(sent[i].itemCount) || 0, Number(sent[i].total) || 0]);
+      grand += Number(sent[i].total) || 0;
+    }
+    branchRows.push(['', '', 'סה״כ הגל', '', grand]);
+    branchSheet.getRange(1, 1, branchRows.length, 5).setValues(branchRows);
+    branchSheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#d9ead3');
+    branchSheet.getRange(branchRows.length, 1, 1, 5).setFontWeight('bold');
+
+    var prodSheet = ss.insertSheet('ריכוז מוצרים');
+    var prods = productTotals_(sent);
+    var prodRows = [['מק״ט', 'מוצר', 'יחידה', 'כמות כוללת', 'סה״כ']];
+    for (var k = 0; k < prods.length; k++) {
+      prodRows.push([prods[k].id, prods[k].name, prods[k].unit, prods[k].qty, prods[k].total]);
+    }
+    prodSheet.getRange(1, 1, prodRows.length, 5).setValues(prodRows);
+    prodSheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#d9ead3');
+
+    SpreadsheetApp.flush();
+    var url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=xlsx';
+    var blob = UrlFetchApp.fetch(url, {
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+    }).getBlob().setName('סיכום הזמנות ' + stamp + '.xlsx');
+    return blob;
+  } catch (err) {
+    Logger.log('xlsx summary failed: ' + err);
+    return null;
+  } finally {
+    // בלי זה כל שליחה מרוכזת הייתה משאירה גיליון יתום ב-Drive
+    if (ss) {
+      try { DriveApp.getFileById(ss.getId()).setTrashed(true); } catch (e) { }
+    }
+  }
+}
+
 /** תקרת גודל לצרופות במייל אחד. ג'ימייל חוסם מעל ~25MB, ולכן עוצרים מוקדם. */
 var MAIL_ATTACH_LIMIT = 18 * 1024 * 1024;
 
@@ -355,6 +431,10 @@ function sendBatchMail_(sent, failed) {
     batches[last].push(blob);
     sizes[last] += size;
   }
+
+  // קובץ הסיכום מצורף למייל הראשון בלבד — הוא מכסה את כל הגל
+  var xlsx = summaryXlsx_(sent);
+  if (xlsx) batches[0].unshift(xlsx);
 
   var body = summaryBody_(sent, failed);
   for (var b = 0; b < batches.length; b++) {
@@ -411,6 +491,17 @@ function doGet(e) {
       return json_({ ok: true });
     }
 
+    // ביטול הזמנה. אפשרי רק לפני שהיא נשלחה — אחרי זה היא כבר אצל אהרוני.
+    if (p.action === 'cancel') {
+      var cancelRow = findRow_(sheet, p.id);
+      if (!cancelRow) return json_({ ok: false, error: 'not found' });
+      var curStatus = String(sheet.getRange(cancelRow, PENDING_HEADERS.indexOf('סטטוס') + 1).getValue());
+      if (curStatus === STATUS_SENT) return json_({ ok: false, error: 'already sent' });
+      sheet.getRange(cancelRow, PENDING_HEADERS.indexOf('סטטוס') + 1).setValue(STATUS_CANCELLED);
+      sheet.getRange(cancelRow, PENDING_HEADERS.indexOf('תאריך אישור') + 1).setValue(new Date());
+      return json_({ ok: true });
+    }
+
     // שליחה מרוכזת של כל המאושרות, או של הזמנה אחת (p.id) לסניף דחוף
     if (p.action === 'send') {
       var sent = [], failed = [];
@@ -422,11 +513,14 @@ function doGet(e) {
         } else if (candidate.status !== STATUS_APPROVED) {
           continue;
         }
+        if (candidate.status === STATUS_CANCELLED) continue;
         var approvedId = forwardOne_(sheet, m + 2, candidate, !p.id);
         if (approvedId) {
           sent.push({
-            branch: candidate.branch, itemCount: candidate.itemCount,
-            total: candidate.total, approvedId: approvedId, pdfId: candidate.pdfId || ''
+            branch: candidate.branch, orderer: candidate.orderer,
+            itemCount: candidate.itemCount, total: candidate.total,
+            approvedId: approvedId, pdfId: candidate.pdfId || '',
+            items: candidate.items || []
           });
         } else {
           failed.push(candidate.branch || candidate.orderId);
@@ -443,6 +537,9 @@ function doGet(e) {
     for (var k = 0; k < rows.length; k++) {
       var order = rowToOrder_(rows[k]);
       if (!order.orderId) continue;
+      // הזמנה שבוטלה יורדת מהמסך שלה לגמרי, כולל מ"הכל". השורה נשארת
+      // בגיליון כדי שיישאר תיעוד למה הסניף לא קיבל אספקה.
+      if (order.status === STATUS_CANCELLED) continue;
       if (wanted === 'pending' && order.status !== STATUS_PENDING) continue;
       if (wanted === 'approved' && order.status !== STATUS_APPROVED) continue;
       if (wanted === 'sent' && order.status !== STATUS_SENT) continue;

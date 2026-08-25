@@ -25,7 +25,8 @@ function loadGs(fakeCache) {
     '; return { pendingRow_: pendingRow_, rowToOrder_: rowToOrder_,' +
     '   sanitize_: sanitize_, rateLimitOk_: rateLimitOk_,' +
     '   forwardPayload_: forwardPayload_, approvedOrderId_: approvedOrderId_,' +
-    '   summaryBody_: summaryBody_, PENDING_HEADERS: PENDING_HEADERS };'
+    '   summaryBody_: summaryBody_, productTotals_: productTotals_,' +
+    '   PENDING_HEADERS: PENDING_HEADERS };'
   )(fakeCache || null);
 }
 
@@ -355,6 +356,34 @@ test('הזמנה בלי סכום לא מוסיפה שדה ריק לשורה', ()
   const body = gs.summaryBody_(
     [{ branch: 'אמור', itemCount: 5, total: 0, approvedId: 'RA-1' }], []);
   assert.ok(body.indexOf('ש"ח') === -1);
+});
+
+console.log('productTotals_ — ריכוז מוצרים לגיליון האקסל');
+
+test('כמויות של אותו מוצר מצטברות בין סניפים', () => {
+  const rows = gs.productTotals_([
+    { items: [{ id: 'א1', name: 'מוצר א', unit: 'יח', qty: 6, price: 2 }] },
+    { items: [{ id: 'א1', name: 'מוצר א', unit: 'יח', qty: 4, price: 2 }] }
+  ]);
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].qty, 10);
+  assert.strictEqual(rows[0].total, 20);
+});
+
+test('מוצרים שונים נשמרים בשורות נפרדות ובסדר ההופעה', () => {
+  const rows = gs.productTotals_([
+    { items: [{ id: 'ב2', name: 'מוצר ב', qty: 1, price: 5 }, { id: 'א1', name: 'מוצר א', qty: 2, price: 3 }] }
+  ]);
+  assert.deepStrictEqual(rows.map(r => r.id), ['ב2', 'א1']);
+});
+
+test('הזמנה בלי פריטים לא מפילה ולא מוסיפה שורות', () => {
+  assert.deepStrictEqual(gs.productTotals_([{ items: [] }, {}]), []);
+});
+
+test('פריט בלי מזהה מדולג ולא יוצר שורה ריקה', () => {
+  const rows = gs.productTotals_([{ items: [{ qty: 3 }] }]);
+  assert.deepStrictEqual(rows, []);
 });
 
 console.log('\n' + passed + ' בדיקות עברו');
