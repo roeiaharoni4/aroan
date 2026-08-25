@@ -372,8 +372,11 @@
                 // מציין מקום) משאירה את המסך על "טוען" לנצח בלי שום הסבר.
                 var ctrl = new AbortController();
                 var timer = setTimeout(function () { ctrl.abort(); }, 15000);
+                // _t מכריח קריאה טרייה. בלעדיו הדפדפן הגיש את התשובה הקודמת,
+                // ואחרי שליחה הרשימה "נשלחו" נראתה ריקה למרות שהגיליון עודכן.
                 return fetch(API_URL + '?action=list&status=' + encodeURIComponent(status) +
-                    '&password=' + encodeURIComponent(apiPassword()), { signal: ctrl.signal })
+                    '&password=' + encodeURIComponent(apiPassword()) + '&_t=' + Date.now(),
+                    { signal: ctrl.signal })
                     .then(function (r) { clearTimeout(timer); return r.json(); })
                     .then(function (data) {
                         if (!data.ok) {
@@ -387,7 +390,8 @@
 
             // אישור ושליחה. שתיהן דרך doGet עם password, כמו קריאת הרשימה.
             function apiAction(params) {
-                return fetch(API_URL + '?' + params + '&password=' + encodeURIComponent(apiPassword()))
+                return fetch(API_URL + '?' + params + '&password=' + encodeURIComponent(apiPassword()) +
+                    '&_t=' + Date.now())
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (!data.ok) throw new Error(data.error || 'הפעולה נכשלה');
@@ -577,7 +581,7 @@
                             if (!confirm('לשלוח את ההזמנה של ' + (order.branch || 'הסניף') + ' לאהרוני עכשיו?')) return;
                             sendNow.disabled = true;
                             apiAction('action=send&id=' + encodeURIComponent(order.orderId))
-                                .then(load)
+                                .then(function () { switchFilter('sent'); })
                                 .catch(function (err) { sendNow.disabled = false; showError(err.message); });
                         });
                         actions.appendChild(sendNow);
@@ -654,7 +658,9 @@
                         if (data.failed) msg += ', ו-' + data.failed + ' נכשלו ונשארו מאושרות';
                         alert(msg);
                         sendAllBtn.disabled = false;
-                        load();
+                        // מעבר אוטומטי ל"נשלחו": אחרת היא נשארת על "ממתינות",
+                        // רואה שההזמנות נעלמו, ולא ברור לה לאן הן הלכו
+                        switchFilter('sent');
                     })
                     .catch(function (err) {
                         sendAllBtn.disabled = false;
@@ -663,13 +669,16 @@
                     });
             });
 
-            filters.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    filters.forEach(function (b) { b.classList.remove('active'); });
-                    btn.classList.add('active');
-                    currentStatus = btn.dataset.status;
-                    load();
+            function switchFilter(status) {
+                filters.forEach(function (b) {
+                    b.classList.toggle('active', b.dataset.status === status);
                 });
+                currentStatus = status;
+                load();
+            }
+
+            filters.forEach(function (btn) {
+                btn.addEventListener('click', function () { switchFilter(btn.dataset.status); });
             });
 
             function unlock() {
