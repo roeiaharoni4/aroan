@@ -33,8 +33,10 @@ var STATUS_PENDING = 'ממתין';
 var STATUS_APPROVED = 'מאושרת';
 var STATUS_SENT = 'נשלחה';
 
+// עמודת "סה״כ" נוספה בסוף בכוונה: כך אינדקסי העמודות הקיימות לא זזים,
+// ושורות ישנות פשוט מחזירות ערך ריק.
 var PENDING_HEADERS = ['תאריך קבלה', 'מספר הזמנה', 'סניף', 'מזמין', 'הערות',
-  'מספר פריטים', 'פריטים', 'סטטוס', 'מספר הזמנה מאושרת', 'תאריך אישור'];
+  'מספר פריטים', 'פריטים', 'סטטוס', 'מספר הזמנה מאושרת', 'תאריך אישור', 'סה״כ'];
 
 /** תו מוביל מסוכן בגיליון = נוסחה. מקדימים גרש כדי שייכתב כטקסט. */
 function sanitize_(v) {
@@ -83,6 +85,9 @@ function pendingRow_(data) {
   row[PENDING_HEADERS.indexOf('סטטוס')] = STATUS_PENDING;
   row[PENDING_HEADERS.indexOf('מספר הזמנה מאושרת')] = '';
   row[PENDING_HEADERS.indexOf('תאריך אישור')] = '';
+  // הסניפים לא רואים מחירים, אבל הפיילוד נושא סה״כ מחושב לפי מחירי הרשת —
+  // וזה מה שמנהלת הרכש צריכה לראות לפני שהיא מאשרת.
+  row[PENDING_HEADERS.indexOf('סה״כ')] = Number(data && data.totalPrice) || 0;
   return row;
 }
 
@@ -103,6 +108,7 @@ function rowToOrder_(row) {
     notes: String(row[PENDING_HEADERS.indexOf('הערות')] || ''),
     itemCount: Number(row[PENDING_HEADERS.indexOf('מספר פריטים')]) || 0,
     status: String(row[PENDING_HEADERS.indexOf('סטטוס')] || ''),
+    total: Number(row[PENDING_HEADERS.indexOf('סה״כ')]) || 0,
     approvedId: String(row[PENDING_HEADERS.indexOf('מספר הזמנה מאושרת')] || ''),
     items: items
   };
@@ -141,7 +147,7 @@ function forwardPayload_(order, approvedId) {
       ('0' + (now.getMonth() + 1)).slice(-2) + '.' + now.getFullYear(),
     items: items,
     totalItems: totalItems,
-    totalPrice: '',
+    totalPrice: order.total ? Number(order.total).toFixed(2) : '',
     subtotal: '',
     discount: '',
     shipping: '',
@@ -168,6 +174,13 @@ function sheet_() {
     sheet.getRange(1, 1, 1, PENDING_HEADERS.length)
       .setFontWeight('bold').setBackground('#d9ead3');
     sheet.setFrozenRows(1);
+  } else if (sheet.getLastColumn() < PENDING_HEADERS.length) {
+    // גיליון שנוצר לפני שנוספה עמודה — משלימים רק את הכותרות החסרות,
+    // בלי לגעת בשורות הקיימות
+    var from = sheet.getLastColumn() + 1;
+    var missing = PENDING_HEADERS.slice(from - 1);
+    sheet.getRange(1, from, 1, missing.length).setValues([missing])
+      .setFontWeight('bold').setBackground('#d9ead3');
   }
   return sheet;
 }
@@ -247,6 +260,8 @@ function approveOrder_(data) {
     // הסניף עשוי להשתנות אם מנהלת הרכש החליפה אותו
     sheet.getRange(rowNum, PENDING_HEADERS.indexOf('סניף') + 1)
       .setValue(fresh[PENDING_HEADERS.indexOf('סניף')]);
+    sheet.getRange(rowNum, PENDING_HEADERS.indexOf('סה״כ') + 1)
+      .setValue(fresh[PENDING_HEADERS.indexOf('סה״כ')]);
   }
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('סטטוס') + 1).setValue(STATUS_APPROVED);
   return json_({ ok: true });

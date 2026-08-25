@@ -247,6 +247,32 @@ test('מעבר לשעה הבאה מאפס את המונה', () => {
   }
 });
 
+console.log('סה״כ ההזמנה');
+
+test('הסכום נשמר בשורה מתוך totalPrice של הפיילוד', () => {
+  const row = gs.pendingRow_(REAL_PAYLOAD);
+  assert.strictEqual(row[gs.PENDING_HEADERS.indexOf('סה״כ')], 59.55);
+});
+
+test('הזמנה בלי סכום נשמרת כאפס ולא כ-NaN', () => {
+  const row = gs.pendingRow_({ orderId: 'RS-1', items: [] });
+  assert.strictEqual(row[gs.PENDING_HEADERS.indexOf('סה״כ')], 0);
+});
+
+test('הסכום חוזר דרך rowToOrder_ ועובר הלאה ל-webhook ההזמנות', () => {
+  const order = gs.rowToOrder_(gs.pendingRow_(REAL_PAYLOAD));
+  assert.strictEqual(order.total, 59.55);
+  assert.strictEqual(gs.forwardPayload_(order, 'RA-1').totalPrice, '59.55');
+});
+
+test('שורה ישנה בלי עמודת סכום לא מפילה ומחזירה אפס', () => {
+  const row = gs.pendingRow_(REAL_PAYLOAD);
+  row.length = gs.PENDING_HEADERS.indexOf('סה״כ'); // כאילו נכתבה לפני שהעמודה נוספה
+  const order = gs.rowToOrder_(row);
+  assert.strictEqual(order.total, 0);
+  assert.strictEqual(gs.forwardPayload_(order, 'RA-1').totalPrice, '');
+});
+
 console.log('forwardPayload_ — הפיילוד שמועבר ל-webhook ההזמנות');
 
 // הצורה שרועי מקבל חייבת להיות זהה לזו שהאתר שולח, אחרת השורה בגיליון שלו

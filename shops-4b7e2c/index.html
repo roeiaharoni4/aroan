@@ -445,7 +445,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=56" defer></script>
+    <script src="/js/app.js?v=57" defer></script>
 </head>
 
 <body>
@@ -625,6 +625,10 @@
                     branch: (document.getElementById('cust-business') || {}).value || '',
                     orderer: (document.getElementById('cust-contact') || {}).value || '',
                     notes: (document.getElementById('cust-notes') || {}).value || '',
+                    // הסכום מחושב לפי מחירי הרשת, כדי שהיא תראה אותו ברשימה
+                    totalPrice: data.items.reduce(function (sum, i) {
+                        return sum + (Number(i.total) || (Number(i.price) || 0) * (Number(i.qty) || 0));
+                    }, 0).toFixed(2),
                     items: data.items
                 };
                 fetch(window.PENDING_API, {
@@ -637,18 +641,32 @@
                 });
             }
 
-            function addApproveButton() {
+            // במצב אישור רכש אין "שליחה לאהרוני" מהעמוד הזה: העריכה מסתיימת
+            // באישור, וההזמנה יוצאת אליו רק מהמסך שלה — בלחיצה אחת על כל
+            // המאושרות, או ב"שלח עכשיו" לסניף דחוף. שליחה ישירה מכאן עקפה
+            // את הסטטוס, ולכן ההזמנה נשארה "ממתין" בלי השינויים שלה.
+            function retargetSubmitToApprove() {
                 if (!PENDING_ID) return;
                 var submit = document.getElementById('submit-order-btn');
-                if (!submit || document.getElementById('approve-order-btn')) return;
-                var btn = document.createElement('button');
-                btn.id = 'approve-order-btn';
-                btn.type = 'button';
-                btn.className = 'btn btn-outline';
-                btn.style.minWidth = '160px';
-                btn.textContent = 'אשר בלי לשלוח';
-                btn.addEventListener('click', approvePending);
-                submit.parentNode.insertBefore(btn, submit);
+                if (!submit || submit.dataset.approveMode === '1') return;
+
+                // מחליפים את הכפתור בעותק נקי, כדי שהמאזין של app.js שנרשם
+                // עליו לא ירוץ גם הוא וישלח את ההזמנה לרועי
+                var clone = submit.cloneNode(true);
+                clone.dataset.approveMode = '1';
+                clone.textContent = 'אשר ושמור';
+                clone.addEventListener('click', approvePending);
+                submit.parentNode.replaceChild(clone, submit);
+
+                // גם הכפתור הראשי בכרטיס הסיכום מפעיל בפרוקסי את submit-order-btn,
+                // ולכן הוא מגיע לאותו מסלול — רק הכיתוב צריך להתאים
+                // כרטיס הסיכום נבנה רק כשנפתחת תצוגת הסל, כלומר אחרי הרגע הזה
+                var label = function () {
+                    var cardBtn = document.getElementById('cs-send-btn');
+                    if (cardBtn && cardBtn.textContent !== 'אשר ושמור') cardBtn.textContent = 'אשר ושמור';
+                };
+                label();
+                new MutationObserver(label).observe(document.body, { childList: true, subtree: true });
             }
 
             // --- שלב 2: בורר הסניף — ריבועים, קודם מרכזי קניות ואז החנויות שבמרכז ---
@@ -861,7 +879,7 @@
                 if (PENDING_ID) {
                     // אישור רכש: רק הסניף שבקישור, לעולם לא השמור במכשיר
                     applyPendingBranch();
-                    addApproveButton();
+                    retargetSubmitToApprove();
                 } else {
                     var b = savedBranch();
                     if (b && b.store && !gateOpen) paintBranch(b);

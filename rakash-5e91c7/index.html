@@ -212,6 +212,18 @@
             color: #e8a33d;
         }
 
+        /* סה״כ לתשלום בשורה הסגורה — נדחף לקצה כדי שכל השורות יתיישרו */
+        .ro-total {
+            margin-inline-start: auto;
+            font-weight: 700;
+            color: var(--primary-dark, #1A4231);
+            white-space: nowrap;
+        }
+
+        [data-theme="dark"] .ro-total {
+            color: var(--primary-pastel, #8FD6A3);
+        }
+
         .rakash-count {
             color: var(--text-secondary, #6B6B6B);
             font-size: 0.95rem;
@@ -391,11 +403,14 @@
                     .filter(function (i) { return i.id && Number(i.qty) > 0; })
                     .map(function (i) { return encodeURIComponent(i.id) + ':' + i.qty; })
                     .join(',');
+                // view=cart פותח ישר את סיכום ההזמנה. אין טעם להנחית אותה על
+                // הקטלוג — היא באה לתקן שורות, לא לגלוש.
                 return SHOPS_URL + '?k=' + encodeURIComponent(SHOPS_CODE) +
                     '&cart=' + cart +
                     '&pending=' + encodeURIComponent(order.orderId) +
                     '&branch=' + encodeURIComponent(order.branch || '') +
-                    '&orderer=' + encodeURIComponent(order.orderer || '');
+                    '&orderer=' + encodeURIComponent(order.orderer || '') +
+                    '&view=cart';
             }
 
             // הגיליון מחזיר תאריך כמחרוזת Date מלאה של JS. בלי עיבוד היא
@@ -485,6 +500,14 @@
                     head.querySelector('.ro-date').textContent = order.branch || '(בלי סניף)';
                     head.querySelector('.ro-count').textContent =
                         order.itemCount + ' פריטים · ' + order.status;
+                    // סה״כ לתשלום גלוי בלי לפתוח את השורה — כך אפשר לסרוק
+                    // 60 הזמנות ולראות מיד אם אחת חורגת
+                    if (order.total) {
+                        var money = document.createElement('span');
+                        money.className = 'ro-total';
+                        money.textContent = Number(order.total).toFixed(2) + ' ₪';
+                        head.appendChild(money);
+                    }
 
                     var body = document.createElement('div');
                     body.className = 'ro-body';
