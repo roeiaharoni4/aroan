@@ -24,6 +24,17 @@ function sanitize_(v) {
   return /^[=+\-@]/.test(s) ? "'" + s : s;
 }
 
+/**
+ * הפיילוד של האתר נושא את הסניף בתוך customer.business ואת שם המזמין
+ * ב-customer.contact — זה המבנה שכל שאר צינור ההזמנות בנוי עליו. התמיכה
+ * בשדות שטוחים נשמרת כדי שאפשר יהיה לזמן את ה-webhook גם ידנית.
+ */
+function pick_(data, flat, nested) {
+  if (data && data[flat]) return data[flat];
+  if (data && data.customer && data.customer[nested]) return data.customer[nested];
+  return '';
+}
+
 function pendingRow_(data) {
   var items = [];
   if (data && data.items && data.items.length) {
@@ -44,9 +55,9 @@ function pendingRow_(data) {
   var row = [];
   row[PENDING_HEADERS.indexOf('תאריך קבלה')] = new Date();
   row[PENDING_HEADERS.indexOf('מספר הזמנה')] = sanitize_(data && data.orderId);
-  row[PENDING_HEADERS.indexOf('סניף')] = sanitize_(data && data.branch);
-  row[PENDING_HEADERS.indexOf('מזמין')] = sanitize_(data && data.orderer);
-  row[PENDING_HEADERS.indexOf('הערות')] = sanitize_(data && data.notes);
+  row[PENDING_HEADERS.indexOf('סניף')] = sanitize_(pick_(data, 'branch', 'business'));
+  row[PENDING_HEADERS.indexOf('מזמין')] = sanitize_(pick_(data, 'orderer', 'contact'));
+  row[PENDING_HEADERS.indexOf('הערות')] = sanitize_(pick_(data, 'notes', 'notes'));
   row[PENDING_HEADERS.indexOf('מספר פריטים')] = count;
   // הפריטים נשמרים כ-JSON בתא אחד: המסך של מנהלת הרכש צריך אותם כמבנה,
   // ופיצול לשורות היה מפרק הזמנה אחת להרבה שורות בגיליון.
@@ -103,20 +114,26 @@ function json_(obj) {
 // מפתח קאש נפרד (order_count שייך לפרויקט האחר) — הפרויקטים לא חולקים
 // קאש בפועל, אבל מפתח ייעודי שומר את הכוונה ברורה ומונע כל צימוד.
 function rateLimitOk_() {
+  // המפתח כולל את מספר השעה, ולכן החלון קבוע ולא מתגלגל: cache.put מרענן
+  // את ה-TTL בכל פגיעה, וכך הצפה הייתה יכולה להחזיק את הדלת נעולה לאורך
+  // כל גל ההזמנות במקום שעה אחת.
   var cache = CacheService.getScriptCache();
-  var count = Number(cache.get('chain_pending_count') || 0);
+  var key = 'chain_pending_count_' + Math.floor(Date.now() / 3600000);
+  var count = Number(cache.get(key) || 0);
   if (count >= 200) return false;
-  cache.put('chain_pending_count', String(count + 1), 3600);
+  cache.put(key, String(count + 1), 3600);
   return true;
 }
 
 function doPost(e) {
   try {
-    if (!rateLimitOk_()) return json_({ ok: false, error: 'rate limit' });
-
+    // הגנת הגודל קודמת להגבלת הקצב: בקשה פגומה לא צריכה לשרוף מהתקציב
+    // של ההזמנות האמיתיות בגל.
     if (!e.postData || !e.postData.contents || e.postData.contents.length > 100000) {
       return json_({ ok: false, error: 'bad request' });
     }
+
+    if (!rateLimitOk_()) return json_({ ok: false, error: 'rate limit' });
 
     var data = JSON.parse(e.postData.contents);
     sheet_().appendRow(pendingRow_(data));

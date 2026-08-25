@@ -206,12 +206,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     init();
 
     async function init() {
-        // נקרא ראשון: שחזור העגלה השמורה מדלג על עצמו במצב אישור רכש,
-        // והוא רץ הרבה לפני שאר קריאת הפרמטרים.
-        const initParams = new URLSearchParams(window.location.search);
-        PENDING_APPROVAL = initParams.get('pending');
-        ORIGINAL_BRANCH = initParams.get('branch');
-
         // Create Skeleton
         renderSkeleton(8);
 
@@ -224,6 +218,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Load Configuration (Merge defaults with window config)
         CONFIG = Object.assign({}, DEFAULT_CONFIG, window.CATALOG_CONFIG || {});
         console.log("App initialized with config:", CONFIG);
+
+        // אישור רכש. נקרא כאן — אחרי מיזוג הקונפיג ולפני שחזור העגלה השמורה
+        // שמדלג על עצמו במצב הזה. מגודר ב-directSend כדי ש-?pending= בכתובת
+        // של הקטלוג העסקי או הטיפוח לא ישנה שם כלום.
+        const initParams = new URLSearchParams(window.location.search);
+        PENDING_APPROVAL = CONFIG.directSend ? initParams.get('pending') : null;
+        ORIGINAL_BRANCH = CONFIG.directSend ? initParams.get('branch') : null;
 
         // Setup Date defaults
         setupDate();
@@ -2329,7 +2330,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const yyyymmdd = today.getFullYear() +
             String(today.getMonth() + 1).padStart(2, '0') +
             String(today.getDate()).padStart(2, '0');
-        const rand = Math.floor(1000 + Math.random() * 9000);
+        // שש ספרות ולא ארבע: הרשת מזמינה בגל של כ-60 סניפים באותו יום, ועם
+        // 9,000 אפשרויות ההסתברות לשתי הזמנות באותו מספר הייתה כ-18%.
+        // מספר כפול שובר את הקישור לעריכה ואת סימון "נשלחה" בגיליון הממתינות.
+        const rand = Math.floor(100000 + Math.random() * 900000);
         // הזמנה שעברה את מנהלת הרכש מקבלת קידומת משלה, כדי שבגיליון של רועי
         // יהיה ברור מיד שהיא אושרה ולא הגיעה ישירות מסניף.
         const prefix = PENDING_APPROVAL ? 'RA' : (CONFIG.orderPrefix || 'AR');

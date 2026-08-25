@@ -445,7 +445,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=52" defer></script>
+    <script src="/js/app.js?v=53" defer></script>
 </head>
 
 <body>
@@ -774,7 +774,16 @@
 
                 // 3. אישור רכש גובר על הסניף השמור במכשיר: מנהלת הרכש עשויה
                 //    לפתוח הזמנות של סניפים שונים בזה אחר זה מאותו דפדפן.
-                if (applyPendingBranch()) return;
+                //    אם הסניף לא הגיע בקישור — עוצרים ומבקשים לבחור. נפילה
+                //    חזרה לסניף השמור הייתה שולחת לרועי הזמנה עם שם סניף אחר,
+                //    בלי שאיש ישים לב.
+                if (PENDING_ID) {
+                    if (applyPendingBranch()) return;
+                    showBranchPicker();
+                    branchError.textContent = 'הקישור הגיע בלי סניף. בחרו את הסניף של ההזמנה.';
+                    branchError.style.display = 'block';
+                    return;
+                }
 
                 // 4. סניף ששמור מכניסה קודמת — ועדיין קיים בקובץ
                 var b = savedBranch();
@@ -800,7 +809,10 @@
             // הסניף נכתב ל-DOM רק אחרי שהוא נבנה. כשהמשתמש לוחץ "המשך" ה-DOM
             // כבר קיים; במסלול "סניף שמור" הכניסה עשויה לקרות לפני כן, ולכן צובעים שוב.
             document.addEventListener('DOMContentLoaded', function () {
-                if (!applyPendingBranch()) {
+                if (PENDING_ID) {
+                    // אישור רכש: רק הסניף שבקישור, לעולם לא השמור במכשיר
+                    applyPendingBranch();
+                } else {
                     var b = savedBranch();
                     if (b && b.store && !gateOpen) paintBranch(b);
                 }
@@ -824,10 +836,16 @@
                 try { pw = sessionStorage.getItem('aroam_rakash_key') || ''; } catch (e) { }
                 if (!pw) return;
                 var approved = (ev.detail && ev.detail.orderId) || '';
-                fetch(window.PENDING_API + '?action=mark&status=sent' +
-                    '&id=' + encodeURIComponent(PENDING_ID) +
-                    '&approvedId=' + encodeURIComponent(approved) +
-                    '&password=' + encodeURIComponent(pw)).catch(function () { });
+                // delivery הוא Promise<boolean>: false = ההזמנה לא יצאה
+                // (אין רשת, ה-webhook נפל). סימון "נשלחה" במצב כזה היה מעלים
+                // את ההזמנה מהרשימה שלה בלי שרועי קיבל אותה בכלל.
+                Promise.resolve(ev.detail && ev.detail.delivery).then(function (ok) {
+                    if (ok === false) return;
+                    fetch(window.PENDING_API + '?action=mark&status=sent' +
+                        '&id=' + encodeURIComponent(PENDING_ID) +
+                        '&approvedId=' + encodeURIComponent(approved) +
+                        '&password=' + encodeURIComponent(pw)).catch(function () { });
+                });
             });
 
             start();
