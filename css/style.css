@@ -1163,6 +1163,13 @@ body:has(.fab-container) .scroll-top-btn {
     color: var(--primary-dark);
 }
 
+/* במצב כהה --primary-light מוגדר מחדש ל-#1A4231 בעוד ש---primary-dark אינו
+   מוגדר מחדש כלל — כלומר הטקסט והרקע יוצאים באותו צבע בדיוק וכותרות הטבלה
+   נעלמות. הפסטל הוא צבע המותג שנועד לרקע כהה. */
+[data-theme="dark"] .cart-page .order-table thead th {
+    color: var(--primary-pastel);
+}
+
 /* גושי הטופס מוגדרים inline ברקע ירקרק שקוף; על הרקע הפסטלי הם נבלעו,
    ולכן כאן הם הופכים לכרטיסים לבנים עם מסגרת. */
 .cart-page #customer-details,
@@ -1253,6 +1260,11 @@ body:has(.fab-container) .scroll-top-btn {
     font-weight: 800;
     color: var(--primary-dark);
     font-variant-numeric: tabular-nums;
+}
+
+/* אותה התנגשות: הסכום הסופי — המספר החשוב ביותר בעמוד — נעלם במצב כהה */
+[data-theme="dark"] #cart-summary-card .cs-total strong {
+    color: var(--primary-pastel);
 }
 
 #cart-summary-card #cs-send-btn {
