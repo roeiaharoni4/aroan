@@ -21,7 +21,8 @@ function loadGs() {
   return new Function(
     stubs + src +
     '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_,' +
-    '   quoteLink_: quoteLink_, isBranchOrder_: isBranchOrder_ };'
+    '   quoteLink_: quoteLink_, isBranchOrder_: isBranchOrder_,' +
+    '   priceSplit_: priceSplit_ };'
   )();
 }
 
@@ -192,6 +193,31 @@ test('עמודות המחיר נשארות בהזמנה עסקית — רועי 
   assert.strictEqual(c.headers.length, 7, 'צפויות שבע עמודות');
 });
 
+
+console.log('priceSplit_ — פילוח חד פעמי בתעודה');
+
+test('הזמנה מעורבת מתפצלת לשתי הקבוצות', () => {
+  const sp = gs.priceSplit_([
+    { category: 'חד פעמי ואריזות', qty: 4, price: 2.5 },
+    { category: 'ניקיון', qty: 1, price: 10 }
+  ]);
+  assert.strictEqual(sp.disposable, 10);
+  assert.strictEqual(sp.rest, 10);
+});
+
+test('הזמנה שכולה קבוצה אחת לא מקבלת שורות פילוח', () => {
+  assert.strictEqual(gs.priceSplit_([{ category: 'ניקיון', qty: 2, price: 5 }]), null);
+  assert.strictEqual(gs.priceSplit_([{ category: 'חד פעמי ואריזות', qty: 2, price: 5 }]), null);
+});
+
+test('הזמנה בלי מחירים לא מייצרת פילוח', () => {
+  assert.strictEqual(gs.priceSplit_([{ category: 'חד פעמי ואריזות', qty: 2 }, { category: 'ניקיון', qty: 1 }]), null);
+});
+
+test('רשימת פריטים ריקה או חסרה לא מפילה', () => {
+  assert.strictEqual(gs.priceSplit_([]), null);
+  assert.strictEqual(gs.priceSplit_(undefined), null);
+});
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
@@ -199,4 +225,5 @@ tests.forEach(([name, fn]) => {
 });
 console.log(failed ? '\nנכשלו ' + failed + ' מתוך ' + tests.length
                    : '\nכל ' + tests.length + ' הבדיקות עברו');
+
 process.exit(failed ? 1 : 0);

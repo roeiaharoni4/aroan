@@ -335,6 +335,24 @@ function summaryBody_(sent, failed) {
  * ריכוז כמויות לפי מוצר על פני כל הסניפים בגל — זה מה שקובע מה להזמין
  * מהספק ומה להכין במחסן.
  */
+// אותה קטגוריה שמפצלת את הסיכום בתעודת ההזמנה
+var DISPOSABLE_CATEGORY = 'חד פעמי ואריזות';
+
+function isDisposable_(item) {
+  return String((item && item.category) || '') === DISPOSABLE_CATEGORY;
+}
+
+/** פיצול סכום ההזמנה לחד פעמי מול השאר. */
+function orderSplit_(order) {
+  var dispo = 0, rest = 0;
+  var items = (order && order.items) || [];
+  for (var i = 0; i < items.length; i++) {
+    var line = (Number(items[i].qty) || 0) * (Number(items[i].price) || 0);
+    if (isDisposable_(items[i])) dispo += line; else rest += line;
+  }
+  return { disposable: dispo, rest: rest };
+}
+
 function productTotals_(sent) {
   var byId = {}, order = [];
   for (var i = 0; i < sent.length; i++) {
@@ -344,7 +362,8 @@ function productTotals_(sent) {
       var key = String(it.id || it.name || '');
       if (!key) continue;
       if (!byId[key]) {
-        byId[key] = { id: it.id || '', name: it.name || '', unit: it.unit || '', qty: 0, total: 0 };
+        byId[key] = { id: it.id || '', name: it.name || '', unit: it.unit || '',
+          group: isDisposable_(it) ? 'חד פעמי' : 'שאר המוצרים', qty: 0, total: 0 };
         order.push(key);
       }
       byId[key].qty += Number(it.qty) || 0;
@@ -366,26 +385,43 @@ function summaryXlsx_(sent) {
     ss = SpreadsheetApp.create('סיכום הזמנות רשת ' + stamp);
 
     var branchSheet = ss.getSheets()[0].setName('לפי סניף');
-    var branchRows = [['סניף', 'מזמין', 'מספר הזמנה', 'פריטים', 'סה״כ']];
-    var grand = 0;
+    var branchRows = [['סניף', 'מזמין', 'מספר הזמנה', 'פריטים', 'חד פעמי', 'שאר המוצרים', 'סה״כ']];
+    var grand = 0, grandDispo = 0, grandRest = 0;
     for (var i = 0; i < sent.length; i++) {
+      var sp = orderSplit_(sent[i]);
       branchRows.push([sent[i].branch || '', sent[i].orderer || '', sent[i].approvedId || '',
-        Number(sent[i].itemCount) || 0, Number(sent[i].total) || 0]);
+        Number(sent[i].itemCount) || 0, sp.disposable, sp.rest, Number(sent[i].total) || 0]);
       grand += Number(sent[i].total) || 0;
+      grandDispo += sp.disposable;
+      grandRest += sp.rest;
     }
-    branchRows.push(['', '', 'סה״כ הגל', '', grand]);
-    branchSheet.getRange(1, 1, branchRows.length, 5).setValues(branchRows);
-    branchSheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#d9ead3');
-    branchSheet.getRange(branchRows.length, 1, 1, 5).setFontWeight('bold');
+    branchRows.push(['', '', 'סה״כ הגל', '', grandDispo, grandRest, grand]);
+    branchSheet.getRange(1, 1, branchRows.length, 7).setValues(branchRows);
+    branchSheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#d9ead3');
+    branchSheet.getRange(branchRows.length, 1, 1, 7).setFontWeight('bold');
 
     var prodSheet = ss.insertSheet('ריכוז מוצרים');
     var prods = productTotals_(sent);
-    var prodRows = [['מק״ט', 'מוצר', 'יחידה', 'כמות כוללת', 'סה״כ']];
+    // חד פעמי קודם, ושורת ביניים בין הקבוצות — כך אפשר להזמין מהספק
+    // בלי לסרוק את כל הרשימה ולסנן בעיניים
+    prods.sort(function (a, b) {
+      if (a.group === b.group) return 0;
+      return a.group === 'חד פעמי' ? -1 : 1;
+    });
+    var prodRows = [['קבוצה', 'מק״ט', 'מוצר', 'יחידה', 'כמות כוללת', 'סה״כ']];
+    var groupSum = 0, prevGroup = null;
     for (var k = 0; k < prods.length; k++) {
-      prodRows.push([prods[k].id, prods[k].name, prods[k].unit, prods[k].qty, prods[k].total]);
+      if (prevGroup !== null && prods[k].group !== prevGroup) {
+        prodRows.push(['סה״כ ' + prevGroup, '', '', '', '', groupSum]);
+        groupSum = 0;
+      }
+      prodRows.push([prods[k].group, prods[k].id, prods[k].name, prods[k].unit, prods[k].qty, prods[k].total]);
+      groupSum += prods[k].total;
+      prevGroup = prods[k].group;
     }
-    prodSheet.getRange(1, 1, prodRows.length, 5).setValues(prodRows);
-    prodSheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#d9ead3');
+    if (prevGroup !== null) prodRows.push(['סה״כ ' + prevGroup, '', '', '', '', groupSum]);
+    prodSheet.getRange(1, 1, prodRows.length, 6).setValues(prodRows);
+    prodSheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#d9ead3');
 
     SpreadsheetApp.flush();
     var url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=xlsx';

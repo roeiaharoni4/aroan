@@ -26,6 +26,7 @@ function loadGs(fakeCache) {
     '   sanitize_: sanitize_, rateLimitOk_: rateLimitOk_,' +
     '   forwardPayload_: forwardPayload_, approvedOrderId_: approvedOrderId_,' +
     '   summaryBody_: summaryBody_, productTotals_: productTotals_,' +
+    '   orderSplit_: orderSplit_, isDisposable_: isDisposable_,' +
     '   PENDING_HEADERS: PENDING_HEADERS };'
   )(fakeCache || null);
 }
@@ -384,6 +385,43 @@ test('הזמנה בלי פריטים לא מפילה ולא מוסיפה שור�
 test('פריט בלי מזהה מדולג ולא יוצר שורה ריקה', () => {
   const rows = gs.productTotals_([{ items: [{ qty: 3 }] }]);
   assert.deepStrictEqual(rows, []);
+});
+
+console.log('פילוח חד פעמי מול שאר המוצרים');
+
+const MIXED = { items: [
+  { id: 'ח1', name: 'כוסות', category: 'חד פעמי ואריזות', qty: 10, price: 5 },
+  { id: 'נ1', name: 'אקונומיקה', category: 'ניקיון', qty: 2, price: 12 }
+] };
+
+test('הסכום מתפצל נכון בין שתי הקבוצות', () => {
+  const sp = gs.orderSplit_(MIXED);
+  assert.strictEqual(sp.disposable, 50);
+  assert.strictEqual(sp.rest, 24);
+});
+
+test('הזמנה שכולה חד פעמי מחזירה אפס בשאר', () => {
+  const sp = gs.orderSplit_({ items: [{ category: 'חד פעמי ואריזות', qty: 3, price: 4 }] });
+  assert.strictEqual(sp.disposable, 12);
+  assert.strictEqual(sp.rest, 0);
+});
+
+test('פריט בלי קטגוריה נספר בשאר המוצרים ולא נופל בין הכיסאות', () => {
+  const sp = gs.orderSplit_({ items: [{ qty: 2, price: 7 }] });
+  assert.strictEqual(sp.rest, 14);
+  assert.strictEqual(sp.disposable, 0);
+});
+
+test('ריכוז המוצרים מסמן לכל שורה את הקבוצה שלה', () => {
+  const rows = gs.productTotals_([MIXED]);
+  const byId = {};
+  rows.forEach(r => { byId[r.id] = r.group; });
+  assert.strictEqual(byId['ח1'], 'חד פעמי');
+  assert.strictEqual(byId['נ1'], 'שאר המוצרים');
+});
+
+test('הזמנה ריקה לא מפילה את הפילוח', () => {
+  assert.deepStrictEqual(gs.orderSplit_({}), { disposable: 0, rest: 0 });
 });
 
 console.log('\n' + passed + ' בדיקות עברו');

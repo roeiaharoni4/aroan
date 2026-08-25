@@ -360,6 +360,13 @@ function buildOrderDoc_(data) {
     if (cols.hasPrices) {
       tight_(body.appendParagraph('')).editAsText().setFontSize(4);
       var sumRows = [];
+      // פילוח חד פעמי מול השאר — מוצג רק כשההזמנה באמת מכילה את שתי
+      // הקבוצות, אחרת השורות היו חוזרות על הסה"כ במילים אחרות
+      var split = priceSplit_(data.items);
+      if (split) {
+        sumRows.push(['מזה חד פעמי ואריזות', money_(split.disposable.toFixed(2))]);
+        sumRows.push(['מזה שאר המוצרים', money_(split.rest.toFixed(2))]);
+      }
       if (Number(data.subtotal) > 0) sumRows.push(['סכום ביניים', money_(data.subtotal)]);
       if (Number(data.discount) > 0) sumRows.push(['הנחה', '-' + money_(data.discount)]);
       if (Number(data.shipping) > 0) sumRows.push(['דמי משלוח', money_(data.shipping)]);
@@ -455,6 +462,27 @@ function pdfFolder_() {
  * מייצר את ה-PDF ושומר עותק ב-Drive.
  * מחזיר null בכל כישלון — הקורא ממשיך בלעדיו.
  */
+/**
+ * פיצול סכום ההזמנה לחד פעמי מול שאר המוצרים. רועי מתמחר ומזמין את שתי
+ * הקבוצות בנפרד, ולכן הפילוח הזה נחוץ לו על התעודה.
+ * מחזיר null כשכל ההזמנה בקבוצה אחת — אין מה לפצל, ואין טעם להוסיף
+ * שורות שאומרות את אותו דבר פעמיים.
+ */
+var DISPOSABLE_CATEGORY = 'חד פעמי ואריזות';
+
+function priceSplit_(items) {
+  var dispo = 0, rest = 0;
+  for (var i = 0; i < (items || []).length; i++) {
+    var it = items[i] || {};
+    var line = (Number(it.qty) || 0) * (Number(it.price) || 0);
+    if (!line) continue;
+    if (String(it.category || '') === DISPOSABLE_CATEGORY) dispo += line;
+    else rest += line;
+  }
+  if (!dispo || !rest) return null;
+  return { disposable: dispo, rest: rest };
+}
+
 function savePdf_(data) {
   try {
     var name = (clean_(data.orderId, 30) || 'order') + '.pdf';
@@ -552,6 +580,11 @@ function doPost(e) {
         'סה"כ פריטים: ' + (clean_(data.totalItems, 10) || '') + '\n' +
         (discountText ? 'הנחת מבצע: -' + discountText + ' ש"ח\n' : '') +
         (shippingText ? 'דמי משלוח: ' + shippingText + ' ש"ח\n' : '') +
+        (function () {
+          var sp = priceSplit_(data.items);
+          return sp ? 'מזה חד פעמי ואריזות: ' + sp.disposable.toFixed(2) + ' ש"ח\n' +
+            'מזה שאר המוצרים: ' + sp.rest.toFixed(2) + ' ש"ח\n' : '';
+        })() +
         (totalPriceText ? 'סה"כ לתשלום: ' + totalPriceText + ' ש"ח\n' : '') + '\n' +
         'הגיליון המלא: https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID;
       var qlink = quoteLink_(data);
