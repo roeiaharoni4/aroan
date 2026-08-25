@@ -2206,6 +2206,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             qtyInp.min = "0";
             qtyInp.setAttribute("aria-label", "כמות - " + product.name);
             qtyInp.value = qty;
+            // הכמות בטבלה נכתבת חזרה לסל. עד כה המאזין היחיד על השדה ישב
+            // בתוך הבלוק של המחירים, ולכן בקטלוגים בלי מחירים השדה נראה עריך
+            // אבל לא עשה כלום — ואפילו במחירים הוא עדכן את שורת הסכום בלבד
+            // ולא את ההזמנה שנשלחת בפועל.
+            qtyInp.addEventListener("input", () => {
+                const q = Math.max(0, parseInt(qtyInp.value, 10) || 0);
+                if (q > 0) cart[product.id] = q; else delete cart[product.id];
+                updateSummary();
+            });
             tdQty.appendChild(qtyInp);
             row.appendChild(tdQty);
 
@@ -2249,7 +2258,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const free = q - charged;
                     freeNote.textContent = free > 0 ? `${free} חינם (${product.bundle})` : "";
                 };
-                qtyInp.addEventListener("input", () => { updateRow(); updateSummary(); }); // Update global summary too
+                // המאזין שכותב לסל רשום כבר למעלה; כאן רק רענון שורת הסכום
+                qtyInp.addEventListener("input", updateRow);
                 priceInp.addEventListener("input", () => {
                     // עריכת המחיר נכתבת חזרה למוצר, אחרת שורת הסכום מתעדכנת
                     // אבל סה"כ הסל, שורת המע"מ והמסמך המודפס ממשיכים לקרוא את
@@ -3252,6 +3262,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // --- ממשק ל-js/agent.js ---
         applyOrder,          // שחזור הזמנה קודמת (כמויות + מחירים שסוכמו)
         postOrderPayload,    // שליחה חוזרת של פיילוד מהתור. מחזירה Promise<boolean>
+        getCartItems: getCartItemsData,  // פריטי הסל הנוכחיים — עמוד רשת החנויות שולח אותם באישור רכש
         getConfig: () => CONFIG,
         getProducts: () => PRODUCTS,
         refresh: () => { renderProducts(); updateSummary(); },

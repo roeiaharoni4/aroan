@@ -138,6 +138,52 @@
             color: #fff;
         }
 
+        /* בר השליחה המרוכזת — הפעולה המרכזית של המסך, ולכן בולט מעל הרשימה */
+        .rakash-batch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: var(--primary-dark, #1A4231);
+            color: #fff;
+            border-radius: var(--radius-md, 12px);
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .rakash-batch[hidden] {
+            display: none;
+        }
+
+        .rakash-batch button {
+            background: var(--primary-pastel, #8FD6A3);
+            color: var(--primary-dark, #1A4231);
+            border: none;
+            border-radius: var(--radius-sm, 8px);
+            padding: 0.55rem 1.2rem;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .rakash-batch button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        /* שלושה כפתורים בשורה: ערוך · אשר · שלח עכשיו */
+        .ro-actions {
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ro-actions .btn-secondary {
+            background: var(--bg-surface, #fff);
+            color: var(--primary-dark, #1A4231);
+            border: 1px solid var(--primary, #639C7D);
+        }
+
         .rakash-count {
             color: var(--text-secondary, #6B6B6B);
             font-size: 0.95rem;
@@ -211,8 +257,13 @@
     <main class="rakash-main">
         <div class="rakash-filters">
             <button type="button" data-status="pending" class="active">ממתינות</button>
+            <button type="button" data-status="approved">מאושרות</button>
             <button type="button" data-status="sent">נשלחו</button>
             <button type="button" data-status="all">הכל</button>
+        </div>
+        <div class="rakash-batch" id="rakash-batch" hidden>
+            <span id="rakash-batch-text"></span>
+            <button type="button" id="rakash-send-all" class="btn btn-primary">שלח את כל המאושרות</button>
         </div>
         <p class="rakash-count" id="rakash-count"></p>
         <div id="orders"></div>
@@ -247,6 +298,9 @@
             var ordersEl = document.getElementById('orders');
             var countEl = document.getElementById('rakash-count');
             var filters = document.querySelectorAll('.rakash-filters button');
+            var batchBar = document.getElementById('rakash-batch');
+            var batchText = document.getElementById('rakash-batch-text');
+            var sendAllBtn = document.getElementById('rakash-send-all');
 
             var currentStatus = 'pending';
 
@@ -291,6 +345,16 @@
                     });
             }
 
+            // אישור ושליחה. שתיהן דרך doGet עם password, כמו קריאת הרשימה.
+            function apiAction(params) {
+                return fetch(API_URL + '?' + params + '&password=' + encodeURIComponent(apiPassword()))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.ok) throw new Error(data.error || 'הפעולה נכשלה');
+                        return data;
+                    });
+            }
+
             // הקישור פותח את עמוד החנויות עם ההזמנה טעונה בסל. הפרמטר pending
             // הוא מה שהופך את השליחה שם ל"אישור רכש": קידומת RA והיעד חוזר
             // ל-webhook הרגיל של אהרוני.
@@ -302,7 +366,8 @@
                 return SHOPS_URL + '?k=' + encodeURIComponent(SHOPS_CODE) +
                     '&cart=' + cart +
                     '&pending=' + encodeURIComponent(order.orderId) +
-                    '&branch=' + encodeURIComponent(order.branch || '');
+                    '&branch=' + encodeURIComponent(order.branch || '') +
+                    '&orderer=' + encodeURIComponent(order.orderer || '');
             }
 
             function renderOrders(orders) {
@@ -371,11 +436,44 @@
 
                     var actions = document.createElement('div');
                     actions.className = 'ro-actions';
+
                     var edit = document.createElement('a');
-                    edit.className = 'btn btn-primary';
+                    edit.className = 'btn btn-secondary';
                     edit.href = editUrl(order);
-                    edit.textContent = order.status === 'נשלחה' ? 'פתח שוב' : 'ערוך ושלח';
+                    edit.textContent = order.status === 'נשלחה' ? 'פתח שוב' : 'ערוך';
                     actions.appendChild(edit);
+
+                    // הזמנה שכבר נשלחה לא מקבלת אישור או שליחה חוזרת — אחרת
+                    // אותה הזמנה הייתה מגיעה לאהרוני פעמיים
+                    if (order.status !== 'נשלחה') {
+                        if (order.status !== 'מאושרת') {
+                            var approve = document.createElement('button');
+                            approve.type = 'button';
+                            approve.className = 'btn btn-primary';
+                            approve.textContent = 'אשר';
+                            approve.addEventListener('click', function () {
+                                approve.disabled = true;
+                                apiAction('action=approve&id=' + encodeURIComponent(order.orderId))
+                                    .then(load)
+                                    .catch(function (err) { approve.disabled = false; showError(err.message); });
+                            });
+                            actions.appendChild(approve);
+                        }
+
+                        var sendNow = document.createElement('button');
+                        sendNow.type = 'button';
+                        sendNow.className = 'btn btn-secondary';
+                        sendNow.textContent = 'שלח עכשיו';
+                        sendNow.addEventListener('click', function () {
+                            if (!confirm('לשלוח את ההזמנה של ' + (order.branch || 'הסניף') + ' לאהרוני עכשיו?')) return;
+                            sendNow.disabled = true;
+                            apiAction('action=send&id=' + encodeURIComponent(order.orderId))
+                                .then(load)
+                                .catch(function (err) { sendNow.disabled = false; showError(err.message); });
+                        });
+                        actions.appendChild(sendNow);
+                    }
+
                     body.appendChild(actions);
 
                     row.appendChild(head);
@@ -395,9 +493,23 @@
                 ordersEl.appendChild(box);
             }
 
+            // מונה המאושרות נטען בנפרד מהרשימה המוצגת, כדי שהכפתור המרוכז
+            // יראה את המספר האמיתי גם כשהמסנן עומד על "ממתינות".
+            function refreshBatchBar() {
+                fetchOrders('approved').then(function (approved) {
+                    var n = approved.length;
+                    batchBar.hidden = n === 0;
+                    batchText.textContent = n === 1
+                        ? 'הזמנה אחת מאושרת וממתינה לשליחה'
+                        : n + ' הזמנות מאושרות וממתינות לשליחה';
+                    sendAllBtn.textContent = 'שלח את כל המאושרות (' + n + ')';
+                }).catch(function () { batchBar.hidden = true; });
+            }
+
             function load() {
                 ordersEl.innerHTML = '<div class="rakash-state">טוען הזמנות…</div>';
                 countEl.textContent = '';
+                refreshBatchBar();
                 fetchOrders(currentStatus)
                     .then(renderOrders)
                     .catch(function (err) {
@@ -405,6 +517,26 @@
                         showError('לא הצלחנו לטעון את ההזמנות. נסו לרענן את העמוד.');
                     });
             }
+
+            sendAllBtn.addEventListener('click', function () {
+                var label = sendAllBtn.textContent;
+                if (!confirm('לשלוח את כל ההזמנות המאושרות לאהרוני?')) return;
+                sendAllBtn.disabled = true;
+                sendAllBtn.textContent = 'שולח…';
+                apiAction('action=send')
+                    .then(function (data) {
+                        var msg = 'נשלחו ' + data.sent + ' הזמנות';
+                        if (data.failed) msg += ', ו-' + data.failed + ' נכשלו ונשארו מאושרות';
+                        alert(msg);
+                        sendAllBtn.disabled = false;
+                        load();
+                    })
+                    .catch(function (err) {
+                        sendAllBtn.disabled = false;
+                        sendAllBtn.textContent = label;
+                        showError(err.message);
+                    });
+            });
 
             filters.forEach(function (btn) {
                 btn.addEventListener('click', function () {

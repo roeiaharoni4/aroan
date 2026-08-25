@@ -445,7 +445,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=53" defer></script>
+    <script src="/js/app.js?v=54" defer></script>
 </head>
 
 <body>
@@ -589,6 +589,7 @@
             // אחרי שההזמנה נשלחה עדיין חייב להיפתח לעריכה.
             var PENDING_ID = new URLSearchParams(location.search).get('pending');
             var PENDING_BRANCH = new URLSearchParams(location.search).get('branch');
+            var PENDING_ORDERER = new URLSearchParams(location.search).get('orderer');
 
             function pendingBranchObj() {
                 if (!PENDING_ID || !PENDING_BRANCH) return null;
@@ -603,8 +604,51 @@
                 var b = pendingBranchObj();
                 if (!b) return false;
                 paintBranch(b);
+                // שם המזמין המקורי, כדי שמנהלת הרכש לא תצטרך להקליד אותו מחדש
+                var nameEl = document.getElementById('cust-contact');
+                if (nameEl && PENDING_ORDERER && !nameEl.value) nameEl.value = PENDING_ORDERER;
                 hideGate();
                 return true;
+            }
+
+            // "אשר" — שומר את ההזמנה כפי שהיא עכשיו ומסמן אותה מאושרת, בלי
+            // לשלוח לאהרוני. השליחה בפועל נעשית מהמסך שלה, בלחיצה אחת על כל
+            // המאושרות. התשובה אטומה (no-cors) ולכן חוזרים למסך שלה — הסטטוס
+            // שם משקף את המצב האמיתי בגיליון.
+            function approvePending() {
+                if (!PENDING_ID || !window.APP || !window.APP.getCartItems) return;
+                var data = window.APP.getCartItems();
+                if (!data.items.length) { alert('ההזמנה ריקה.'); return; }
+                var payload = {
+                    action: 'approve',
+                    orderId: PENDING_ID,
+                    branch: (document.getElementById('cust-business') || {}).value || '',
+                    orderer: (document.getElementById('cust-contact') || {}).value || '',
+                    notes: (document.getElementById('cust-notes') || {}).value || '',
+                    items: data.items
+                };
+                fetch(window.PENDING_API, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(function () { }).then(function () {
+                    location.href = '/rakash-5e91c7/';
+                });
+            }
+
+            function addApproveButton() {
+                if (!PENDING_ID) return;
+                var submit = document.getElementById('submit-order-btn');
+                if (!submit || document.getElementById('approve-order-btn')) return;
+                var btn = document.createElement('button');
+                btn.id = 'approve-order-btn';
+                btn.type = 'button';
+                btn.className = 'btn btn-outline';
+                btn.style.minWidth = '160px';
+                btn.textContent = 'אשר בלי לשלוח';
+                btn.addEventListener('click', approvePending);
+                submit.parentNode.insertBefore(btn, submit);
             }
 
             // --- שלב 2: בורר הסניף — ריבועים, קודם מרכזי קניות ואז החנויות שבמרכז ---
@@ -817,6 +861,7 @@
                 if (PENDING_ID) {
                     // אישור רכש: רק הסניף שבקישור, לעולם לא השמור במכשיר
                     applyPendingBranch();
+                    addApproveButton();
                 } else {
                     var b = savedBranch();
                     if (b && b.store && !gateOpen) paintBranch(b);

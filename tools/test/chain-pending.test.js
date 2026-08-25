@@ -24,7 +24,8 @@ function loadGs(fakeCache) {
     stubs + src +
     '; return { pendingRow_: pendingRow_, rowToOrder_: rowToOrder_,' +
     '   sanitize_: sanitize_, rateLimitOk_: rateLimitOk_,' +
-    '   PENDING_HEADERS: PENDING_HEADERS };'
+    '   forwardPayload_: forwardPayload_, approvedOrderId_: approvedOrderId_,' +
+    '   summaryBody_: summaryBody_, PENDING_HEADERS: PENDING_HEADERS };'
   )(fakeCache || null);
 }
 
@@ -244,6 +245,70 @@ test('מעבר לשעה הבאה מאפס את המונה', () => {
   } finally {
     Date.now = realNow;
   }
+});
+
+console.log('forwardPayload_ — הפיילוד שמועבר ל-webhook ההזמנות');
+
+// הצורה שרועי מקבל חייבת להיות זהה לזו שהאתר שולח, אחרת השורה בגיליון שלו
+// תצא בלי סניף ובלי פריטים — בדיוק הכשל שנמצא בסקירה הרוחבית.
+const ORDER_FROM_SHEET = gs.rowToOrder_(gs.pendingRow_(REAL_PAYLOAD));
+
+test('הסניף עובר ל-customer.business, כמו בפיילוד של האתר', () => {
+  const p = gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-20260825-123456');
+  assert.strictEqual(p.customer.business, 'גלילות — טומי');
+  assert.strictEqual(p.customer.contact, 'בדיקה פנימית');
+});
+
+test('מספר ההזמנה המקורי נשמר ב-pendingId ובסניף המקורי', () => {
+  const p = gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-20260825-123456');
+  assert.strictEqual(p.pendingId, 'RS-20260825-8541');
+  assert.strictEqual(p.originalBranch, 'גלילות — טומי');
+});
+
+test('סכום הפריטים מחושב מהכמויות ולא ממספר השורות', () => {
+  const p = gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-1');
+  assert.strictEqual(p.totalItems, 8);
+  assert.strictEqual(p.items.length, 2);
+});
+
+test('showPrices false — הסניפים לא רואים מחירים ולכן אין הצעת מחיר', () => {
+  assert.strictEqual(gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-1').showPrices, false);
+});
+
+test('כל פריט נושא את השדות שתעודת ההזמנה קוראת', () => {
+  const item = gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-1').items[0];
+  ['id', 'name', 'category', 'qty', 'unit'].forEach(f => {
+    assert.ok(f in item, 'חסר השדה ' + f);
+  });
+  assert.strictEqual(item.qty, 6);
+});
+
+test('הזמנה בלי פריטים לא מפילה את בניית הפיילוד', () => {
+  const p = gs.forwardPayload_({ orderId: 'RS-1', branch: 'א', orderer: '', notes: '', items: [] }, 'RA-1');
+  assert.strictEqual(p.totalItems, 0);
+  assert.deepStrictEqual(p.items, []);
+});
+
+console.log('approvedOrderId_');
+
+test('מספר ההזמנה המאושרת בתבנית RA-YYYYMMDD-NNNNNN', () => {
+  assert.ok(/^RA-\d{8}-\d{6}$/.test(gs.approvedOrderId_()));
+});
+
+console.log('summaryBody_');
+
+test('מייל הסיכום מונה את הנשלחות ומפרט סניף ומספר הזמנה', () => {
+  const body = gs.summaryBody_(
+    [{ branch: 'גלילות — טומי', itemCount: 8, approvedId: 'RA-20260825-111111' }], []);
+  assert.ok(body.indexOf('נשלחו 1 הזמנות') !== -1);
+  assert.ok(body.indexOf('גלילות — טומי') !== -1);
+  assert.ok(body.indexOf('RA-20260825-111111') !== -1);
+});
+
+test('כשלים מופיעים בנפרד עם הסבר שאפשר לנסות שוב', () => {
+  const body = gs.summaryBody_([], ['אמור']);
+  assert.ok(body.indexOf('לא נשלחו (1)') !== -1);
+  assert.ok(body.indexOf('אמור') !== -1);
 });
 
 console.log('\n' + passed + ' בדיקות עברו');
