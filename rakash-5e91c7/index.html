@@ -284,7 +284,7 @@
             var ACCESS_CODE = '8264';
             // =========================================
             // כתובת הסקריפט "הזמנות ממתינות". מציין מקום עד שרועי פורס אותו.
-            var API_URL = 'PUT_THE_PENDING_WEBHOOK_URL_HERE';
+            var API_URL = 'https://script.google.com/macros/s/AKfycbzJY8qTkN8tPtOxgArn7ELi45A4yZ74jSh7CNLzI8JR5OSXMI-YJIu9RIcFO-2_qyWC/exec';
             // הקישור לעריכה נכנס לעמוד החנויות עם הקוד שלו, כדי שלא תצטרך
             // להקליד קוד שני בכל הזמנה
             var SHOPS_URL = '/shops-4b7e2c/';
@@ -370,6 +370,17 @@
                     '&orderer=' + encodeURIComponent(order.orderer || '');
             }
 
+            // הגיליון מחזיר תאריך כמחרוזת Date מלאה של JS. בלי עיבוד היא
+            // מוצגת כ-"Tue Aug 25 2026 19:50:23 GMT+0300 (שעון ישראל (קיץ))".
+            function formatReceived(value) {
+                if (!value) return '';
+                var d = new Date(value);
+                if (isNaN(d.getTime())) return String(value);
+                var p2 = function (n) { return ('0' + n).slice(-2); };
+                return p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear() +
+                    ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+            }
+
             function renderOrders(orders) {
                 ordersEl.innerHTML = '';
                 countEl.textContent = orders.length === 1
@@ -411,7 +422,7 @@
 
                     var metaParts = [];
                     if (order.orderer) metaParts.push('מזמין: ' + order.orderer);
-                    if (order.receivedAt) metaParts.push('התקבלה: ' + order.receivedAt);
+                    if (order.receivedAt) metaParts.push('התקבלה: ' + formatReceived(order.receivedAt));
                     if (order.notes) metaParts.push('הערות: ' + order.notes);
                     if (metaParts.length) {
                         var meta = document.createElement('p');
