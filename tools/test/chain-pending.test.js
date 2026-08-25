@@ -174,9 +174,14 @@ const REAL_PAYLOAD = {
     address: '',
     notes: 'לפרוק בכניסה האחורית'
   },
+  subtotal: '59.55',
+  discount: '0.00',
+  shipping: '0.00',
+  // הפריטים נושאים גם שדות שהסקריפט הזה לא קורא (image/price/total/bundle/free).
+  // הם נשמרים כאן בכוונה כדי שקורא עתידי יראה את המבנה האמיתי ולא יסיק ממנו חוזה חלקי.
   items: [
-    { id: 'אבי004', name: 'כפפות ניטריל ללא אבקה', category: 'אביזרי ניקיון', qty: 6, unit: 'יחידה' },
-    { id: 'אבי005', name: 'כרית יפנית 6 יח׳', category: 'אביזרי ניקיון', qty: 2, unit: 'יחידה' }
+    { id: 'אבי004', name: 'כפפות ניטריל ללא אבקה', category: 'אביזרי ניקיון', qty: 6, unit: 'יחידה', price: 6.3, total: 37.8, image: 'images/אביזרי ניקיון/כפפות.webp', bundle: '', free: 0 },
+    { id: 'אבי005', name: 'כרית יפנית 6 יח׳', category: 'אביזרי ניקיון', qty: 2, unit: 'יחידה', price: 10.875, total: 21.75, image: '', bundle: '', free: 0 }
   ]
 };
 
@@ -215,6 +220,30 @@ test('הפיילוד האמיתי חוזר לאובייקט מלא דרך rowToO
   assert.strictEqual(order.orderer, 'בדיקה פנימית');
   assert.strictEqual(order.itemCount, 8);
   assert.strictEqual(order.items.length, 2);
+});
+
+test('מפתח הקאש כולל את דלי השעה, כך שהחלון קבוע ולא מתגלגל', () => {
+  const cache = makeFakeCache();
+  const scoped = loadGs(cache);
+  scoped.rateLimitOk_();
+  const expected = 'chain_pending_count_' + Math.floor(Date.now() / 3600000);
+  assert.strictEqual(cache.puts[0].key, expected);
+});
+
+test('מעבר לשעה הבאה מאפס את המונה', () => {
+  const cache = makeFakeCache();
+  const scoped = loadGs(cache);
+  for (let i = 0; i < 200; i++) scoped.rateLimitOk_();
+  assert.strictEqual(scoped.rateLimitOk_(), false, 'התקרה אמורה להיסגר בשעה הנוכחית');
+
+  // מזייפים מעבר שעה: הדלי הבא הוא מפתח אחר, ולכן הוא מתחיל מאפס
+  const realNow = Date.now;
+  Date.now = () => realNow() + 3600000;
+  try {
+    assert.strictEqual(scoped.rateLimitOk_(), true, 'בשעה הבאה התקרה אמורה להיפתח מחדש');
+  } finally {
+    Date.now = realNow;
+  }
 });
 
 console.log('\n' + passed + ' בדיקות עברו');
