@@ -303,10 +303,18 @@ test('showPrices false — הסניפים לא רואים מחירים ולכן 
 
 test('כל פריט נושא את השדות שתעודת ההזמנה קוראת', () => {
   const item = gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-1').items[0];
-  ['id', 'name', 'category', 'qty', 'unit'].forEach(f => {
+  ['id', 'name', 'category', 'qty', 'unit', 'price'].forEach(f => {
     assert.ok(f in item, 'חסר השדה ' + f);
   });
   assert.strictEqual(item.qty, 6);
+});
+
+test('מחיר היחידה שורד את הדרך לגיליון ובחזרה אל התעודה', () => {
+  // בלי זה כל שורה בתעודה יצאה 0.00 ש"ח בעוד שהסיכום היה נכון
+  const stored = JSON.parse(gs.pendingRow_(REAL_PAYLOAD)[gs.PENDING_HEADERS.indexOf('פריטים')]);
+  assert.strictEqual(stored[0].price, 6.3);
+  const item = gs.forwardPayload_(ORDER_FROM_SHEET, 'RA-1').items[0];
+  assert.strictEqual(item.price, 6.3);
 });
 
 test('הזמנה בלי פריטים לא מפילה את בניית הפיילוד', () => {
@@ -335,6 +343,18 @@ test('כשלים מופיעים בנפרד עם הסבר שאפשר לנסות �
   const body = gs.summaryBody_([], ['אמור']);
   assert.ok(body.indexOf('לא נשלחו (1)') !== -1);
   assert.ok(body.indexOf('אמור') !== -1);
+});
+
+test('מייל הסיכום מציג גם את הסכום של כל הזמנה', () => {
+  const body = gs.summaryBody_(
+    [{ branch: 'אמור', itemCount: 5, total: 14.5, approvedId: 'RA-1' }], []);
+  assert.ok(body.indexOf('14.50 ש"ח') !== -1, 'הסכום חסר בגוף המייל');
+});
+
+test('הזמנה בלי סכום לא מוסיפה שדה ריק לשורה', () => {
+  const body = gs.summaryBody_(
+    [{ branch: 'אמור', itemCount: 5, total: 0, approvedId: 'RA-1' }], []);
+  assert.ok(body.indexOf('ש"ח') === -1);
 });
 
 console.log('\n' + passed + ' בדיקות עברו');

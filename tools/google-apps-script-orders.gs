@@ -461,7 +461,7 @@ function savePdf_(data) {
     var blob = buildOrderDoc_(data).setName(name);
     var file = pdfFolder_().createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return { blob: blob, url: file.getUrl() };
+    return { blob: blob, url: file.getUrl(), id: file.getId() };
   } catch (err) {
     Logger.log('PDF failed: ' + err);
     return null;
@@ -532,8 +532,11 @@ function doPost(e) {
       pdf ? pdf.url : ''                   // קובץ PDF
     ]);
 
-    // מייל התראה
-    if (NOTIFY_EMAIL) {
+    // מייל התראה.
+    // suppressEmail נשלח רק מסקריפט "ההזמנות הממתינות" של רשת החנויות, שאוסף
+    // את כל התעודות של הגל ושולח מייל אחד במקום עשרות. כל שאר ההזמנות באתר
+    // לא שולחות את השדה הזה ולכן מתנהגות בדיוק כמו קודם.
+    if (NOTIFY_EMAIL && !data.suppressEmail) {
       var subject = 'הזמנה חדשה מהאתר #' + clean_(data.orderId, 30) +
         (customer.business ? ' - ' + clean_(customer.business, 100) : '');
       var body = 'התקבלה הזמנה חדשה:\n\n' +
@@ -577,8 +580,13 @@ function doPost(e) {
       }
     }
 
-    return ContentService.createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+    // מזהה הקובץ מוחזר כדי שסקריפט הממתינות יוכל לאסוף את כל התעודות
+    // של הגל ולשלוח אותן במייל אחד.
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      pdfId: pdf && pdf.id ? pdf.id : '',
+      pdfUrl: pdf ? pdf.url : ''
+    })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: String(err) }))
       .setMimeType(ContentService.MimeType.JSON);

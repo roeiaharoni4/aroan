@@ -65,7 +65,10 @@ function pendingRow_(data) {
         name: String(it.name || ''),
         qty: Number(it.qty) || 0,
         unit: String(it.unit || ''),
-        category: String(it.category || '')
+        category: String(it.category || ''),
+        // מחיר היחידה נשמר: תעודת ההזמנה קוראת item.price, ובלעדיו כל שורה
+        // בתעודה יצאה 0.00 ₪ בעוד שהסיכום למטה היה נכון
+        price: Number(it.price) || 0
       });
     }
   }
@@ -137,7 +140,8 @@ function forwardPayload_(order, approvedId) {
       name: String(i.name || ''),
       category: String(i.category || ''),
       qty: Number(i.qty) || 0,
-      unit: String(i.unit || '')
+      unit: String(i.unit || ''),
+      price: Number(i.price) || 0
     };
   });
   var now = new Date();
@@ -272,19 +276,32 @@ function approveOrder_(data) {
  * מחזיר את מספר ההזמנה שנוצר, או '' כשההעברה נכשלה — כישלון של אחת לא
  * עוצר את השאר, אחרת סניף אחד תקול היה חוסם גל של 60.
  */
-function forwardOne_(sheet, rowNum, order) {
+function forwardOne_(sheet, rowNum, order, quiet) {
   var approvedId = approvedOrderId_();
+  var payload = forwardPayload_(order, approvedId);
+  // בשליחה מרוכזת משתיקים את המייל הבודד: הסקריפט הזה אוסף את כל התעודות
+  // ושולח מייל אחד בסוף. סניף דחוף שנשלח לבד ממשיך לקבל מייל משלו.
+  if (quiet) payload.suppressEmail = true;
+  var pdfId = '';
   try {
-    UrlFetchApp.fetch(ORDERS_WEBHOOK_URL, {
+    var res = UrlFetchApp.fetch(ORDERS_WEBHOOK_URL, {
       method: 'post',
       contentType: 'application/json',
-      payload: JSON.stringify(forwardPayload_(order, approvedId)),
+      payload: JSON.stringify(payload),
       muteHttpExceptions: true
     });
+    try {
+      var parsed = JSON.parse(res.getContentText());
+      if (parsed && parsed.pdfId) pdfId = parsed.pdfId;
+    } catch (parseErr) {
+      // תשובה שאינה JSON לא אמורה לקרות, ובכל מקרה ההזמנה כבר נשלחה
+      Logger.log('bad response for ' + order.orderId + ': ' + parseErr);
+    }
   } catch (err) {
     Logger.log('forward failed for ' + order.orderId + ': ' + err);
     return '';
   }
+  order.pdfId = pdfId;
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('סטטוס') + 1).setValue(STATUS_SENT);
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('מספר הזמנה מאושרת') + 1).setValue(approvedId);
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('תאריך אישור') + 1).setValue(new Date());
@@ -297,7 +314,9 @@ function summaryBody_(sent, failed) {
   lines.push('נשלחו ' + sent.length + ' הזמנות:');
   for (var i = 0; i < sent.length; i++) {
     lines.push('  ' + (i + 1) + '. ' + sent[i].branch +
-      ' — ' + sent[i].itemCount + ' פריטים — ' + sent[i].approvedId);
+      ' — ' + sent[i].itemCount + ' פריטים' +
+      (sent[i].total ? ' — ' + Number(sent[i].total).toFixed(2) + ' ש"ח' : '') +
+      ' — ' + sent[i].approvedId);
   }
   if (failed.length) {
     lines.push('');
@@ -305,8 +324,57 @@ function summaryBody_(sent, failed) {
     for (var j = 0; j < failed.length; j++) lines.push('  · ' + failed[j]);
   }
   lines.push('');
-  lines.push('כל הזמנה נשלחה בנפרד ותגיע גם כשורה בגיליון ההזמנות וגם כתעודת PDF.');
+  lines.push('כל ההזמנות נכתבו לגיליון ההזמנות, והתעודות מצורפות למייל הזה.');
   return lines.join('\n');
+}
+
+/** תקרת גודל לצרופות במייל אחד. ג'ימייל חוסם מעל ~25MB, ולכן עוצרים מוקדם. */
+var MAIL_ATTACH_LIMIT = 18 * 1024 * 1024;
+
+/**
+ * מייל אחד עם כל התעודות של הגל. אם הן כבדות מדי למייל אחד — מפצלים
+ * לכמה מיילים במקום להיכשל בשקט מול המגבלה של ג'ימייל.
+ */
+function sendBatchMail_(sent, failed) {
+  var batches = [[]], sizes = [0];
+  for (var i = 0; i < sent.length; i++) {
+    if (!sent[i].pdfId) continue;
+    var blob;
+    try {
+      blob = DriveApp.getFileById(sent[i].pdfId).getBlob();
+    } catch (err) {
+      Logger.log('pdf fetch failed for ' + sent[i].approvedId + ': ' + err);
+      continue;
+    }
+    var size = blob.getBytes().length;
+    var last = batches.length - 1;
+    if (sizes[last] + size > MAIL_ATTACH_LIMIT && batches[last].length) {
+      batches.push([]); sizes.push(0);
+      last++;
+    }
+    batches[last].push(blob);
+    sizes[last] += size;
+  }
+
+  var body = summaryBody_(sent, failed);
+  for (var b = 0; b < batches.length; b++) {
+    var suffix = batches.length > 1 ? ' (' + (b + 1) + '/' + batches.length + ')' : '';
+    try {
+      MailApp.sendEmail(SUMMARY_EMAIL,
+        'הזמנות רשת החנויות — ' + sent.length + ' הזמנות' + suffix,
+        body,
+        batches[b].length ? { attachments: batches[b] } : {});
+    } catch (mailErr) {
+      // הצרופות הן הסיבה הסבירה לכישלון — עדיף סיכום בלי קבצים מאשר כלום
+      Logger.log('batch mail failed: ' + mailErr);
+      try {
+        MailApp.sendEmail(SUMMARY_EMAIL,
+          'הזמנות רשת החנויות — ' + sent.length + ' הזמנות' + suffix, body, {});
+      } catch (e2) {
+        Logger.log('batch mail failed without attachments too: ' + e2);
+      }
+    }
+  }
 }
 
 function doGet(e) {
@@ -354,23 +422,19 @@ function doGet(e) {
         } else if (candidate.status !== STATUS_APPROVED) {
           continue;
         }
-        var approvedId = forwardOne_(sheet, m + 2, candidate);
+        var approvedId = forwardOne_(sheet, m + 2, candidate, !p.id);
         if (approvedId) {
-          sent.push({ branch: candidate.branch, itemCount: candidate.itemCount, approvedId: approvedId });
+          sent.push({
+            branch: candidate.branch, itemCount: candidate.itemCount,
+            total: candidate.total, approvedId: approvedId, pdfId: candidate.pdfId || ''
+          });
         } else {
           failed.push(candidate.branch || candidate.orderId);
         }
       }
-      // מייל סיכום רק לשליחה מרוכזת: על הזמנה בודדת ממילא מגיעה תעודה
-      if (!p.id && sent.length) {
-        try {
-          MailApp.sendEmail(SUMMARY_EMAIL,
-            'סיכום שליחה — ' + sent.length + ' הזמנות מרשת החנויות',
-            summaryBody_(sent, failed));
-        } catch (mailErr) {
-          Logger.log('summary mail failed: ' + mailErr);
-        }
-      }
+      // מייל אחד לכל הגל, עם כל התעודות מצורפות. על הזמנה בודדת לא משתיקים
+      // את המייל הרגיל ולכן אין כאן מה לשלוח.
+      if (!p.id && sent.length) sendBatchMail_(sent, failed);
       return json_({ ok: true, sent: sent.length, failed: failed.length });
     }
 

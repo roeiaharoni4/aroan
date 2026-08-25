@@ -224,6 +224,12 @@
             color: var(--primary-pastel, #8FD6A3);
         }
 
+        /* הרשימה נשמרת בזיכרון ומסוננת מקומית, ולכן צריך רענון יזום */
+        .refresh-btn {
+            margin-inline-start: auto;
+            border-style: dashed !important;
+        }
+
         .rakash-count {
             color: var(--text-secondary, #6B6B6B);
             font-size: 0.95rem;
@@ -300,6 +306,7 @@
             <button type="button" data-status="approved">מאושרות</button>
             <button type="button" data-status="sent">נשלחו</button>
             <button type="button" data-status="all">הכל</button>
+            <button type="button" id="rakash-refresh" class="refresh-btn" title="טעינת הזמנות חדשות מהשרת">רענן</button>
         </div>
         <div class="rakash-batch" id="rakash-batch" hidden>
             <span id="rakash-batch-text"></span>
@@ -337,7 +344,7 @@
             var codeError = document.getElementById('rakash-error');
             var ordersEl = document.getElementById('orders');
             var countEl = document.getElementById('rakash-count');
-            var filters = document.querySelectorAll('.rakash-filters button');
+            var filters = document.querySelectorAll('.rakash-filters button[data-status]');
             var batchBar = document.getElementById('rakash-batch');
             var batchText = document.getElementById('rakash-batch-text');
             var sendAllBtn = document.getElementById('rakash-send-all');
@@ -365,6 +372,19 @@
                     if (pw) sessionStorage.setItem('aroam_rakash_key', pw);
                 }
                 return pw;
+            }
+
+            // כל ההזמנות נטענות פעם אחת ומסוננות בדפדפן. קודם כל מעבר בין
+            // קטגוריות עלה בשתי קריאות לענן (הרשימה + מונה המאושרות), וכל
+            // אחת מהן לוקחת שניות — Apps Script מגיב לאט ועובר דרך הפניה.
+            var ALL_ORDERS = null;
+
+            var STATUS_MAP = { pending: 'ממתין', approved: 'מאושרת', sent: 'נשלחה' };
+
+            function filterOrders(status) {
+                if (!ALL_ORDERS) return [];
+                if (status === 'all') return ALL_ORDERS;
+                return ALL_ORDERS.filter(function (o) { return o.status === STATUS_MAP[status]; });
             }
 
             function fetchOrders(status) {
@@ -567,7 +587,7 @@
                             approve.addEventListener('click', function () {
                                 approve.disabled = true;
                                 apiAction('action=approve&id=' + encodeURIComponent(order.orderId))
-                                    .then(load)
+                                    .then(function () { load(true); })
                                     .catch(function (err) { approve.disabled = false; showError(err.message); });
                             });
                             actions.appendChild(approve);
@@ -581,7 +601,7 @@
                             if (!confirm('לשלוח את ההזמנה של ' + (order.branch || 'הסניף') + ' לאהרוני עכשיו?')) return;
                             sendNow.disabled = true;
                             apiAction('action=send&id=' + encodeURIComponent(order.orderId))
-                                .then(function () { switchFilter('sent'); })
+                                .then(function () { ALL_ORDERS = null; switchFilter('sent'); })
                                 .catch(function (err) { sendNow.disabled = false; showError(err.message); });
                         });
                         actions.appendChild(sendNow);
@@ -611,29 +631,38 @@
             var oldApproved = [];
 
             function refreshBatchBar() {
-                fetchOrders('approved').then(function (approved) {
-                    var n = approved.length;
-                    var thisMonth = currentMonthKey();
-                    oldApproved = approved
-                        .filter(function (o) { var k = monthKey(o.receivedAt).key; return k && k !== thisMonth; })
-                        .map(function (o) { return o.branch || o.orderId; });
-                    batchBar.hidden = n === 0;
-                    batchText.textContent = n === 1
-                        ? 'הזמנה אחת מאושרת וממתינה לשליחה'
-                        : n + ' הזמנות מאושרות וממתינות לשליחה';
-                    sendAllBtn.textContent = 'שלח את כל המאושרות (' + n + ')';
-                    if (oldApproved.length) {
-                        batchText.textContent += ' · ' + oldApproved.length + ' מחודש קודם';
-                    }
-                }).catch(function () { batchBar.hidden = true; });
+                var approved = filterOrders('approved');
+                var n = approved.length;
+                var thisMonth = currentMonthKey();
+                oldApproved = approved
+                    .filter(function (o) { var k = monthKey(o.receivedAt).key; return k && k !== thisMonth; })
+                    .map(function (o) { return o.branch || o.orderId; });
+                batchBar.hidden = n === 0;
+                batchText.textContent = n === 1
+                    ? 'הזמנה אחת מאושרת וממתינה לשליחה'
+                    : n + ' הזמנות מאושרות וממתינות לשליחה';
+                sendAllBtn.textContent = 'שלח את כל המאושרות (' + n + ')';
+                if (oldApproved.length) {
+                    batchText.textContent += ' · ' + oldApproved.length + ' מחודש קודם';
+                }
             }
 
-            function load() {
+            // ציור מיידי מהנתונים שכבר בזיכרון — בלי רשת
+            function draw() {
+                refreshBatchBar();
+                renderOrders(filterOrders(currentStatus));
+            }
+
+            // רענון מהענן. force=true אחרי פעולה ששינתה נתונים.
+            function load(force) {
+                if (ALL_ORDERS && !force) { draw(); return; }
                 ordersEl.innerHTML = '<div class="rakash-state">טוען הזמנות…</div>';
                 countEl.textContent = '';
-                refreshBatchBar();
-                fetchOrders(currentStatus)
-                    .then(renderOrders)
+                fetchOrders('all')
+                    .then(function (orders) {
+                        ALL_ORDERS = orders;
+                        draw();
+                    })
                     .catch(function (err) {
                         console.error(err);
                         showError('לא הצלחנו לטעון את ההזמנות. נסו לרענן את העמוד.');
@@ -660,6 +689,7 @@
                         sendAllBtn.disabled = false;
                         // מעבר אוטומטי ל"נשלחו": אחרת היא נשארת על "ממתינות",
                         // רואה שההזמנות נעלמו, ולא ברור לה לאן הן הלכו
+                        ALL_ORDERS = null;
                         switchFilter('sent');
                     })
                     .catch(function (err) {
@@ -679,6 +709,10 @@
 
             filters.forEach(function (btn) {
                 btn.addEventListener('click', function () { switchFilter(btn.dataset.status); });
+            });
+
+            document.getElementById('rakash-refresh').addEventListener('click', function () {
+                load(true);
             });
 
             function unlock() {
