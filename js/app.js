@@ -1506,6 +1506,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             tableWrap.parentNode.insertBefore(empty, tableWrap);
         }
 
+        // הכפתור הראשי בכרטיס חייב להצביע על ערוץ השליחה של העמוד. עד כה הוא
+        // הפעיל תמיד את כפתור הוואטסאפ — ובעמוד רשת החנויות, שבו אין וואטסאפ
+        // ואין מייל, הוא פשוט לא עשה כלום: בדסקטופ הפוטר מוסתר, ולכן אלה היו
+        // הכפתורים היחידים שנראו, ושניהם מתים.
+        const directSend = !!(CONFIG.directSend || CONFIG.agentMode);
+        const sendProxy = directSend ? 'submit-order-btn' : 'send-whatsapp';
+        const sendLabel = directSend ? 'שלח הזמנה' : 'שלח הזמנה בוואטסאפ';
+        const showEmail = !directSend && CONFIG.allowShare !== false;
+
         const card = document.createElement('aside');
         card.id = 'cart-summary-card';
         card.innerHTML = `
@@ -1515,10 +1524,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <span>${CONFIG.showPrices ? 'סה״כ לתשלום' : 'סה״כ פריטים'}</span>
                 <strong id="cs-total-value">—</strong>
             </div>
-            <button type="button" id="cs-send-btn" class="btn btn-success">שלח הזמנה בוואטסאפ</button>
+            <button type="button" id="cs-send-btn" class="btn btn-success">${sendLabel}</button>
             <div class="cs-secondary">
-                <button type="button" data-proxy="send-email">שליחה במייל</button>
-                <span aria-hidden="true">·</span>
+                ${showEmail ? '<button type="button" data-proxy="send-email">שליחה במייל</button><span aria-hidden="true">·</span>' : ''}
                 <button type="button" data-proxy="clear-cart-btn">ניקוי הסל</button>
             </div>
             <p class="cs-note">ההזמנה נשלחת לאישור — נחזור אליכם בהקדם.</p>
@@ -1526,7 +1534,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // הכפתורים בכרטיס מפעילים את הכפתורים הקיימים בפוטר — לוגיקת השליחה
         // נשארת במקום אחד, והפוטר מוסתר בדסקטופ כדי שלא תהיה כפילות
         card.querySelector('#cs-send-btn').addEventListener('click', () => {
-            document.getElementById('send-whatsapp')?.click();
+            document.getElementById(sendProxy)?.click();
         });
         card.querySelectorAll('[data-proxy]').forEach(btn => {
             btn.addEventListener('click', () => {

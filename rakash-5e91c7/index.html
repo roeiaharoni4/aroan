@@ -184,6 +184,34 @@
             border: 1px solid var(--primary, #639C7D);
         }
 
+        /* כותרת חודש — מפרידה בין גל ההזמנות הנוכחי לקודמים */
+        .month-head {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--primary-dark, #1A4231);
+            margin: 1.2rem 0 0.6rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid var(--primary, #639C7D);
+        }
+
+        .month-head:first-child {
+            margin-top: 0;
+        }
+
+        /* חודש שאינו הנוכחי — סימון ברור, כדי שלא תישלח הזמנה מהגל הקודם */
+        .month-head.month-old {
+            color: #b35309;
+            border-bottom-color: #e8a33d;
+        }
+
+        [data-theme="dark"] .month-head {
+            color: var(--primary-pastel, #8FD6A3);
+        }
+
+        [data-theme="dark"] .month-head.month-old {
+            color: #e8a33d;
+        }
+
         .rakash-count {
             color: var(--text-secondary, #6B6B6B);
             font-size: 0.95rem;
@@ -381,6 +409,25 @@
                     ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
             }
 
+            var MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+                'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+
+            // מפתח חודש מתוך תאריך הקבלה. הזמנות בלי תאריך תקין נאספות לקבוצה
+            // משלהן בסוף, כדי שלא ייעלמו מהרשימה.
+            function monthKey(value) {
+                var d = new Date(value);
+                if (!value || isNaN(d.getTime())) return { key: '', label: 'ללא תאריך' };
+                return {
+                    key: d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2),
+                    label: MONTHS[d.getMonth()] + ' ' + d.getFullYear()
+                };
+            }
+
+            function currentMonthKey() {
+                var now = new Date();
+                return now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+            }
+
             function renderOrders(orders) {
                 ordersEl.innerHTML = '';
                 countEl.textContent = orders.length === 1
@@ -394,6 +441,34 @@
                     return;
                 }
 
+                // קיבוץ לפי חודש, החדש קודם. בגל של 60 הזמנות כל חודשיים,
+                // רשימה שטוחה מזמינה שליחה בטעות של הזמנה מהגל הקודם.
+                var groups = {}, order2 = [];
+                orders.forEach(function (o) {
+                    var mk = monthKey(o.receivedAt);
+                    if (!groups[mk.key]) { groups[mk.key] = { label: mk.label, items: [] }; order2.push(mk.key); }
+                    groups[mk.key].items.push(o);
+                });
+                order2.sort(function (a, b) {
+                    if (!a) return 1;
+                    if (!b) return -1;
+                    return b.localeCompare(a);
+                });
+
+                var thisMonth = currentMonthKey();
+                order2.forEach(function (key) {
+                    var g = groups[key];
+                    var head = document.createElement('h2');
+                    head.className = 'month-head' + (key && key !== thisMonth ? ' month-old' : '');
+                    head.textContent = g.label + ' · ' +
+                        (g.items.length === 1 ? 'הזמנה אחת' : g.items.length + ' הזמנות');
+                    if (key && key !== thisMonth) head.textContent += ' — מחודש קודם';
+                    ordersEl.appendChild(head);
+                    renderGroup(g.items);
+                });
+            }
+
+            function renderGroup(orders) {
                 var list = document.createElement('div');
                 list.className = 'recent-orders';
 
@@ -506,14 +581,23 @@
 
             // מונה המאושרות נטען בנפרד מהרשימה המוצגת, כדי שהכפתור המרוכז
             // יראה את המספר האמיתי גם כשהמסנן עומד על "ממתינות".
+            var oldApproved = [];
+
             function refreshBatchBar() {
                 fetchOrders('approved').then(function (approved) {
                     var n = approved.length;
+                    var thisMonth = currentMonthKey();
+                    oldApproved = approved
+                        .filter(function (o) { var k = monthKey(o.receivedAt).key; return k && k !== thisMonth; })
+                        .map(function (o) { return o.branch || o.orderId; });
                     batchBar.hidden = n === 0;
                     batchText.textContent = n === 1
                         ? 'הזמנה אחת מאושרת וממתינה לשליחה'
                         : n + ' הזמנות מאושרות וממתינות לשליחה';
                     sendAllBtn.textContent = 'שלח את כל המאושרות (' + n + ')';
+                    if (oldApproved.length) {
+                        batchText.textContent += ' · ' + oldApproved.length + ' מחודש קודם';
+                    }
                 }).catch(function () { batchBar.hidden = true; });
             }
 
@@ -531,7 +615,14 @@
 
             sendAllBtn.addEventListener('click', function () {
                 var label = sendAllBtn.textContent;
-                if (!confirm('לשלוח את כל ההזמנות המאושרות לאהרוני?')) return;
+                // אזהרה מפורשת כשבין המאושרות יש הזמנה מחודש קודם — זה בדיוק
+                // התרחיש שקיבוץ החודשים נועד למנוע
+                var msg = 'לשלוח את כל ההזמנות המאושרות לאהרוני?';
+                if (oldApproved.length) {
+                    msg = 'שים לב: ' + oldApproved.length + ' מההזמנות המאושרות הן מחודש קודם (' +
+                        oldApproved.join(', ') + ').\n\nלשלוח את כולן בכל זאת?';
+                }
+                if (!confirm(msg)) return;
                 sendAllBtn.disabled = true;
                 sendAllBtn.textContent = 'שולח…';
                 apiAction('action=send')
