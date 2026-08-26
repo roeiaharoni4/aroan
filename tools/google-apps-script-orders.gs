@@ -496,12 +496,17 @@ function savePdf_(data) {
   }
 }
 
-// הגבלת קצב פשוטה: עד 30 הזמנות בשעה (מגן מפני הצפה/ניצול לרעה)
+// הגבלת קצב: מגן מפני הצפה/ניצול לרעה.
+// התקרה הועלתה מ-30 ל-250: רשת החנויות שולחת גל של כ-63 הזמנות בבת אחת,
+// והתקרה הישנה דחתה בשקט את כל מה שמעבר ל-30 — 33 הזמנות אבדו בגל אחד.
+// המפתח כולל את מספר השעה כדי שהחלון יהיה קבוע ולא מתגלגל: cache.put
+// מרענן את ה-TTL בכל פגיעה, ולכן הצפה יכלה להחזיק את הדלת נעולה שעות.
 function rateLimitOk_() {
   var cache = CacheService.getScriptCache();
-  var count = Number(cache.get('order_count') || 0);
-  if (count >= 30) return false;
-  cache.put('order_count', String(count + 1), 3600);
+  var key = 'order_count_' + Math.floor(Date.now() / 3600000);
+  var count = Number(cache.get(key) || 0);
+  if (count >= 250) return false;
+  cache.put(key, String(count + 1), 3600);
   return true;
 }
 

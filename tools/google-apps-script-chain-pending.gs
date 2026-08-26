@@ -293,13 +293,22 @@ function forwardOne_(sheet, rowNum, order, quiet) {
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     });
+    // חובה לבדוק את גוף התשובה ולא רק שהבקשה לא זרקה: סקריפט ההזמנות
+    // מחזיר HTTP 200 גם כשהוא דוחה את ההזמנה (הגבלת קצב, בקשה פגומה).
+    // בלי הבדיקה הזאת 33 הזמנות בגל של 63 סומנו "נשלחה" ומעולם לא נכתבו.
+    var parsed = null;
     try {
-      var parsed = JSON.parse(res.getContentText());
-      if (parsed && parsed.pdfId) pdfId = parsed.pdfId;
+      parsed = JSON.parse(res.getContentText());
     } catch (parseErr) {
-      // תשובה שאינה JSON לא אמורה לקרות, ובכל מקרה ההזמנה כבר נשלחה
       Logger.log('bad response for ' + order.orderId + ': ' + parseErr);
+      return '';
     }
+    if (!parsed || parsed.success !== true) {
+      Logger.log('order rejected for ' + order.orderId + ': ' +
+        (parsed && parsed.error ? parsed.error : 'unknown'));
+      return '';
+    }
+    if (parsed.pdfId) pdfId = parsed.pdfId;
   } catch (err) {
     Logger.log('forward failed for ' + order.orderId + ': ' + err);
     return '';
