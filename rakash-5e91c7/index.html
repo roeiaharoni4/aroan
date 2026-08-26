@@ -711,12 +711,47 @@
                 }
                 if (!confirm(msg)) return;
                 sendAllBtn.disabled = true;
-                sendAllBtn.textContent = 'שולח…';
-                apiAction('action=send')
-                    .then(function (data) {
-                        var msg = 'נשלחו ' + data.sent + ' הזמנות';
-                        if (data.failed) msg += ', ו-' + data.failed + ' נכשלו ונשארו מאושרות';
-                        alert(msg);
+
+                // הגל נשלח במנות: כל קריאה מטפלת בחלק מההזמנות ומחזירה כמה
+                // נשארו. בלי זה גל של 63 סניפים היה חורג מתקרת 6 הדקות של
+                // Apps Script, ההרצה הייתה נהרגת באמצע — ומייל הסיכום,
+                // שרץ בסוף, לא היה יוצא כלל.
+                // מזהה הגל נשמר עד שהמייל יוצא בהצלחה. אם מנה נכשלה באמצע
+                // והיא לוחצת שוב, הלחיצה השנייה ממשיכה את *אותו* גל — אחרת
+                // מה שכבר נשלח היה מקבל מזהה אחר ונופל מחוץ למייל הסיכום.
+                var waveId = sessionStorage.getItem('aroam_rakash_wave') || ('W' + Date.now());
+                try { sessionStorage.setItem('aroam_rakash_wave', waveId); } catch (e) { }
+                var expected = filterOrders('approved').length;
+                var doneCount = 0, failCount = 0;
+
+                function progress() {
+                    sendAllBtn.textContent = 'שולח… ' + (doneCount + failCount) +
+                        ' מתוך ' + expected;
+                }
+                progress();
+
+                function nextChunk() {
+                    return apiAction('action=send&wave=' + encodeURIComponent(waveId))
+                        .then(function (data) {
+                            doneCount += (data.sent || 0);
+                            failCount += (data.failed || 0);
+                            progress();
+                            if (data.remaining > 0) return nextChunk();
+                            // כל המנות הסתיימו — עכשיו מייל אחד לכל הגל
+                            sendAllBtn.textContent = 'מכין את המייל…';
+                            return apiAction('action=mail&wave=' + encodeURIComponent(waveId));
+                        });
+                }
+
+                nextChunk()
+                    .then(function () {
+                        // הגל הושלם ומייל יצא — הלחיצה הבאה תפתח גל חדש,
+                        // וכך הזמנה שנכשלה תנוסה שוב במקום להידלג עליה
+                        try { sessionStorage.removeItem('aroam_rakash_wave'); } catch (e) { }
+                        var done = 'נשלחו ' + doneCount + ' הזמנות';
+                        if (failCount) done += ', ו-' + failCount + ' נכשלו ונשארו מאושרות';
+                        done += '.\nמייל אחד עם כל התעודות וקובץ הסיכום נשלח לאהרוני.';
+                        alert(done);
                         sendAllBtn.disabled = false;
                         // מעבר אוטומטי ל"נשלחו": אחרת היא נשארת על "ממתינות",
                         // רואה שההזמנות נעלמו, ולא ברור לה לאן הן הלכו
@@ -726,7 +761,9 @@
                     .catch(function (err) {
                         sendAllBtn.disabled = false;
                         sendAllBtn.textContent = label;
-                        showError(err.message);
+                        // מה שכבר נשלח מסומן בגיליון, ולכן לחיצה חוזרת ממשיכה
+                        // מאותה נקודה ולא שולחת פעמיים
+                        showError(err.message + ' — מה שנשלח כבר נשמר; לחיצה חוזרת תמשיך מהנקודה הזאת.');
                     });
             });
 

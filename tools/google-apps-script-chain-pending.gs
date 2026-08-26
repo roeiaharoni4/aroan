@@ -38,8 +38,16 @@ var STATUS_CANCELLED = 'בוטלה';
 
 // עמודת "סה״כ" נוספה בסוף בכוונה: כך אינדקסי העמודות הקיימות לא זזים,
 // ושורות ישנות פשוט מחזירות ערך ריק.
+// 'מזהה PDF' ו'מזהה גל' נוספו בסוף (26.8.26) עבור השליחה במנות: כשגל של 63
+// סניפים נשלח בכמה קריאות, כל קריאה חייבת להשאיר עקבות בגיליון — אחרת
+// הקריאה האחרונה לא יודעת אילו תעודות להצמיד למייל הסיכום.
 var PENDING_HEADERS = ['תאריך קבלה', 'מספר הזמנה', 'סניף', 'מזמין', 'הערות',
-  'מספר פריטים', 'פריטים', 'סטטוס', 'מספר הזמנה מאושרת', 'תאריך אישור', 'סה״כ'];
+  'מספר פריטים', 'פריטים', 'סטטוס', 'מספר הזמנה מאושרת', 'תאריך אישור', 'סה״כ',
+  'מזהה PDF', 'מזהה גל'];
+
+// כמה הזמנות לשלוח בקריאה אחת. ל-doGet יש תקרה קשיחה של 6 דקות ובפועל
+// הזמנה עולה ~7 שניות (יצירת מסמך + ייצוא PDF), ולכן גל של 63 חורג ממנה.
+var SEND_CHUNK = 8;
 
 /** תו מוביל מסוכן בגיליון = נוסחה. מקדימים גרש כדי שייכתב כטקסט. */
 function sanitize_(v) {
@@ -94,6 +102,8 @@ function pendingRow_(data) {
   // הסניפים לא רואים מחירים, אבל הפיילוד נושא סה״כ מחושב לפי מחירי הרשת —
   // וזה מה שמנהלת הרכש צריכה לראות לפני שהיא מאשרת.
   row[PENDING_HEADERS.indexOf('סה״כ')] = Number(data && data.totalPrice) || 0;
+  row[PENDING_HEADERS.indexOf('מזהה PDF')] = '';
+  row[PENDING_HEADERS.indexOf('מזהה גל')] = '';
   return row;
 }
 
@@ -116,6 +126,8 @@ function rowToOrder_(row) {
     status: String(row[PENDING_HEADERS.indexOf('סטטוס')] || ''),
     total: Number(row[PENDING_HEADERS.indexOf('סה״כ')]) || 0,
     approvedId: String(row[PENDING_HEADERS.indexOf('מספר הזמנה מאושרת')] || ''),
+    pdfId: String(row[PENDING_HEADERS.indexOf('מזהה PDF')] || ''),
+    wave: String(row[PENDING_HEADERS.indexOf('מזהה גל')] || ''),
     items: items
   };
 }
@@ -279,7 +291,7 @@ function approveOrder_(data) {
  * מחזיר את מספר ההזמנה שנוצר, או '' כשההעברה נכשלה — כישלון של אחת לא
  * עוצר את השאר, אחרת סניף אחד תקול היה חוסם גל של 60.
  */
-function forwardOne_(sheet, rowNum, order, quiet) {
+function forwardOne_(sheet, rowNum, order, quiet, waveId) {
   var approvedId = approvedOrderId_();
   var payload = forwardPayload_(order, approvedId);
   // בשליחה מרוכזת משתיקים את המייל הבודד: הסקריפט הזה אוסף את כל התעודות
@@ -317,6 +329,10 @@ function forwardOne_(sheet, rowNum, order, quiet) {
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('סטטוס') + 1).setValue(STATUS_SENT);
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('מספר הזמנה מאושרת') + 1).setValue(approvedId);
   sheet.getRange(rowNum, PENDING_HEADERS.indexOf('תאריך אישור') + 1).setValue(new Date());
+  // מזהה התעודה ומזהה הגל נכתבים לשורה כדי שקריאת המייל שבסוף הגל תוכל
+  // לאסוף את כל התעודות — גם של מנות שנשלחו בקריאות קודמות.
+  sheet.getRange(rowNum, PENDING_HEADERS.indexOf('מזהה PDF') + 1).setValue(pdfId);
+  if (waveId) sheet.getRange(rowNum, PENDING_HEADERS.indexOf('מזהה גל') + 1).setValue(waveId);
   return approvedId;
 }
 
@@ -547,9 +563,13 @@ function doGet(e) {
       return json_({ ok: true });
     }
 
-    // שליחה מרוכזת של כל המאושרות, או של הזמנה אחת (p.id) לסניף דחוף
+    // שליחה מרוכזת של כל המאושרות, או של הזמנה אחת (p.id) לסניף דחוף.
+    // הגל נשלח במנות: כל קריאה מטפלת בעד SEND_CHUNK הזמנות ומחזירה כמה
+    // נשארו, כי הזמנה עולה ~7 שניות ול-doGet יש תקרה של 6 דקות.
     if (p.action === 'send') {
-      var sent = [], failed = [];
+      var sent = [], failed = [], remaining = 0;
+      var waveId = String(p.wave || '');
+      var limit = p.id ? 0 : (Number(p.limit) || SEND_CHUNK);
       for (var m = 0; m < rows.length; m++) {
         var candidate = rowToOrder_(rows[m]);
         if (!candidate.orderId) continue;
@@ -559,7 +579,11 @@ function doGet(e) {
           continue;
         }
         if (candidate.status === STATUS_CANCELLED) continue;
-        var approvedId = forwardOne_(sheet, m + 2, candidate, !p.id);
+        // הזמנה שכבר נוסתה בגל הזה לא תנוסה שוב: בלי זה הזמנה שנכשלת תמיד
+        // הייתה נשארת "מאושרת", נספרת שוב כנותרת, והלקוח היה לולאה אינסופית.
+        if (waveId && candidate.wave === waveId) continue;
+        if (limit && sent.length + failed.length >= limit) { remaining++; continue; }
+        var approvedId = forwardOne_(sheet, m + 2, candidate, !p.id, waveId);
         if (approvedId) {
           sent.push({
             branch: candidate.branch, orderer: candidate.orderer,
@@ -569,12 +593,37 @@ function doGet(e) {
           });
         } else {
           failed.push(candidate.branch || candidate.orderId);
+          // מסמנים גם כישלון בגל, אחרת הוא ינוסה שוב במנה הבאה
+          if (waveId) sheet.getRange(m + 2, PENDING_HEADERS.indexOf('מזהה גל') + 1).setValue(waveId);
         }
       }
-      // מייל אחד לכל הגל, עם כל התעודות מצורפות. על הזמנה בודדת לא משתיקים
-      // את המייל הרגיל ולכן אין כאן מה לשלוח.
-      if (!p.id && sent.length) sendBatchMail_(sent, failed);
-      return json_({ ok: true, sent: sent.length, failed: failed.length });
+      // הזמנה בודדת דחופה מקבלת מייל משלה מסקריפט ההזמנות (quiet=false),
+      // ולכן אין כאן מה לשלוח. הגל מקבל מייל אחד ב-action=mail בסופו.
+      return json_({ ok: true, sent: sent.length, failed: failed.length,
+        remaining: remaining, wave: waveId });
+    }
+
+    // סוף הגל: אוסף את כל השורות שסומנו במזהה הגל ושולח מייל אחד עם כל
+    // התעודות והאקסל. מופרד מהשליחה כדי שהמנות לא יחרגו מתקרת 6 הדקות.
+    if (p.action === 'mail') {
+      var wid = String(p.wave || '');
+      if (!wid) return json_({ ok: false, error: 'missing wave' });
+      var done = [], miss = [];
+      for (var w = 0; w < rows.length; w++) {
+        var ord = rowToOrder_(rows[w]);
+        if (!ord.orderId || ord.wave !== wid) continue;
+        if (ord.status === STATUS_SENT) {
+          done.push({
+            branch: ord.branch, orderer: ord.orderer, itemCount: ord.itemCount,
+            total: ord.total, approvedId: ord.approvedId, pdfId: ord.pdfId,
+            items: ord.items || []
+          });
+        } else if (ord.status === STATUS_APPROVED) {
+          miss.push(ord.branch || ord.orderId);
+        }
+      }
+      if (done.length) sendBatchMail_(done, miss);
+      return json_({ ok: true, mailed: done.length, failed: miss.length });
     }
 
     var wanted = p.status || 'pending';

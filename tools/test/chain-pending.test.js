@@ -424,4 +424,52 @@ test('הזמנה ריקה לא מפילה את הפילוח', () => {
   assert.deepStrictEqual(gs.orderSplit_({}), { disposable: 0, rest: 0 });
 });
 
+console.log('\nשליחה במנות — עמודות הגל והתעודה');
+
+test('העמודות החדשות נוספו בסוף ולא הזיזו אף אינדקס קיים', () => {
+  const expected = ['תאריך קבלה', 'מספר הזמנה', 'סניף', 'מזמין', 'הערות',
+    'מספר פריטים', 'פריטים', 'סטטוס', 'מספר הזמנה מאושרת', 'תאריך אישור', 'סה״כ'];
+  expected.forEach((name, i) => {
+    assert.strictEqual(gs.PENDING_HEADERS.indexOf(name), i,
+      'העמודה ' + name + ' זזה ממקומה — שורות קיימות בגיליון יישברו');
+  });
+  assert.strictEqual(gs.PENDING_HEADERS.indexOf('מזהה PDF'), 11);
+  assert.strictEqual(gs.PENDING_HEADERS.indexOf('מזהה גל'), 12);
+});
+
+test('שורה חדשה נוצרת עם מזהה PDF ומזהה גל ריקים', () => {
+  const row = gs.pendingRow_(ORDER);
+  assert.strictEqual(row[gs.PENDING_HEADERS.indexOf('מזהה PDF')], '');
+  assert.strictEqual(row[gs.PENDING_HEADERS.indexOf('מזהה גל')], '');
+});
+
+test('rowToOrder_ מחזיר את מזהה התעודה ואת מזהה הגל', () => {
+  const row = gs.pendingRow_(ORDER);
+  row[gs.PENDING_HEADERS.indexOf('מזהה PDF')] = 'PDF_abc123';
+  row[gs.PENDING_HEADERS.indexOf('מזהה גל')] = 'W-777';
+  const o = gs.rowToOrder_(row);
+  assert.strictEqual(o.pdfId, 'PDF_abc123');
+  assert.strictEqual(o.wave, 'W-777');
+});
+
+test('שורה ישנה בת 11 עמודות עדיין נקראית, עם שדות חדשים ריקים', () => {
+  // גיליון שנכתב לפני השינוי — אסור שייפול או יאבד נתונים
+  const old = gs.pendingRow_(ORDER).slice(0, 11);
+  const o = gs.rowToOrder_(old);
+  assert.strictEqual(o.branch, ORDER.branch);
+  assert.strictEqual(o.orderer, ORDER.orderer);
+  assert.strictEqual(o.itemCount, 18);
+  assert.strictEqual(o.pdfId, '');
+  assert.strictEqual(o.wave, '');
+});
+
+test('הזמנה שכבר סומנה בגל הנוכחי מזוהה ככזו ולא תישלח שוב', () => {
+  const row = gs.pendingRow_(ORDER);
+  row[gs.PENDING_HEADERS.indexOf('מזהה גל')] = 'W-1';
+  assert.strictEqual(gs.rowToOrder_(row).wave === 'W-1', true);
+  const other = gs.pendingRow_(ORDER);
+  other[gs.PENDING_HEADERS.indexOf('מזהה גל')] = 'W-0';
+  assert.strictEqual(gs.rowToOrder_(other).wave === 'W-1', false);
+});
+
 console.log('\n' + passed + ' בדיקות עברו');
