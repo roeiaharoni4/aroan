@@ -1706,7 +1706,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // js/agent.js), ועמוד רשת החנויות, שבו ההזמנה נעצרת אצל מנהלת הרכש
         // ולכן אין למי לשלוח בוואטסאפ או במייל.
         if ((CONFIG.agentMode || CONFIG.directSend) && submitOrderBtn) {
-            submitOrderBtn.addEventListener("click", () => {
+            submitOrderBtn.addEventListener("click", async () => {
                 // נעילה מיידית: בלעדיה שתי לחיצות מהירות יצרו שתי הזמנות
                 // נפרדות עם שני מספרים — במובייל, כשאין משוב מיידי, זה קורה.
                 // משתחרר בסגירת הסל, או מיד כשהולידציה נכשלת.
@@ -1721,6 +1721,22 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (!sent) {
                     submitOrderBtn.disabled = false;
                     return;
+                }
+                // בעמוד הסניפים אין תור אופליין (js/agent.js נטען רק בדף
+                // הסוכן), ולכן כשל רשת איבד את ההזמנה בשקט בזמן שהסניף ראה
+                // "ההזמנה נקלטה". סניף שמזמין מהטלפון בתוך קניון הוא בדיוק
+                // התרחיש הזה — ולכן ממתינים לתשובה לפני שמאשרים.
+                if (CONFIG.directSend && !CONFIG.agentMode) {
+                    const sendingLabel = submitOrderBtn.textContent;
+                    submitOrderBtn.textContent = 'שולח…';
+                    let ok = false;
+                    try { ok = await sent.delivery; } catch (e) { ok = false; }
+                    submitOrderBtn.textContent = sendingLabel;
+                    if (!ok) {
+                        submitOrderBtn.disabled = false;
+                        showSendFailure();
+                        return;
+                    }
                 }
                 showOrderConfirmation(sent.orderId, method);
             });
@@ -1895,6 +1911,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // --- Order Confirmation (אישור לאחר שליחת הזמנה) ---
+    // ההזמנה לא יצאה. חייב להיות חלון ולא טוסט: טוסט נעלם אחרי 3 שניות,
+    // והסניף היה יוצא מהעמוד בטוח שההזמנה נשלחה.
+    function showSendFailure() {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
+        const box = document.createElement("div");
+        box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
+        box.innerHTML = `
+            <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#D32F2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <h2 style="margin:0.8rem 0 0.4rem; color:#B71C1C; font-size:1.5rem;">ההזמנה לא נשלחה</h2>
+            <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">לא הצלחנו להתחבר לשרת. ההזמנה נשמרה בעגלה — בדקו את החיבור לאינטרנט ולחצו שוב על "שלח הזמנה".</p>
+            <button id="send-fail-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">הבנתי</button>
+        `;
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        box.querySelector('#send-fail-close').addEventListener('click', close);
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    }
+
     function showOrderConfirmation(orderId, method) {
         const overlay = document.createElement("div");
         overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";

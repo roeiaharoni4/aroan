@@ -11,24 +11,38 @@ const assert = require('assert');
 // fakeCache, כשמסופק, הוא מה ש-CacheService.getScriptCache() יחזיר בתוך
 // המופע הזה של הקובץ — צריך להיות אותו אובייקט בין קריאות, בדיוק כמו
 // שה-cache האמיתי של גוגל משותף בין הפעלות של אותו סקריפט.
-function loadGs(fakeCache) {
+function loadGs(fakeCache, fakeDrive, fakeMail) {
   const src = fs.readFileSync(
     path.join(__dirname, '..', 'google-apps-script-chain-pending.gs'), 'utf8');
+  // SpreadsheetApp נשאר ריק בכוונה: summaryXlsx_ עוטף את עצמו ב-try/catch
+  // ומחזיר null, ולכן הבדיקה של המייל לא תלויה בו.
   const stubs = `
     var SpreadsheetApp = {}, ContentService = {},
         Utilities = {}, Logger = { log: function () {} };
     var CacheService = { getScriptCache: function () { return __fakeCache__; } };
+    var DriveApp = __fakeDrive__, MailApp = __fakeMail__;
   `;
   return new Function(
-    '__fakeCache__',
+    '__fakeCache__', '__fakeDrive__', '__fakeMail__',
     stubs + src +
     '; return { pendingRow_: pendingRow_, rowToOrder_: rowToOrder_,' +
     '   sanitize_: sanitize_, rateLimitOk_: rateLimitOk_,' +
     '   forwardPayload_: forwardPayload_, approvedOrderId_: approvedOrderId_,' +
     '   summaryBody_: summaryBody_, productTotals_: productTotals_,' +
     '   orderSplit_: orderSplit_, isDisposable_: isDisposable_,' +
+    '   sendBatchMail_: sendBatchMail_,' +
     '   PENDING_HEADERS: PENDING_HEADERS };'
-  )(fakeCache || null);
+  )(fakeCache || null, fakeDrive || null, fakeMail || null);
+}
+
+/** Drive מדומה: מזהים ברשימה good מחזירים blob, כל השאר זורקים כמו בענן. */
+function fakeDrive(good) {
+  return {
+    getFileById: function (id) {
+      if (good.indexOf(id) < 0) throw new Error('no access / not found: ' + id);
+      return { getBlob: function () { return { getBytes: function () { return new Array(1000); } }; } };
+    }
+  };
 }
 
 const gs = loadGs();
@@ -470,6 +484,64 @@ test('הזמנה שכבר סומנה בגל הנוכחי מזוהה ככזו ו�
   const other = gs.pendingRow_(ORDER);
   other[gs.PENDING_HEADERS.indexOf('מזהה גל')] = 'W-0';
   assert.strictEqual(gs.rowToOrder_(other).wave === 'W-1', false);
+});
+
+console.log('\nמייל הסיכום — דיווח אמיתי על תעודות שצורפו');
+
+// הבאג שנחשף ב-26.8: הרשאת Drive פגה, אף תעודה לא נמשכה, והפונקציה
+// דיווחה הצלחה מלאה. רועי קיבל מייל סיכום בלי אף הזמנה מצורפת.
+function mailFixture(goodIds) {
+  const boxes = [];
+  const gs = loadGs(null, fakeDrive(goodIds), {
+    sendEmail: function (to, subj, body, opts) {
+      boxes.push({ to, subj, body, attachments: (opts && opts.attachments) || [] });
+    }
+  });
+  return { gs, boxes };
+}
+
+const THREE = [
+  { branch: 'גלילות — פולו', orderer: 'א', itemCount: 3, total: 10, approvedId: 'RA-1', pdfId: 'PDF_OK', items: [] },
+  { branch: 'גלילות — טומי', orderer: 'ב', itemCount: 4, total: 20, approvedId: 'RA-2', pdfId: 'PDF_GONE', items: [] },
+  { branch: 'גלילות — בוס',  orderer: 'ג', itemCount: 5, total: 30, approvedId: 'RA-3', pdfId: '', items: [] }
+];
+
+test('מחזיר כמה תעודות באמת צורפו, ולא כמה שורות היו בגל', () => {
+  const { gs } = mailFixture(['PDF_OK']);
+  const res = gs.sendBatchMail_(THREE, []);
+  assert.ok(res && typeof res.attached === 'number',
+    'sendBatchMail_ חייב להחזיר דיווח — בלעדיו הקורא לא יודע אם צורף משהו');
+  assert.strictEqual(res.attached, 1);
+});
+
+test('הסניפים שלא קיבלו תעודה מדווחים בשמם', () => {
+  const { gs } = mailFixture(['PDF_OK']);
+  const res = gs.sendBatchMail_(THREE, []);
+  assert.deepStrictEqual(res.noPdf.sort(), ['גלילות — בוס', 'גלילות — טומי']);
+});
+
+test('כשל מלא של Drive מדווח כאפס צרופות ולא כהצלחה', () => {
+  // בדיוק התרחיש של 26.8 — ההרשאה נשללה וכל המשיכות נכשלו
+  const { gs } = mailFixture([]);
+  const res = gs.sendBatchMail_(THREE, []);
+  assert.strictEqual(res.attached, 0);
+  assert.strictEqual(res.noPdf.length, 3);
+});
+
+test('כשכולן תקינות אין דיווח חוסר', () => {
+  const { gs } = mailFixture(['PDF_OK', 'PDF_GONE']);
+  const res = gs.sendBatchMail_(THREE.slice(0, 2), []);
+  assert.strictEqual(res.attached, 2);
+  assert.strictEqual(res.noPdf.length, 0);
+});
+
+test('גוף המייל מפרט את ההזמנות שאין להן תעודה', () => {
+  const body = gs.summaryBody_(THREE, [], ['גלילות — טומי', 'גלילות — בוס']);
+  assert.ok(/בלי תעודת PDF/.test(body), 'המייל חייב לומר לרועי אילו הזמנות הגיעו בלי PDF');
+  assert.ok(body.indexOf('גלילות — טומי') >= 0);
+  assert.ok(!/והתעודות מצורפות למייל הזה\.$/.test(body),
+    'אסור שהמייל יבטיח שכל התעודות מצורפות כשחלקן חסרות');
+  assert.ok(/1 מתוך 3 תעודות/.test(body), 'המייל אומר כמה מתוך כמה צורפו');
 });
 
 console.log('\n' + passed + ' בדיקות עברו');

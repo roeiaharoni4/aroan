@@ -337,7 +337,7 @@ function forwardOne_(sheet, rowNum, order, quiet, waveId) {
 }
 
 /** גוף מייל הסיכום — סניף, מספר פריטים ומספר ההזמנה שנוצר. */
-function summaryBody_(sent, failed) {
+function summaryBody_(sent, failed, noPdf) {
   var lines = ['סיכום שליחה מרוכזת — הזמנות רשת החנויות', ''];
   lines.push('נשלחו ' + sent.length + ' הזמנות:');
   for (var i = 0; i < sent.length; i++) {
@@ -351,8 +351,20 @@ function summaryBody_(sent, failed) {
     lines.push('לא נשלחו (' + failed.length + ') — נשארו מאושרות ברשימה וניתן לנסות שוב:');
     for (var j = 0; j < failed.length; j++) lines.push('  · ' + failed[j]);
   }
+  // הזמנות שנקלטו בגיליון אבל לא הופקה להן תעודה. לפני 26.8 הן פשוט
+  // נעדרו מהמייל בלי מילה, ואי אפשר היה לדעת שהן חסרות.
+  var miss = noPdf || [];
+  if (miss.length) {
+    lines.push('');
+    lines.push('נשלחו אבל בלי תעודת PDF (' + miss.length + '):');
+    for (var k = 0; k < miss.length; k++) lines.push('  · ' + miss[k]);
+    lines.push('ההזמנות עצמן נקלטו בגיליון — רק הקובץ חסר.');
+  }
   lines.push('');
-  lines.push('כל ההזמנות נכתבו לגיליון ההזמנות, והתעודות מצורפות למייל הזה.');
+  lines.push(miss.length
+    ? 'כל ההזמנות נכתבו לגיליון ההזמנות. ' + (sent.length - miss.length) +
+      ' מתוך ' + sent.length + ' תעודות מצורפות למייל הזה.'
+    : 'כל ההזמנות נכתבו לגיליון ההזמנות, והתעודות מצורפות למייל הזה.');
   return lines.join('\n');
 }
 
@@ -473,14 +485,20 @@ var MAIL_ATTACH_LIMIT = 18 * 1024 * 1024;
  * לכמה מיילים במקום להיכשל בשקט מול המגבלה של ג'ימייל.
  */
 function sendBatchMail_(sent, failed) {
-  var batches = [[]], sizes = [0];
+  var batches = [[]], sizes = [0], noPdf = [];
   for (var i = 0; i < sent.length; i++) {
-    if (!sent[i].pdfId) continue;
+    // הזמנה בלי מזהה תעודה: סקריפט ההזמנות החזיר success אבל יצירת ה-PDF
+    // נכשלה. ההזמנה תקינה ונכתבה לגיליון — רק התעודה חסרה, וזה חייב
+    // להיאמר במפורש במקום להידלג עליו בשקט.
+    if (!sent[i].pdfId) { noPdf.push(sent[i].branch || sent[i].approvedId); continue; }
     var blob;
     try {
       blob = DriveApp.getFileById(sent[i].pdfId).getBlob();
     } catch (err) {
+      // כך נראה כשל הרשאת Drive (26.8.26): כל המשיכות נכשלו, המייל יצא
+      // בלי אף צרופה, והפונקציה דיווחה הצלחה מלאה.
       Logger.log('pdf fetch failed for ' + sent[i].approvedId + ': ' + err);
+      noPdf.push(sent[i].branch || sent[i].approvedId);
       continue;
     }
     var size = blob.getBytes().length;
@@ -497,7 +515,7 @@ function sendBatchMail_(sent, failed) {
   var xlsx = summaryXlsx_(sent);
   if (xlsx) batches[0].unshift(xlsx);
 
-  var body = summaryBody_(sent, failed);
+  var body = summaryBody_(sent, failed, noPdf);
   for (var b = 0; b < batches.length; b++) {
     var suffix = batches.length > 1 ? ' (' + (b + 1) + '/' + batches.length + ')' : '';
     try {
@@ -516,6 +534,9 @@ function sendBatchMail_(sent, failed) {
       }
     }
   }
+  // הקורא חייב לדעת כמה תעודות באמת צורפו. בלי זה 'נשלחו 63' נכון גם
+  // כשאפס קבצים צורפו — וזה מה שהסתיר את תקלת ההרשאה של 26.8.
+  return { attached: sent.length - noPdf.length, noPdf: noPdf };
 }
 
 function doGet(e) {
@@ -622,8 +643,11 @@ function doGet(e) {
           miss.push(ord.branch || ord.orderId);
         }
       }
-      if (done.length) sendBatchMail_(done, miss);
-      return json_({ ok: true, mailed: done.length, failed: miss.length });
+      var report = done.length ? sendBatchMail_(done, miss) : { attached: 0, noPdf: [] };
+      // mailed = כמה תעודות באמת צורפו. rows = כמה הזמנות היו בגל.
+      // עד 26.8 הוחזר rows בשם mailed, ולכן כשל מלא נראה כהצלחה מלאה.
+      return json_({ ok: true, rows: done.length, mailed: report.attached,
+        noPdf: report.noPdf, failed: miss.length });
     }
 
     var wanted = p.status || 'pending';

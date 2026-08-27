@@ -744,13 +744,28 @@
                 }
 
                 nextChunk()
-                    .then(function () {
+                    .then(function (mailRes) {
                         // הגל הושלם ומייל יצא — הלחיצה הבאה תפתח גל חדש,
                         // וכך הזמנה שנכשלה תנוסה שוב במקום להידלג עליה
                         try { sessionStorage.removeItem('aroam_rakash_wave'); } catch (e) { }
                         var done = 'נשלחו ' + doneCount + ' הזמנות';
                         if (failCount) done += ', ו-' + failCount + ' נכשלו ונשארו מאושרות';
-                        done += '.\nמייל אחד עם כל התעודות וקובץ הסיכום נשלח לאהרוני.';
+                        // מדווחים כמה תעודות באמת צורפו ולא כמה הזמנות נשלחו:
+                        // ב-26.8 הרשאת Drive פגה, אפס תעודות צורפו, וההודעה
+                        // עדיין אמרה "מייל אחד עם כל התעודות".
+                        var attached = mailRes && typeof mailRes.mailed === 'number'
+                            ? mailRes.mailed : null;
+                        var noPdf = (mailRes && mailRes.noPdf) || [];
+                        if (attached === null) {
+                            done += '.\nמייל הסיכום נשלח לאהרוני.';
+                        } else if (noPdf.length) {
+                            done += '.\nמייל הסיכום נשלח לאהרוני עם ' + attached +
+                                ' תעודות מתוך ' + doneCount + '. ' + noPdf.length +
+                                ' הזמנות נשלחו בלי תעודת PDF (ההזמנות עצמן נקלטו).';
+                        } else {
+                            done += '.\nמייל אחד עם כל ' + attached +
+                                ' התעודות וקובץ הסיכום נשלח לאהרוני.';
+                        }
                         alert(done);
                         sendAllBtn.disabled = false;
                         // מעבר אוטומטי ל"נשלחו": אחרת היא נשארת על "ממתינות",
