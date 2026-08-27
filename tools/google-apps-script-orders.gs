@@ -149,7 +149,49 @@ function kv_(cell, k, v) {
 // ב-CATALOG_CONFIG.orderPrefix של אותו עמוד — כך אין תלות בשדה חדש בפיילוד,
 // והתעודה משתנה מיד עם עדכון הסקריפט בלי להמתין ל-push של האתר.
 function isBranchOrder_(data) {
-  return /^RS-/.test(String((data && data.orderId) || ''));
+  // RS- היא הזמנת הסניף כפי שנשלחה לגיליון הממתינות. מה שמגיע לסקריפט הזה
+  // הוא ההזמנה *המאושרת*, ו-forwardPayload_ שולח בה orderId: approvedId —
+  // כלומר RA-. עד 27.8 נבדק RS- בלבד, ולכן רצועת הסניף לא רונדרה מעולם.
+  return /^R[SA]-/.test(String((data && data.orderId) || ''));
+}
+
+var HE_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+  'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+
+/**
+ * חודש ההזמנה בעברית. שני מקורות שולחים לכאן תאריך בשני פורמטים שונים:
+ * האתר שולח YYYY-MM-DD, וסקריפט הממתינות בונה DD.MM.YYYY. תאריך שלא נקרא
+ * נופל לחודש הנוכחי במקום להפיל את יצירת הקובץ.
+ */
+function orderMonth_(data) {
+  var raw = String((data && data.date) || '');
+  var iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  var dmy = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  var y, m;
+  if (iso) { y = Number(iso[1]); m = Number(iso[2]); }
+  else if (dmy) { y = Number(dmy[3]); m = Number(dmy[2]); }
+  else { var now = new Date(); y = now.getFullYear(); m = now.getMonth() + 1; }
+  if (!(m >= 1 && m <= 12)) { var n2 = new Date(); y = n2.getFullYear(); m = n2.getMonth() + 1; }
+  return HE_MONTHS[m - 1] + ' ' + y;
+}
+
+/**
+ * שם קובץ התעודה: שם הסניף (מרכז קניות + חנות) וחודש ההזמנה, כדי שאפשר
+ * יהיה לתייק 63 קבצים מגל אחד בלי לפתוח אותם. עד 27.8 השם היה מספר
+ * ההזמנה בלבד. בלי שם עסק — נופלים חזרה למספר ההזמנה.
+ */
+function pdfName_(data) {
+  var who = String((data && data.customer && data.customer.business) || '')
+    .replace(/[\x00-\x1F\x7F]/g, '').trim();
+  var base = who
+    ? who + ' — ' + orderMonth_(data)
+    : (clean_(data && data.orderId, 30) || 'order');
+  // גרשיים כפולים אסורים בשמות קבצים בחלונות, אבל "בע\"מ" הוא סיומת נפוצה
+  // מדי מכדי להפוך אותה ל-"בע-מ" — ולכן ממירים לגרשיים עבריים תקניים.
+  base = base.replace(/"/g, '\u05F4');
+  // שאר התווים האסורים; רצף רווחים מתכווץ כדי שהשם יישאר קריא
+  base = base.replace(/[\/\\:*?<>|]/g, '-').replace(/\s+/g, ' ').trim();
+  return (base || 'order') + '.pdf';
 }
 
 function money_(v) {
@@ -485,7 +527,7 @@ function priceSplit_(items) {
 
 function savePdf_(data) {
   try {
-    var name = (clean_(data.orderId, 30) || 'order') + '.pdf';
+    var name = pdfName_(data);
     var blob = buildOrderDoc_(data).setName(name);
     var file = pdfFolder_().createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);

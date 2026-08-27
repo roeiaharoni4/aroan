@@ -22,6 +22,7 @@ function loadGs() {
     stubs + src +
     '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_,' +
     '   quoteLink_: quoteLink_, isBranchOrder_: isBranchOrder_,' +
+    '   pdfName_: pdfName_, orderMonth_: orderMonth_,' +
     '   priceSplit_: priceSplit_ };'
   )();
 }
@@ -218,6 +219,57 @@ test('רשימת פריטים ריקה או חסרה לא מפילה', () => {
   assert.strictEqual(gs.priceSplit_([]), null);
   assert.strictEqual(gs.priceSplit_(undefined), null);
 });
+console.log('\nשם קובץ התעודה — סניף וחודש');
+
+// הסניף מגיע ב-customer.business, בדיוק כמו בגיליון ובתעודה
+function branchOrder(business, date, orderId) {
+  return { orderId: orderId || 'RA-20260826-123456', date: date,
+           customer: { business: business, contact: 'דנה' }, items: [] };
+}
+
+test('שם הקובץ הוא שם הסניף וחודש ההזמנה', () => {
+  assert.strictEqual(
+    gs.pdfName_(branchOrder('גלילות — טומי', '26.08.2026')),
+    'גלילות — טומי — אוגוסט 2026.pdf');
+});
+
+test('תאריך מהאתר (YYYY-MM-DD) ומתסריט הממתינות (DD.MM.YYYY) נותנים אותו חודש', () => {
+  // שני הפורמטים מגיעים לאותה פונקציה — האתר שולח ISO והממתינות DD.MM
+  assert.strictEqual(gs.orderMonth_({ date: '2026-08-26' }), 'אוגוסט 2026');
+  assert.strictEqual(gs.orderMonth_({ date: '26.08.2026' }), 'אוגוסט 2026');
+});
+
+test('חנות רחוב בלי מרכז קניות מקבלת את שמה בלבד', () => {
+  assert.strictEqual(
+    gs.pdfName_(branchOrder('פולו דיזנגוף', '02.09.2026')),
+    'פולו דיזנגוף — ספטמבר 2026.pdf');
+});
+
+test('תווים אסורים בשם קובץ מנוקים', () => {
+  const n = gs.pdfName_(branchOrder('קניון א/ב: סניף 3', '26.08.2026'));
+  assert.ok(!/[\/\\:*?"<>|]/.test(n), 'אסור שיישארו תווים אסורים: ' + n);
+  assert.ok(n.indexOf('אוגוסט 2026') > 0);
+});
+
+test('בע"מ נשמר עם גרשיים עבריים ולא הופך ל-בע-מ', () => {
+  const n = gs.pdfName_(branchOrder('מסעדת השף בע"מ', '2026-08-26'));
+  assert.strictEqual(n, 'מסעדת השף בע\u05F4מ — אוגוסט 2026.pdf');
+  assert.ok(!/[\/\\:*?"<>|]/.test(n), 'ללא תווים אסורים');
+});
+
+test('הזמנה בלי שם עסק נופלת חזרה למספר ההזמנה', () => {
+  assert.strictEqual(
+    gs.pdfName_({ orderId: 'AR-20260826-4437', date: '2026-08-26', customer: {} }),
+    'AR-20260826-4437.pdf');
+});
+
+test('הזמנת רשת מאושרת (RA-) מזוהה כהזמנת סניף', () => {
+  // forwardPayload_ שולח orderId: approvedId, ו-approvedOrderId_ מייצר RA-.
+  // הבדיקה הישנה כיסתה רק RS- — קידומת שלא מגיעה לסקריפט הזה אף פעם.
+  assert.strictEqual(gs.isBranchOrder_({ orderId: 'RA-20260826-299027' }), true,
+    'RA- היא הזמנת רשת שאושרה — בלי זה רצועת הסניף לא מרונדרת');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
