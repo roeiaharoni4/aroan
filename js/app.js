@@ -3160,12 +3160,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function printQuote() {
         // כשההזמנה נפתחה מקישור שנשלח במייל, שם הלקוח מוצע כברירת מחדל.
         // ה-prompt נשאר כדי שרועי יוכל לתקן לפני ההדפסה.
-        const suggested = new URLSearchParams(window.location.search).get('customer');
+        // אחרת — הלקוח שנבחר בדף הסוכן (js/agent.js), כדי שההצעה תירשם אצלו.
+        const suggested = new URLSearchParams(window.location.search).get('customer')
+            || (window.AGENT && window.AGENT.activeName && window.AGENT.activeName());
         const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", suggested || "לקוח כללי");
         if (customerName === null) return;
 
         const savedQuote = await saveQuote(customerName);
         if (!savedQuote) return;
+
+        // js/agent.js מאזין לזה כדי לרשום את הלקוח, את מחיריו ואת ההצעה האחרונה.
+        // בלי זה לקוח שקיבל רק הצעות מחיר לא נשמר אף פעם ברשימת הלקוחות.
+        document.dispatchEvent(new CustomEvent('aroam:quote-saved', { detail: { quote: savedQuote } }));
 
         const modalBody = document.querySelector("#order-modal .modal-body");
 

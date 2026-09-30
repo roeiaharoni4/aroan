@@ -136,17 +136,22 @@
         const pending = loadOutbox().length;
         const last = ACTIVE.lastOrder;
         const ago = daysSince(ACTIVE.lastOrderAt);
+        const qAgo = daysSince(ACTIVE.lastQuoteAt);
+        const lastQuote = ACTIVE.lastQuote;
 
         host.innerHTML = `
             <div class="agent-bar">
                 <div class="agent-bar-who">
                     <span class="agent-bar-label">מזמין עבור</span>
                     <strong>${esc(ACTIVE.name)}</strong>
-                    ${ago != null ? `<span class="agent-bar-ago">הזמנה אחרונה לפני ${ago} ימים</span>` : ''}
+                    ${ago != null ? `<span class="agent-bar-ago">הזמנה אחרונה לפני ${ago} ימים</span>`
+                : (qAgo != null ? `<span class="agent-bar-ago">הצעה אחרונה לפני ${qAgo} ימים</span>` : '')}
                 </div>
                 <div class="agent-bar-actions">
                     ${last && last.items && last.items.length
                 ? '<button type="button" class="agent-chip" data-act="repeat">ההזמנה הקודמת</button>' : ''}
+                    ${lastQuote && lastQuote.items && lastQuote.items.length
+                ? '<button type="button" class="agent-chip" data-act="quote">ההצעה האחרונה</button>' : ''}
                     <button type="button" class="agent-chip" data-act="switch">החלף לקוח</button>
                     ${pending ? `<button type="button" class="agent-chip agent-chip-warn" data-act="outbox">${pending} ממתינות לשליחה</button>` : ''}
                 </div>
@@ -156,6 +161,7 @@
             btn.addEventListener('click', () => {
                 const act = btn.getAttribute('data-act');
                 if (act === 'repeat') repeatLastOrder();
+                else if (act === 'quote') loadLastQuote();
                 else if (act === 'switch') openGate(true);
                 else if (act === 'outbox') showOutbox();
             });
@@ -166,6 +172,12 @@
         if (!ACTIVE || !ACTIVE.lastOrder || !ACTIVE.lastOrder.items) return;
         const n = window.APP.applyOrder(ACTIVE.lastOrder.items);
         toast(n ? `נטענו ${n} שורות מההזמנה הקודמת` : 'ההזמנה הקודמת ריקה');
+    }
+
+    function loadLastQuote() {
+        if (!ACTIVE || !ACTIVE.lastQuote || !ACTIVE.lastQuote.items) return;
+        const n = window.APP.applyOrder(ACTIVE.lastQuote.items);
+        toast(n ? `נטענו ${n} שורות מההצעה האחרונה` : 'ההצעה האחרונה ריקה');
     }
 
     // ---------- בורר הלקוח ----------
@@ -256,7 +268,9 @@
 
         listEl.innerHTML = list.map(c => {
             const d = daysSince(c.lastOrderAt);
-            const meta = d == null ? 'טרם הזמין' : `לפני ${d} ימים · ${c.orderCount || 0} הזמנות`;
+            const qd = daysSince(c.lastQuoteAt);
+            let meta = d == null ? 'טרם הזמין' : `לפני ${d} ימים · ${c.orderCount || 0} הזמנות`;
+            if (qd != null) meta += ` · הצעה לפני ${qd} ימים`;
             return `<button type="button" class="agent-card${d != null && d >= FORGOTTEN_DAYS ? ' agent-card-cold' : ''}" data-name="${esc(c.name)}">
                         <strong>${esc(c.name)}</strong>
                         <span>${esc(meta)}</span>
@@ -337,6 +351,32 @@
         renderBar();
 
         backupToCloud(rec, detail);
+    }
+
+    // הצעת מחיר מודפסת. רושמת את הלקוח (גם אם טרם הזמין), את המחירים שהוצעו
+    // לו ואת ההצעה האחרונה — אבל לא מונה הזמנות ולא תאריך הזמנה אחרונה, כי
+    // הצעה אינה הזמנה ו"לקוחות שנשכחו" נגזר מהזמנות בפועל.
+    function learnFromQuote(quote) {
+        const name = String((quote && quote.customer) || '').trim();
+        if (!name || name === 'לקוח כללי') return;
+
+        const existing = findCustomer(name);
+        const prices = Object.assign({}, (existing && existing.prices) || {});
+        const items = (quote.items || []).map(it => {
+            const price = parseFloat(it.price);
+            if (isFinite(price) && price > 0) prices[it.id] = price;
+            return { id: it.id, name: it.name, unit: it.unit, quantity: it.quantity, price: price || 0 };
+        });
+
+        const rec = upsertCustomer(name, {
+            prices: prices,
+            lastQuote: { date: quote.date, quoteId: quote.id, total: quote.total, items: items },
+            lastQuoteAt: new Date().toISOString()
+        });
+
+        ACTIVE = rec;
+        writeJson(ACTIVE_KEY, rec.name);
+        renderBar();
     }
 
     // גיבוי ה-CRM לגיליון AgentQuotes. שקט בכוונה: רק אם סיסמת הענן כבר
@@ -517,6 +557,12 @@
             toast('אין רשת — ההזמנה נשמרה ותישלח כשהחיבור יחזור');
         });
     });
+
+    document.addEventListener('aroam:quote-saved', (e) => {
+        learnFromQuote((e.detail || {}).quote);
+    });
+
+    window.AGENT = { activeName: () => (ACTIVE ? ACTIVE.name : '') };
 
     document.addEventListener('aroam:app-ready', () => {
         if (!window.APP || !window.APP.getConfig().agentMode) return;
