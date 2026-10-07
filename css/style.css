@@ -2236,6 +2236,9 @@ body:has(.fab-container) .scroll-top-btn {
     body.quote-print #order-modal .modal-footer,
     body.quote-print #order-date-field,
     body.quote-print .toast { display: none !important; }
+    /* כל מה שבגוף החלון מלבד המסמך עצמו — טופס פרטי הלקוח, בוררים, נאדג'ים
+       ומה ש-agent.js מזריק. בלי זה טופס הלקוח הודפס כתיבות ריקות. */
+    body.quote-print #order-modal .modal-body > :not(.quote-doc) { display: none !important; }
 
     body.quote-print .quote-doc {
         display: block;

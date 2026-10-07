@@ -3162,7 +3162,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         // ה-prompt נשאר כדי שרועי יוכל לתקן לפני ההדפסה.
         // אחרת — הלקוח שנבחר בדף הסוכן (js/agent.js), כדי שההצעה תירשם אצלו.
         const suggested = new URLSearchParams(window.location.search).get('customer')
-            || (window.AGENT && window.AGENT.activeName && window.AGENT.activeName());
+            || (window.AGENT && window.AGENT.activeName && window.AGENT.activeName())
+            || ((document.getElementById('cust-business') || {}).value || '').trim();
         const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", suggested || "לקוח כללי");
         if (customerName === null) return;
 
@@ -3254,6 +3255,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const kv = (k, v) => `<div class="qd-kv"><span>${k}</span><b>${esc(v)}</b></div>`;
 
+        // מה שמולא בטופס פרטי הלקוח עובר לכרטיס — רק שדות שמולאו
+        const fv = id => ((document.getElementById(id) || {}).value || '').trim();
+        const custRows = [['איש קשר', fv('cust-contact')], ['טלפון', fv('cust-phone')],
+            ['כתובת', fv('cust-address')], ['הערות', fv('cust-notes')]]
+            .filter(r => r[1]).map(r => kv(r[0], r[1])).join('');
+
         return `
             <div class="qd-head">
                 <div class="qd-brand">
@@ -3274,6 +3281,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <div class="qd-card">
                     <h4>פרטי הלקוח</h4>
                     ${kv('לכבוד', quote.customer)}
+                    ${custRows}
                 </div>
                 <div class="qd-card">
                     <h4>פרטי ההצעה</h4>
