@@ -273,7 +273,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         // Initial Render
-        const categories = Array.from(new Set(PRODUCTS.map(p => p.category))).filter(c => c);
+        // סדר הקטגוריות נקבע כאן ולא לפי סדר השורות בקובץ — אחרת /catalog/ נפתח
+        // על "מבשמים" (6 מוצרים), רק כי הם נוספו ראשונים ל-CSV. הראשונה ברשימה
+        // היא גם זו שנפתחת. קטגוריות שלא ברשימה (למשל של קטלוג הטיפוח) נשארות
+        // אחריהן בסדר הקובץ.
+        const CATEGORY_ORDER = ['חד פעמי ואריזות', 'ניקיון', 'מוצרי נייר', 'אביזרי ניקיון', 'ציוד משרדי',
+            'שקיות', 'מתקנים', 'טיפוח והיגיינה', 'מבשמים', 'שונים', 'מוצרי יצירה'];
+        const orderOf = c => { const i = CATEGORY_ORDER.indexOf(c); return i === -1 ? CATEGORY_ORDER.length : i; };
+        const categories = Array.from(new Set(PRODUCTS.map(p => p.category))).filter(c => c)
+            .map((c, i) => ({ c, i }))
+            .sort((a, b) => orderOf(a.c) - orderOf(b.c) || a.i - b.i)
+            .map(x => x.c);
 
         // Check URL params
         const urlParams = new URLSearchParams(window.location.search);
@@ -310,7 +320,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        if (searchParam) {
+        // קישור למוצר (?product=ID) פותח את הקטגוריה של המוצר עצמו — אחרת המוצר
+        // לא היה מרונדר בכלל והמקבל ראה רק את הקטגוריה הראשונה.
+        const productIdParam = urlParams.get('product');
+        const deepLinkProduct = productIdParam ? PRODUCTS.find(p => p.id === productIdParam) : null;
+
+        if (deepLinkProduct && categories.includes(deepLinkProduct.category)) {
+            activeCategory = deepLinkProduct.category;
+        } else if (searchParam) {
             if (searchInput) searchInput.value = searchParam;
             activeCategory = null;
         } else if (categoryParam && categories.includes(categoryParam)) {
@@ -324,17 +341,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderProducts();
         updateSummary();
 
-        // Check for Deep Link
-        const productIdParam = urlParams.get('product');
-        if (productIdParam) {
-            // Wait for DOM
+        // Check for Deep Link — גלילה לכרטיס, הדגשה ופתיחת התצוגה המהירה,
+        // כדי שמי שקיבל קישור למוצר יראה אותו מיד ולא רק את הרשת סביבו
+        if (deepLinkProduct) {
             setTimeout(() => {
-                const el = document.getElementById(`product-${productIdParam}`);
+                const el = document.getElementById(`product-${deepLinkProduct.id}`);
                 if (el) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     el.classList.add('highlight-product');
                     setTimeout(() => el.classList.remove('highlight-product'), 2000);
                 }
+                openQuickView(deepLinkProduct);
             }, 500);
         }
 
@@ -1251,17 +1268,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 shareBtn.title = "שתף מוצר";
                 shareBtn.onclick = (e) => {
                     e.stopPropagation();
-                    // shareProduct(product); // Missing function
-                    if (navigator.share) {
-                        navigator.share({
-                            title: product.name,
-                            text: `בדוק את המוצר ${product.name} בקטלוג אהרוני`,
-                            url: window.location.origin + window.location.pathname + '?product=' + product.id
-                        }).catch(console.error);
-                    } else {
-                        // Fallback
-                        prompt("העתק את הקישור:", window.location.origin + window.location.pathname + '?product=' + product.id);
-                    }
+                    shareProduct(product);
                 };
                 imgContainer.appendChild(shareBtn);
             }
@@ -2900,18 +2907,61 @@ document.addEventListener("DOMContentLoaded", async () => {
         openQuickView(product);
     }
 
+    // --- שיתוף מוצר ---
+    // הקישור המשותף היה עמוד הקטלוג עם ?product=ID, והמקבל ראה את הקטגוריה
+    // הראשונה בלי המוצר. עכשיו משתפים את דף המוצר הסטטי (בתצוגה המקדימה בוואטסאפ
+    // מופיעים התמונה והשם), ובקטלוגים בלי דפי מוצר — קישור עמוק שפותח את המוצר.
+    // הכתובת חייבת להיות זהה לזו ש-server.py יוצר: productSlug הוא העתק של
+    // _slugify_he, והמפה נבנית בסדר הקובץ כמו _care_product_slugs (כולל התנגשויות).
+    function productSlug(name) {
+        return (name || '').trim()
+            .replace(/["'\/\\:*?<>|()\[\]{}״׳]/g, '')
+            .replace(/[\s.,]+/g, '-')
+            .replace(/-{2,}/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    let PRODUCT_SLUGS = null;
+    function productSlugs() {
+        if (PRODUCT_SLUGS) return PRODUCT_SLUGS;
+        PRODUCT_SLUGS = {};
+        const taken = new Set();
+        PRODUCTS.forEach(p => {
+            const base = productSlug(p.name) || String(p.id);
+            const slug = taken.has(base) ? `${base}-${p.id}` : base;
+            let uniq = slug, n = 2;
+            while (taken.has(uniq)) { uniq = `${slug}-${n}`; n++; }
+            taken.add(uniq);
+            PRODUCT_SLUGS[p.id] = uniq;
+        });
+        return PRODUCT_SLUGS;
+    }
+
+    // לקטלוג העסקי (products.csv) ולקטלוג הטיפוח יש דפי מוצר סטטיים;
+    // לעמודים הסגורים (ועד עובדים) אין — שם נשאר הקישור העמוק.
+    function productShareUrl(product) {
+        const base = CONFIG.productPagesBase !== undefined
+            ? CONFIG.productPagesBase
+            : (CONFIG.dataSource ? null : '/catalog/product/');
+        const slug = base && productSlugs()[product.id];
+        if (slug) return `${window.location.origin}${base}${encodeURIComponent(slug)}/`;
+        return `${window.location.origin}${window.location.pathname}?product=${encodeURIComponent(product.id)}`;
+    }
+
     function shareProduct(product) {
-        const url = `${window.location.origin}${window.location.pathname}?product=${product.id}`;
+        const url = productShareUrl(product);
         if (navigator.share) {
             navigator.share({
                 title: product.name,
-                text: `בדוק את המוצר: ${product.name} מקטלוג אהרוני`,
+                text: `${product.name} — אהרוני שיווק והפצה`,
                 url: url
-            }).catch(console.error);
+            }).catch(() => { });   // ביטול חלון השיתוף אינו שגיאה
+        } else if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url)
+                .then(() => showToast(`קישור למוצר הועתק!`))
+                .catch(() => prompt("העתק את הקישור:", url));
         } else {
-            navigator.clipboard.writeText(url).then(() => {
-                showToast(`קישור למוצר הועתק!`);
-            });
+            prompt("העתק את הקישור:", url);
         }
     }
 
