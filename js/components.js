@@ -157,8 +157,73 @@ class SiteFooter extends HTMLElement {
     }
 }
 
+// --- טופס "קבלו הצעת מחיר" לדפי הערים והקטגוריות ---
+// דפי הערים והקטגוריות הם אלה שגוגל מביא אליהם את רוב ההופעות, ולא היה בהם
+// טופס — רק טלפון ווואטסאפ. רכיב אחד במקום להעתיק את הטופס ל-30 דפים.
+// מאפיינים: subject (נושא הליד בגיליון), heading, intro.
+// השליחה עצמה עוברת במאזין המשותף של .contact-form-ajax למטה.
+let leadFormCount = 0;
+class LeadForm extends HTMLElement {
+    connectedCallback() {
+        if (this.dataset.ready) return;
+        this.dataset.ready = '1';
+        const n = ++leadFormCount;
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const heading = this.getAttribute('heading') || 'קבלו הצעת מחיר לעסק';
+        const intro = this.getAttribute('intro') || 'השאירו פרטים ונחזור אליכם עם הצעת מחיר סיטונאית לעסק — בלי התחייבות.';
+        const subject = this.getAttribute('subject') || 'בקשת הצעת מחיר מהאתר';
+        const switchText = encodeURIComponent('שלום, אנחנו עובדים עם ספק אחר ורוצים הצעה מתחרה. מצרפים צילום של ההזמנה האחרונה:');
+        const check = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        this.innerHTML = `
+            <section class="lead-section lead-section-compact"${n === 1 ? ' id="quote"' : ''}>
+                <div class="container lead-grid">
+                    <div class="lead-content">
+                        <h2>${esc(heading)}</h2>
+                        <p>${esc(intro)}</p>
+                        <div class="lead-benefits">
+                            <div class="benefit-item"><span class="benefit-icon">${check}</span><span>מחירים סיטונאיים לעסקים, בלי מתווכים</span></div>
+                            <div class="benefit-item"><span class="benefit-icon">${check}</span><span>משלוח עד בית העסק</span></div>
+                            <div class="benefit-item"><span class="benefit-icon">${check}</span><span>מענה אישי ישירות מאיתנו</span></div>
+                        </div>
+                        <div class="switch-offer">
+                            <strong>כבר עובדים עם ספק אחר?</strong>
+                            <p>שלחו לנו בוואטסאפ צילום של ההזמנה או החשבונית האחרונה, ונחזיר אליכם הצעה מתחרה על אותם מוצרים.</p>
+                            <a class="switch-offer-btn" href="https://wa.me/972526000158?text=${switchText}" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7z"/></svg>שלחו צילום בוואטסאפ</a>
+                        </div>
+                    </div>
+                    <div class="contact-form-container">
+                        <form class="contact-form-ajax">
+                            <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+                            <input type="hidden" name="_subject" value="${esc(subject)}">
+                            <div class="form-group">
+                                <label for="lf${n}-name">שם מלא <span style="color: red;">*</span></label>
+                                <input type="text" id="lf${n}-name" name="name" required autocomplete="name">
+                            </div>
+                            <div class="form-group">
+                                <label for="lf${n}-business">שם העסק</label>
+                                <input type="text" id="lf${n}-business" name="business" autocomplete="organization">
+                            </div>
+                            <div class="form-group">
+                                <label for="lf${n}-phone">טלפון <span style="color: red;">*</span></label>
+                                <input type="tel" id="lf${n}-phone" name="phone" required autocomplete="tel" placeholder="050-1234567">
+                            </div>
+                            <div class="form-group">
+                                <label for="lf${n}-message">מה תרצו שנספק לכם?</label>
+                                <textarea id="lf${n}-message" name="message" rows="3" placeholder="סוג העסק והמוצרים שאתם צריכים"></textarea>
+                            </div>
+                            <div class="form-status-alert"></div>
+                            <p class="form-privacy">בשליחת הטופס אתם מאשרים את <a href="/privacy/">מדיניות הפרטיות</a>. הפרטים משמשים רק כדי לחזור אליכם.</p>
+                            <button type="submit" class="btn-form-submit">שלחו לי הצעת מחיר</button>
+                        </form>
+                    </div>
+                </div>
+            </section>`;
+    }
+}
+
 customElements.define('site-header', SiteHeader);
 customElements.define('site-footer', SiteFooter);
+customElements.define('lead-form', LeadForm);
 
 // --- ייחוס תנועה ממומנת: שמירת UTM/gclid לכל אורך הסשן ---
 // נדרש כי הגולש עשוי לנחות עם הפרמטרים בכתובת ואז לנווט לדף אחר לפני שימלא טופס.
@@ -338,107 +403,124 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 4. AJAX Contact Forms Handler ---
-    const contactForms = document.querySelectorAll('.contact-form-ajax');
-    contactForms.forEach(form => {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const submitBtn = form.querySelector('.btn-form-submit');
-            const alertBox = form.querySelector('.form-status-alert');
-            
-            // Get form values
-            const nameInput = form.querySelector('[name="name"]');
-            const phoneInput = form.querySelector('[name="phone"]');
-            const emailInput = form.querySelector('[name="email"]');
-            const messageInput = form.querySelector('[name="message"]');
-            
-            const name = nameInput ? nameInput.value.trim() : '';
-            const phone = phoneInput ? phoneInput.value.trim() : '';
-            const email = emailInput ? emailInput.value.trim() : '';
-            const message = messageInput ? messageInput.value.trim() : '';
-            const subject = form.querySelector('[name="_subject"]')?.value || 'פנייה חדשה מאתר אהרוני שיווק';
-            
-            // Simple validation
-            if (!name || !phone) {
-                if (alertBox) {
-                    alertBox.className = 'form-status-alert error';
-                    alertBox.textContent = 'אנא מלאו את שדות החובה (שם וטלפון)';
-                    alertBox.style.display = 'block';
-                }
-                return;
-            }
-            
-            // Disable button and show loading state
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                const originalText = submitBtn.innerHTML;
-                submitBtn.textContent = 'שולח...';
-                form.dataset.originalBtnText = originalText;
-            }
-            
+    // שורת פרטיות מתחת לכל טופס ליד (חובת יידוע — תיקון 13 לחוק הגנת הפרטיות).
+    // מוזרקת כאן כדי לא לשכפל אותה ב-9 דפים; טופס שכבר יש בו שורה כזו מדולג.
+    document.querySelectorAll('.contact-form-ajax').forEach(form => {
+        if (form.querySelector('.form-privacy')) return;
+        const btn = form.querySelector('.btn-form-submit');
+        if (!btn) return;
+        const p = document.createElement('p');
+        p.className = 'form-privacy';
+        p.innerHTML = 'בשליחת הטופס אתם מאשרים את <a href="/privacy/">מדיניות הפרטיות</a>. הפרטים משמשים רק כדי לחזור אליכם.';
+        btn.before(p);
+    });
+
+    // מאזין אחד ברמת המסמך ולא לכל טופס — כך הוא תופס גם טפסים שנוצרים
+    // מרכיבים (<lead-form>) בלי תלות בסדר הטעינה
+    document.addEventListener('submit', async (e) => {
+        const form = e.target.closest('.contact-form-ajax');
+        if (!form) return;
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('.btn-form-submit');
+        const alertBox = form.querySelector('.form-status-alert');
+
+        // Get form values
+        const nameInput = form.querySelector('[name="name"]');
+        const businessInput = form.querySelector('[name="business"]');
+        const phoneInput = form.querySelector('[name="phone"]');
+        const emailInput = form.querySelector('[name="email"]');
+        const messageInput = form.querySelector('[name="message"]');
+
+        const name = nameInput ? nameInput.value.trim() : '';
+        const business = businessInput ? businessInput.value.trim() : '';
+        const phone = phoneInput ? phoneInput.value.trim() : '';
+        const email = emailInput ? emailInput.value.trim() : '';
+        const message = messageInput ? messageInput.value.trim() : '';
+        const subject = form.querySelector('[name="_subject"]')?.value || 'פנייה חדשה מאתר אהרוני שיווק';
+        
+        // Simple validation
+        if (!name || !phone) {
             if (alertBox) {
-                alertBox.style.display = 'none';
+                alertBox.className = 'form-status-alert error';
+                alertBox.textContent = 'אנא מלאו את שדות החובה (שם וטלפון)';
+                alertBox.style.display = 'block';
             }
+            return;
+        }
+        
+        // Disable button and show loading state
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.textContent = 'שולח...';
+            form.dataset.originalBtnText = originalText;
+        }
+        
+        if (alertBox) {
+            alertBox.style.display = 'none';
+        }
+        
+        const attribution = readAttribution();
+
+        try {
+            // Send request to Google Apps Script Webhook via AJAX
+            await fetch('https://script.google.com/macros/s/AKfycbxfp0qDK0ergyj-cVzdCVWiLieGXDjsSAymi1vvk-fWPnDPpiPc9nO8ujJye6JREyyL/exec', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    // שם העסק מצורף לשם ולא כשדה נפרד: הסקריפט של הלידים בענן אינו
+                    // בריפו, ולא ידוע אם הוא שומר מפתחות חדשים — כך הוא מגיע בוודאות
+                    'שם מלא': business ? `${name} — ${business}` : name,
+                    'טלפון': phone,
+                    'אימייל': email || 'לא צוין',
+                    'הודעה / בקשה': message || 'ללא הודעה',
+                    '_subject': subject,
+                    // ייחוס: בלי השדות האלה אי אפשר לדעת איזו מודעה הביאה את הליד
+                    'עמוד': window.location.pathname,
+                    'דף נחיתה': attribution.landing_page || window.location.pathname,
+                    'מקור': attributionLabel(attribution),
+                    'gclid': attribution.gclid || '',
+                    '_honey': form.querySelector('[name="_honey"]')?.value || '' // Honeypot spam prevention
+                })
+            });
             
-            const attribution = readAttribution();
-
-            try {
-                // Send request to Google Apps Script Webhook via AJAX
-                await fetch('https://script.google.com/macros/s/AKfycbxfp0qDK0ergyj-cVzdCVWiLieGXDjsSAymi1vvk-fWPnDPpiPc9nO8ujJye6JREyyL/exec', {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        'שם מלא': name,
-                        'טלפון': phone,
-                        'אימייל': email || 'לא צוין',
-                        'הודעה / בקשה': message || 'ללא הודעה',
-                        '_subject': subject,
-                        // ייחוס: בלי השדות האלה אי אפשר לדעת איזו מודעה הביאה את הליד
-                        'עמוד': window.location.pathname,
-                        'דף נחיתה': attribution.landing_page || window.location.pathname,
-                        'מקור': attributionLabel(attribution),
-                        'gclid': attribution.gclid || '',
-                        '_honey': form.querySelector('[name="_honey"]')?.value || '' // Honeypot spam prevention
-                    })
-                });
-                
-                // Since mode is no-cors, we assume success if no exception is thrown
-                if (alertBox) {
-                    alertBox.className = 'form-status-alert success';
-                    alertBox.textContent = 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
-                    alertBox.style.display = 'block';
-                }
-                form.reset();
-
-                // Conversion Tracking: דיווח שליחת טופס ליד ל-GTM ול-GA4
-                window.dataLayer = window.dataLayer || [];
-                window.dataLayer.push({
-                    event: 'form_submit',
-                    form_subject: subject,
-                    page_path: window.location.pathname
-                });
-                if (typeof gtag === 'function') gtag('event', 'form_submit', {
-                    form_subject: subject,
-                    page_path: window.location.pathname
-                });
-            } catch (error) {
-                console.error('Form submission error:', error);
-                if (alertBox) {
-                    alertBox.className = 'form-status-alert error';
-                    alertBox.textContent = 'אירעה שגיאה בשליחת הטופס. אנא נסו שוב או פנו אלינו טלפונית או בוואטסאפ.';
-                    alertBox.style.display = 'block';
-                }
-            } finally {
-                // Restore button state
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = form.dataset.originalBtnText || 'שליחה';
-                }
+            // Since mode is no-cors, we assume success if no exception is thrown
+            if (alertBox) {
+                alertBox.className = 'form-status-alert success';
+                alertBox.textContent = 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
+                alertBox.style.display = 'block';
             }
-        });
+            form.reset();
+
+            // Conversion Tracking: דיווח שליחת טופס ליד ל-GTM ול-GA4
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: 'form_submit',
+                form_subject: subject,
+                page_path: window.location.pathname
+            });
+            if (typeof gtag === 'function') gtag('event', 'form_submit', {
+                form_subject: subject,
+                page_path: window.location.pathname
+            });
+        } catch (error) {
+            console.error('Form submission error:', error);
+            if (alertBox) {
+                alertBox.className = 'form-status-alert error';
+                alertBox.textContent = 'אירעה שגיאה בשליחת הטופס. אנא נסו שוב או פנו אלינו טלפונית או בוואטסאפ.';
+                alertBox.style.display = 'block';
+            }
+        } finally {
+            // Restore button state
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = form.dataset.originalBtnText || 'שליחה';
+            }
+        }
     });
 });
 

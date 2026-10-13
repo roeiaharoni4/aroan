@@ -1044,6 +1044,86 @@ ul {
     font-size: 1.3rem;
 }
 
+/* טופס הצעת המחיר בדפי הערים והקטגוריות (<lead-form>) — גרסה מרווחת פחות */
+.lead-section-compact {
+    padding: 56px 0;
+    scroll-margin-top: 80px;   /* קפיצה ל-#quote לא נחבאת מתחת להדר הדביק */
+}
+
+.lead-section-compact .lead-content h2 {
+    font-size: 1.8rem;
+}
+
+@media (max-width: 768px) {
+    .lead-section-compact {
+        padding: 40px 0;
+    }
+
+    .lead-section-compact .contact-form-container {
+        padding: 24px 18px;
+    }
+}
+
+/* "כבר עובדים עם ספק אחר?" — הצעה מתחרה לפי צילום הזמנה בוואטסאפ */
+.switch-offer {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--white);
+    border: 1px dashed var(--primary-color);
+    border-radius: 10px;
+}
+
+.switch-offer strong {
+    display: block;
+    font-size: 1.1rem;
+    color: var(--secondary-color);
+    margin-bottom: 6px;
+}
+
+.lead-content .switch-offer p {
+    font-size: 1rem;
+    margin-bottom: 14px;
+}
+
+/* צבע קבוע ולא --secondary-color, שהופך ללבן במצב כהה; ירוק הוואטסאפ
+   הבהיר (#25D366) עם טקסט לבן נכשל בניגודיות */
+.switch-offer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    background: #1A4231;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.switch-offer-btn:hover {
+    background: #26583F;
+}
+
+/* קישור מה-hero של דפי הקטגוריה אל טופס הצעת המחיר (#quote) */
+.cat-quote-link {
+    flex-basis: 100%;
+    font-size: 0.95rem;
+    color: var(--secondary-color);
+    text-decoration: underline;
+}
+
+/* שורת הפרטיות מעל כפתור השליחה בכל טופס ליד */
+.form-privacy {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: right;
+}
+
+.form-privacy a {
+    color: inherit;
+    text-decoration: underline;
+}
+
 /* Full width map section */
 .map-section {
     padding: 0 0 60px 0;

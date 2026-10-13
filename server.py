@@ -44,6 +44,30 @@ PRICELIST_CATALOGS = {
     },
 }
 
+# תמונות מוצר: צילום מהטלפון שהועלה כמו שהוא הגיע ל-6MB ו-3024x4032, וכך נטען
+# בכרטיס המוצר. כל העלאה עוברת הקטנה לצלע של עד 1000px והמרה ל-WebP (גם
+# tools/convert_product_images.py משתמש בזה). צריך Pillow; בלעדיו — שמירה כמו שהיא.
+PRODUCT_IMAGE_MAX_SIDE = 1000
+PRODUCT_IMAGE_WEBP_QUALITY = 82
+
+
+def optimize_product_image(raw):
+    """מחזיר bytes של WebP מוקטן, או None אם אי אפשר (אין Pillow / לא תמונה)."""
+    try:
+        from io import BytesIO
+        from PIL import Image, ImageOps
+        im = Image.open(BytesIO(raw))
+        im = ImageOps.exif_transpose(im)              # צילומי טלפון שמורים "שוכבים" עם תג סיבוב
+        if im.mode not in ('RGB', 'RGBA'):
+            im = im.convert('RGBA' if 'A' in im.getbands() or im.mode == 'P' else 'RGB')
+        im.thumbnail((PRODUCT_IMAGE_MAX_SIDE, PRODUCT_IMAGE_MAX_SIDE), Image.LANCZOS)
+        out = BytesIO()
+        im.save(out, 'WEBP', quality=PRODUCT_IMAGE_WEBP_QUALITY, method=6)
+        return out.getvalue()
+    except Exception:
+        return None
+
+
 # עמודות הקטלוג העסקי (data/products.csv). מקור אמת יחיד לכתיבה מהעורך —
 # packaging = מידע אריזה/קרטון, subcategory = שיוך לדף תת-קטגוריה (שניהם אופציונליים).
 PRODUCT_FIELDS = ['id', 'name', 'category', 'subcategory', 'unit', 'image',
@@ -2117,14 +2141,22 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if ',' in base64_data:
                 base64_data = base64_data.split(',')[1]
                 
+            # שם קובץ בלבד — בלי נתיב, כדי שבקשה לא תוכל לכתוב מחוץ לתיקיית התמונות
+            filename = os.path.basename(filename)
+            raw = base64.b64decode(base64_data)
+            optimized = optimize_product_image(raw)
+            if optimized is not None:
+                filename = os.path.splitext(filename)[0] + '.webp'
+                raw = optimized
+
             file_path = os.path.join(IMAGES_DIR, filename)
-            
+
             # Ensure images dir exists
             if not os.path.exists(IMAGES_DIR):
                 os.makedirs(IMAGES_DIR)
-                
+
             with open(file_path, 'wb') as f:
-                f.write(base64.b64decode(base64_data))
+                f.write(raw)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
