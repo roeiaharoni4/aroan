@@ -645,7 +645,7 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
 <html lang="he" dir="rtl">
 <head>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
-    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}try{{var q=location.search;if(/[?&]internal=1(&|$)/.test(q))localStorage.setItem('aroam_internal','1');else if(/[?&]internal=0(&|$)/.test(q))localStorage.removeItem('aroam_internal');if(location.hostname!=='aroam.co.il'||localStorage.getItem('aroam_internal'))window['ga-disable-G-W1MRCCC3FS']=true;}}catch(e){{}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{escape(cfg['title'])}</title>
@@ -906,7 +906,7 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
 <html lang="he" dir="rtl">
 <head>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
-    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}try{{var q=location.search;if(/[?&]internal=1(&|$)/.test(q))localStorage.setItem('aroam_internal','1');else if(/[?&]internal=0(&|$)/.test(q))localStorage.removeItem('aroam_internal');if(location.hostname!=='aroam.co.il'||localStorage.getItem('aroam_internal'))window['ga-disable-G-W1MRCCC3FS']=true;}}catch(e){{}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{escape(title)}</title>
@@ -1301,7 +1301,7 @@ def generate_catalog_subcategory_pages():
 
 <head>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
-    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}try{{var q=location.search;if(/[?&]internal=1(&|$)/.test(q))localStorage.setItem('aroam_internal','1');else if(/[?&]internal=0(&|$)/.test(q))localStorage.removeItem('aroam_internal');if(location.hostname!=='aroam.co.il'||localStorage.getItem('aroam_internal'))window['ga-disable-G-W1MRCCC3FS']=true;}}catch(e){{}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{escape(cfg['title'])}</title>
@@ -1612,7 +1612,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
 
 <head>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W1MRCCC3FS"></script>
-    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}try{{var q=location.search;if(/[?&]internal=1(&|$)/.test(q))localStorage.setItem('aroam_internal','1');else if(/[?&]internal=0(&|$)/.test(q))localStorage.removeItem('aroam_internal');if(location.hostname!=='aroam.co.il'||localStorage.getItem('aroam_internal'))window['ga-disable-G-W1MRCCC3FS']=true;}}catch(e){{}}gtag('js',new Date());gtag('config','G-W1MRCCC3FS');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{escape(title)}</title>

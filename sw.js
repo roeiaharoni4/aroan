@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aroam-cache-v55';
+const CACHE_NAME = 'aroam-cache-v56';
 const urlsToCache = [
     '/',
     '/catalog/',
@@ -8,6 +8,7 @@ const urlsToCache = [
     '/images/logo.png',
     '/js/lib/papaparse.min.js'
 ];
+const CACHEABLE_ORIGINS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
     // Skip waiting to activate immediately
@@ -24,23 +25,39 @@ self.addEventListener('install', event => {
 // משתלט על הלשוניות הפתוחות כבר בהפעלה הראשונה. בלי זה ה-service worker
 // אמנם נרשם, אבל לא שולט בעמוד עד רענון — ו"הכנה לעבודה בלי רשת" בדף הסוכן
 // הייתה מחייבת טעינה נוספת לפני שהיא בכלל זמינה.
+// מוחק את המטמונים של גרסאות קודמות. בלי זה כל העלאת גרסה השאירה במכשיר
+// עוד עותק מלא של כל מה שנגלש — 55 גרסאות נערמו זו על זו. אחרי עדכון,
+// "הכנה לעבודה בלי רשת" בדף הסוכן צריכה לרוץ שוב פעם אחת.
 self.addEventListener('activate', event => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys()
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+            .then(() => self.clients.claim())
+    );
 });
 
 self.addEventListener('fetch', event => {
     // Network First Strategy
     // Try network, fall back to cache if offline
     if (event.request.method !== 'GET') return;
+    // רק קבצי האתר עצמו (והפונטים, כדי שדף הסוכן ייראה תקין גם בלי רשת).
+    // בקשות לגוגל — אנליטיקס, GTM, Apps Script, כולל קריאות מסך הרכש שהסיסמה
+    // שלהן בכתובת — עוברות ישירות ולא נשמרות במכשיר.
+    const origin = new URL(event.request.url).origin;
+    if (origin !== self.location.origin && !CACHEABLE_ORIGINS.includes(origin)) return;
 
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                // Clone response to cache it
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseClone);
-                });
+                // שומרים רק תשובות תקינות — 404 שנשמר היה מוגש במקום העמוד בלי רשת
+                // (קובץ ה-CSS של הפונטים חוזר "אטום" — status 0 — ולכן מותר רק לו)
+                const fontCss = response.type === 'opaque' && origin !== self.location.origin;
+                if ((response.ok && response.status === 200) || fontCss) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME)
+                        .then(cache => cache.put(event.request, responseClone))
+                        .catch(() => { });
+                }
                 return response;
             })
             .catch(async () => {

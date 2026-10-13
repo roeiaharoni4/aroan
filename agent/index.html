@@ -17,7 +17,7 @@
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
+        try{var q=location.search;if(/[?&]internal=1(&|$)/.test(q))localStorage.setItem('aroam_internal','1');else if(/[?&]internal=0(&|$)/.test(q))localStorage.removeItem('aroam_internal');if(location.hostname!=='aroam.co.il'||localStorage.getItem('aroam_internal'))window['ga-disable-G-W1MRCCC3FS']=true;}catch(e){}gtag('js', new Date());
         gtag('config', 'G-W1MRCCC3FS');
     </script>
     <!-- End Google Analytics 4 -->
@@ -54,7 +54,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js"></script>
-    <script src="/js/app.js?v=60" defer></script>
+    <script src="/js/app.js?v=61" defer></script>
     <script src="/js/agent.js?v=2" defer></script>
 </head>
 

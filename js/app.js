@@ -1044,6 +1044,60 @@ document.addEventListener("DOMContentLoaded", async () => {
             count === 1 ? "מוצר אחד" : count + " מוצרים";
     }
 
+    // צורות חלופיות למילת חיפוש בעברית. בלי זה "סבון לידיים" החזיר 0 (המוצר
+    // הוא "סבון ידיים"), וכך גם "הכוסות", "צלחות" ו"שקיות זבל" (בקטלוג: אשפה).
+    // הצורה המקורית תמיד ראשונה, ולכן מה שנמצא היום ממשיך להימצא.
+    const SEARCH_SYNONYMS = { 'זבל': 'אשפה', 'מגבות': 'ניגוב' };
+    function searchVariants(term) {
+        const out = [term];
+        if (SEARCH_SYNONYMS[term]) out.push(SEARCH_SYNONYMS[term]);
+        // אותיות שימוש בתחילת מילה (ו/ה/ב/ל/מ/ש/כ) — עד שתיים, כל עוד נשארת מילה
+        let s = term;
+        for (let i = 0; i < 2 && s.length >= 4 && /^[ולבהמשכ]/.test(s); i++) {
+            s = s.slice(1);
+            out.push(s);
+        }
+        // רבים ← יחיד בקירוב: "כוסות" מוצא "כוס", "צלחות" מוצא "צלחת"
+        out.slice().forEach(v => {
+            if (v.length >= 5 && /(ות|ים)$/.test(v)) out.push(v.slice(0, -2));
+        });
+        return out;
+    }
+
+    const normalizeSearch = s => (s || "").toLowerCase().replace(/["'`´׳״]/g, "").replace(/\s+/g, " ");
+    // משותף לתוצאות ולהצעות שמתחת לשדה — קודם ההצעות השתמשו בהתאמה רציפה
+    // בלבד ולא הציגו כלום לחיפושים שהתוצאות עצמן כן מצאו.
+    function productMatchesSearch(p, query) {
+        const nq = normalizeSearch(query);
+        const terms = nq.split(" ").filter(Boolean);
+        const hay = normalizeSearch(`${p.name} ${p.brand || ""}`);
+        if (terms.every(t => searchVariants(t).some(v => hay.includes(v)))) return true;   // כל מילה בשם/מותג
+        return normalizeSearch(p.id || "").includes(nq);                                    // או מק"ט מלא
+    }
+
+    // מצב "אין תוצאות": במקום מבוי סתום — הצעה לשאול בוואטסאפ על המוצר שחיפשו.
+    // לקוח עסקי שלא מצא מוצר הוא ליד, לא נטישה. לא מוצג בדפים סגורים בלי
+    // פרטי קשר (רשת החנויות), בדף הסוכן, ובשליחה ישירה.
+    function renderNoResults(searchQuery) {
+        const box = document.createElement('div');
+        box.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;';
+        box.textContent = 'לא נמצאו מוצרים.';
+        if (searchQuery && CONFIG.showContact !== false && !CONFIG.agentMode && !CONFIG.directSend) {
+            const p = document.createElement('p');
+            p.style.cssText = 'margin: 0.75rem 0 1rem; color: #555;';
+            p.textContent = 'יש לנו מוצרים רבים שלא מופיעים בקטלוג — כתבו לנו מה אתם מחפשים ונבדוק עבורכם.';
+            const a = document.createElement('a');
+            a.className = 'add-to-cart-btn';
+            a.style.cssText = 'display: inline-block; width: auto; padding: 0.6rem 1.4rem; text-decoration: none;';
+            a.href = 'https://wa.me/972526000158?text=' + encodeURIComponent(`שלום, חיפשתי בקטלוג "${searchQuery}" ולא מצאתי. אפשר לבדוק אם יש לכם?`);
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = 'שאלו אותנו בוואטסאפ';
+            box.append(p, a);
+        }
+        return box;
+    }
+
     function renderProducts() {
         if (!productsEl) return;
         const searchQuery = (searchInput?.value || "").trim();
@@ -1064,14 +1118,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // חיפוש לפי מילים: כל מילה בשאילתה חייבת להימצא (בכל סדר) בשם/מותג/מק"ט.
             // כך "אולוויז מידה 4" מוצא "תחבושות אולוויז אולטרה לילה סקיור נייט מידה 4".
             // נירמול מרכאות/גרשיים כדי ש-מ"ל, מ״ל ו-מ׳ל יתאימו זה לזה.
-            const normalize = s => (s || "").toLowerCase().replace(/["'`´׳״]/g, "").replace(/\s+/g, " ");
-            const nq = normalize(searchQuery);
-            const terms = nq.split(" ").filter(Boolean);
-            filtered = filtered.filter(p => {
-                const hay = normalize(`${p.name} ${p.brand || ""}`);
-                if (terms.every(t => hay.includes(t))) return true;   // כל מילה בשם/מותג
-                return normalize(p.id || "").includes(nq);            // או מק"ט מלא
-            });
+            filtered = filtered.filter(p => productMatchesSearch(p, searchQuery));
         } else if (activeBrand) {
             // בחירת מותג מציגה את כל מוצרי המותג מכל הקטגוריות
             filtered = PRODUCTS.filter(p => p.brand === activeBrand);
@@ -1103,7 +1150,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderResultsBar(filtered.length);
 
         if (filtered.length === 0) {
-            productsEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;">לא נמצאו מוצרים.</div>';
+            productsEl.appendChild(renderNoResults(searchQuery));
             return;
         }
 
@@ -2814,7 +2861,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         const matches = PRODUCTS
-            .filter(p => p.name.toLowerCase().includes(query) || p.id.includes(query))
+            .filter(p => productMatchesSearch(p, query))
             .slice(0, 5); // Limit to 5 suggestions
 
         if (matches.length === 0) {

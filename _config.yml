@@ -1,0 +1,27 @@
+# GitHub Pages בונה את האתר עם Jekyll. בלי הקובץ הזה כל קובץ בריפו מוגש באתר החי —
+# כולל CLAUDE.md (קודי כניסה וכתובות סודיות), מסמכי תכנון, קוד השרת המקומי
+# ו-Apps Script. Jekyll גם ממיר כל .md לעמוד HTML נפרד (CLAUDE.html וכו').
+# הרשימה כאן מוציאה אותם מהאתר בלבד: הם נשארים בריפו, וה-Action היומי
+# (tools/refresh_site.py) והעורכים המקומיים ממשיכים לעבוד כרגיל.
+# קובץ או תיקייה פנימיים חדשים בשורש — להוסיף לכאן.
+exclude:
+  - CLAUDE.md
+  - SEO_AUDIT_2026-07.md
+  - SESSION_SUMMARY_2026-07-20.md
+  - UPDATES_GUIDE.md
+  - WORDPRESS_DEPLOY.md
+  - docs
+  - marketing
+  - tools
+  - admin
+  - images_backup
+  - __pycache__
+  - server.py
+  - generate_ids.py
+  - sort_products_to_file.py
+  - optimize_images.sh
+  - start_catalog.command
+  - "עריכת מחירונים.command"
+  - "פרסם לאתר.command"
+  - aroam-catalog.zip
+  - "מדבקה_טקסט_בהיר.pptx"
