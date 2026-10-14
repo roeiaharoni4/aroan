@@ -130,15 +130,10 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="prod-subcategory">תת-קטגוריה (לדף SEO ייעודי)</label>
-                        <select id="prod-subcategory">
-                            <option value="">— ללא —</option>
-                            <option value="hand-towels">נייר ניגוב ומגבות ידיים</option>
-                            <option value="toilet-paper">נייר טואלט</option>
-                            <option value="cups">כוסות חד פעמיות</option>
-                            <option value="containers">קופסאות ואריזות מזון</option>
-                            <option value="tableware">צלחות וסכו״ם חד פעמי</option>
-                        </select>
+                        <label for="prod-subcategory">תת-קטגוריה</label>
+                        <input type="text" id="prod-subcategory" list="subcategory-list" placeholder="למשל: נייר טואלט">
+                        <datalist id="subcategory-list"></datalist>
+                        <small class="field-hint">מופיעה כסינון בתוך הקטגוריה בקטלוג. אפשר לבחור קיימת או לכתוב חדשה; ריק = רק תחת "הכל".</small>
                     </div>
 
                     <div class="form-group">

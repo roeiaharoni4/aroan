@@ -295,6 +295,73 @@ button {
     cursor: pointer;
 }
 
+/* תת-קטגוריות בתוך קטגוריה ("הכל · נייר טואלט · גליל תעשייתי") — renderSubChips.
+   כפתורי גלולה קלים יותר מ-.cat-btn כדי שיהיה ברור שזו רמה שנייה. במובייל
+   שורה אחת שנגללת לרוחב במקום לשבור לכמה שורות מעל המוצרים. */
+.sub-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 0;
+}
+
+.sub-chips[hidden] {
+    display: none;
+}
+
+.sub-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.sub-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary-dark);
+}
+
+.sub-chip.active {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.sub-chip-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+/* במצב כהה --primary-light הופך ל-‎#1A4231, אותו צבע כמו --primary-dark (סבב 54) */
+[data-theme="dark"] .sub-chip:hover,
+[data-theme="dark"] .sub-chip.active {
+    color: var(--primary-pastel);
+}
+
+@media (max-width: 768px) {
+    .sub-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding-bottom: 0.25rem;
+    }
+
+    .sub-chips::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 /* Cart Warning Banner — קישור ?cart= (מייל הזמנה/שיתוף) עם מזהי מוצר שלא
    נמצאו בקטלוג הנוכחי. גלוי אך לא חוסם, ניתן לסגירה. צבעי אזהרה עדינים
    מתוך פלטת המותג (לא אדום/צהוב סטנדרטי) כדי להשתלב בעיצוב. */

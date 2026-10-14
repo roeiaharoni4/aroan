@@ -1210,9 +1210,12 @@ def generate_catalog_category_schema():
 
 # דפי תת-קטגוריה — נגזרו משאילתות אמיתיות ב-Search Console (3 חודשים) שהיו
 # להן הופעות ולא היה להן דף תואם באתר. ההופעות בהערה הן הבסיס לבחירה.
+# 'groups' = ערכי עמודת subcategory (תת-הקטגוריה בעברית, אותה אחת שמופיעה
+# כסינון בקטלוג) שהמוצרים שלהם נכנסים לדף. דף אחד יכול לאגד כמה תת-קטגוריות.
 CATALOG_SUBCATEGORIES = {
     'hand-towels': {
         'parent': 'paper',
+        'groups': ['נייר ניגוב ידיים', 'גליל תעשייתי', 'צץ רץ'],
         'h1': 'נייר ניגוב ידיים ומגבות נייר בסיטונאות',
         'title': 'נייר מגבת בסיטונאות | נייר ניגוב ידיים תעשייתי לעסקים | אהרוני',
         'description': 'נייר מגבת ונייר ניגוב ידיים תעשייתי בסיטונאות: גלילים תעשייתיים, '
@@ -1224,6 +1227,7 @@ CATALOG_SUBCATEGORIES = {
     },
     'toilet-paper': {
         'parent': 'paper',
+        'groups': ['נייר טואלט'],
         'h1': 'נייר טואלט מוסדי בסיטונאות',
         'title': 'נייר טואלט בסיטונאות | נייר טואלט מוסדי לעסקים | אהרוני שיווק והפצה',
         'description': 'נייר טואלט מוסדי בסיטונאות לעסקים ומוסדות: גלילי ג׳מבו, מארזים גדולים '
@@ -1235,6 +1239,7 @@ CATALOG_SUBCATEGORIES = {
     },
     'cups': {
         'parent': 'disposables',
+        'groups': ['כוסות'],
         'h1': 'כוסות חד פעמיות בסיטונאות',
         'title': 'כוסות חד פעמיות בסיטונאות | כוסות נייר ופלסטיק לעסקים | אהרוני',
         'description': 'כוסות חד פעמיות בסיטונאות: כוסות נייר לשתייה חמה, כוסות אספרסו, '
@@ -1246,6 +1251,7 @@ CATALOG_SUBCATEGORIES = {
     },
     'containers': {
         'parent': 'disposables',
+        'groups': ['קופסאות ואריזות מזון'],
         'h1': 'קופסאות אוכל ואריזות מזון חד פעמיות בסיטונאות',
         'title': 'קופסאות חד פעמי בסיטונאות | אריזות מזון לעסקי משלוחים | אהרוני',
         'description': 'קופסאות פלסטיק חד פעמיות ואריזות מזון בסיטונאות: קופסאות אוכל מחולקות, '
@@ -1257,6 +1263,7 @@ CATALOG_SUBCATEGORIES = {
     },
     'tableware': {
         'parent': 'disposables',
+        'groups': ['סכו״ם', 'צלחות'],
         'h1': 'צלחות וסכו״ם חד פעמי בסיטונאות',
         'title': 'צלחות חד פעמי בסיטונאות | סכו״ם חד פעמי לעסקים ומסעדות | אהרוני',
         'description': 'צלחות וסכו״ם חד פעמי בסיטונאות: צלחות מתכלות, סכו״ם קשיח וסכו״ם רגיל '
@@ -1268,11 +1275,19 @@ CATALOG_SUBCATEGORIES = {
 }
 
 
+def _in_subcategory_page(row, slug):
+    """האם המוצר שייך לדף תת-הקטגוריה slug — לפי עמודת subcategory בעברית.
+    גם הקטגוריה נבדקת, כי שם תת-קטגוריה ("כביסה", "נוספים") חוזר בכמה קטגוריות."""
+    cfg = CATALOG_SUBCATEGORIES[slug]
+    return (row.get('category') == CATALOG_CATEGORIES.get(cfg['parent'])
+            and (row.get('subcategory') or '').strip() in cfg['groups'])
+
+
 def generate_catalog_subcategory_pages():
     """יוצר דפי SEO לתת-קטגוריות תחת catalog/<parent>/<slug>/.
 
     כל דף מכוון לשאילתה עם הופעות אמיתיות ב-Search Console שלא היה לה דף.
-    שיוך המוצרים נעשה דרך עמודת subcategory ב-CSV ולא לפי מילים בשם המוצר —
+    שיוך המוצרים נעשה דרך עמודת subcategory ב-CSV (ראה 'groups') ולא לפי מילים בשם המוצר —
     התאמת מילות מפתח ייצרה false positives ("סבון ידיים" נכנס ל"נייר ניגוב
     ידיים", "עט לחיץ בקופסא" נכנס ל"קופסאות").
     """
@@ -1284,7 +1299,7 @@ def generate_catalog_subcategory_pages():
     generated = []
 
     for slug, cfg in CATALOG_SUBCATEGORIES.items():
-        items = [r for r in rows if (r.get('subcategory') or '').strip() == slug]
+        items = [r for r in rows if _in_subcategory_page(r, slug)]
         if not items:
             continue
         parent = cfg['parent']
@@ -1433,7 +1448,7 @@ def generate_catalog_subcategory_pages():
 
     _update_sitemap_care_products(
         [f'{SITE_BASE_URL}/catalog/{c["parent"]}/{s}/' for s, c in CATALOG_SUBCATEGORIES.items()
-         if any((r.get('subcategory') or '').strip() == s for r in rows)],
+         if any(_in_subcategory_page(r, s) for r in rows)],
         start='  <!-- CATALOG_SUBCATS_SITEMAP_START -->',
         end='  <!-- CATALOG_SUBCATS_SITEMAP_END -->')
     return generated
@@ -1513,7 +1528,7 @@ def bake_catalog_product_index():
 
         # קישור לדפי התת-קטגוריה של הקטגוריה הזו (אם יש להם מוצרים משויכים)
         subs = [(s, c) for s, c in CATALOG_SUBCATEGORIES.items()
-                if c['parent'] == slug and any((r.get('subcategory') or '').strip() == s for r in rows)]
+                if c['parent'] == slug and any(_in_subcategory_page(r, s) for r in rows)]
         subs_html = ''
         if subs:
             sub_links = '\n'.join(

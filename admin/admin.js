@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="td-img"><img src="${imgSrc}" onerror="this.src='../images/logo.png'"></td>
                 <td>${p.id}</td>
                 <td>${p.name}</td>
-                <td>${p.category}</td>
+                <td>${p.category}${p.subcategory ? `<br><small class="field-hint">${p.subcategory}</small>` : ''}</td>
                 <td>${p.unit}</td>
                 <td>${parseFloat(p.price).toFixed(2)}</td>
                 <td class="td-desc">
@@ -190,11 +190,25 @@ document.addEventListener('DOMContentLoaded', () => {
     closeBtn.onclick = () => modal.classList.remove('active');
     cancelBtn.onclick = () => modal.classList.remove('active');
     
+    // הצעות לתת-קטגוריה = מה שכבר קיים בקטגוריה שנבחרה, כדי שאותה תת-קטגוריה
+    // לא תיכתב פעם "צץ רץ" ופעם "צץ-רץ" ותתפצל לשני כפתורים בקטלוג
+    function updateSubcategoryList() {
+        const list = document.getElementById('subcategory-list');
+        if (!list) return;
+        const cat = catInput.value.trim();
+        const names = [...new Set(products
+            .filter(p => p.category === cat && p.subcategory)
+            .map(p => p.subcategory))].sort((a, b) => a.localeCompare(b, 'he'));
+        list.innerHTML = names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
+    }
+    catInput.addEventListener('input', updateSubcategoryList);
+
     function openAddModal() {
         form.reset();
         originalIdInput.value = '';
         imgPreview.style.display = 'none';
         imgPreview.src = '';
+        updateSubcategoryList();
         document.getElementById('modal-title').textContent = 'הוספת מוצר חדש';
         modal.classList.add('active');
     }
@@ -213,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         brandInput.value = p.brand || '';
         cartonQtyInput.value = p.carton_qty || '';
         subcatInput.value = p.subcategory || '';
+        updateSubcategoryList();
         descInput.value = p.description || '';
         urlInput.value = p.image;
         

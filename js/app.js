@@ -122,6 +122,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     // State
     let activeCategory = null;
     let activeBrand = null; // סינון לפי מותג
+    // תת-קטגוריה שנבחרה — נשמרת יחד עם הקטגוריה שבה נבחרה, כך שמעבר לקטגוריה
+    // אחרת מאפס אותה בלי לגעת בכל אחד ממסלולי בחירת הקטגוריה
+    let activeSub = null; // { cat, name }
     const cart = {}; // id -> quantity
     let favorites = new Set(); // ids
 
@@ -486,6 +489,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             description: item.description || "", // Optional description
                             // מידע אריזה/קרטון — עמודות אופציונליות, מוצגות רק כשמולאו
                             packaging: (item.packaging || "").trim(),
+                            // תת-קטגוריה (עברית) — מוצגת כסינון בתוך הקטגוריה; ריק = רק תחת "הכל"
+                            subcategory: (item.subcategory || "").trim(),
                             carton_qty: (item.carton_qty || "").toString().trim(),
                             brand: (item.brand || "").trim() || detectBrand(item.name), // עמודת brand בקובץ גוברת על זיהוי אוטומטי
                             // מבצע חבילה ותוקף — קיימים רק בקובץ המחירון (בקטלוג הרגיל העמודות לא קיימות)
@@ -1061,6 +1066,61 @@ document.addEventListener("DOMContentLoaded", async () => {
             count === 1 ? "מוצר אחד" : count + " מוצרים";
     }
 
+    // שורת תת-קטגוריות ("הכל · נייר טואלט · גליל תעשייתי ...") מעל המוצרים.
+    // items = מוצרי הקטגוריה הפעילה, או null כשאין קטגוריה רגילה (חיפוש, מותג,
+    // מועדפים, הזמנות אחרונות) — ואז השורה מוסתרת. מוצגת רק כשיש לפחות שתי
+    // תת-קטגוריות ו-10 מוצרים; הסדר לפי מספר המוצרים, ו"נוספים" תמיד בסוף.
+    function renderSubChips(items) {
+        if (!productsEl || !productsEl.parentNode) return;
+        let bar = document.getElementById('sub-chips');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'sub-chips';
+            bar.className = 'sub-chips';
+            bar.setAttribute('role', 'group');
+            bar.setAttribute('aria-label', 'תת-קטגוריות');
+            const anchor = document.getElementById('results-bar') || productsEl;
+            anchor.parentNode.insertBefore(bar, anchor);
+        }
+
+        const counts = new Map();
+        (items || []).forEach(p => {
+            if (p.subcategory) counts.set(p.subcategory, (counts.get(p.subcategory) || 0) + 1);
+        });
+        // בקטגוריה של פחות מ-10 מוצרים (למשל ברשת החנויות, שרואה רק חלק מהקטלוג)
+        // הסינון רק מוסיף רעש — כל המוצרים נכנסים במסך אחד ממילא
+        if (counts.size < 2 || items.length < 10) {
+            bar.hidden = true;
+            bar.innerHTML = '';
+            return;
+        }
+
+        const order = [...counts.keys()].sort((a, b) =>
+            (a === 'נוספים') - (b === 'נוספים') || counts.get(b) - counts.get(a));
+        const current = activeSub && activeSub.cat === activeCategory ? activeSub.name : null;
+
+        bar.hidden = false;
+        bar.innerHTML = '';
+        const addChip = (label, count, name) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sub-chip' + (name === current ? ' active' : '');
+            btn.setAttribute('aria-pressed', name === current ? 'true' : 'false');
+            btn.textContent = label;
+            const c = document.createElement('span');
+            c.className = 'sub-chip-count';
+            c.textContent = count;
+            btn.appendChild(c);
+            btn.addEventListener('click', () => {
+                activeSub = name ? { cat: activeCategory, name } : null;
+                renderProducts();
+            });
+            bar.appendChild(btn);
+        };
+        addChip('הכל', items.length, null);
+        order.forEach(name => addChip(name, counts.get(name), name));
+    }
+
     // צורות חלופיות למילת חיפוש בעברית. בלי זה "סבון לידיים" החזיר 0 (המוצר
     // הוא "סבון ידיים"), וכך גם "הכוסות", "צלחות" ו"שקיות זבל" (בקטלוג: אשפה).
     // הצורה המקורית תמיד ראשונה, ולכן מה שנמצא היום ממשיך להימצא.
@@ -1125,11 +1185,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.recentOrdersList && activeCategory === 'recent' && searchQuery === "" && !activeBrand) {
             const resultsBar = document.getElementById('results-bar');
             if (resultsBar) resultsBar.style.display = 'none';
+            renderSubChips(null);
             productsEl.appendChild(renderRecentOrdersList());
             return;
         }
 
         let filtered = PRODUCTS;
+        let subChipsFor = null;   // מוצרי הקטגוריה הפעילה, כשמוצגת קטגוריה רגילה
+        // יציאה מהקטגוריה מאפסת את תת-הקטגוריה — חזרה אליה נפתחת שוב על "הכל"
+        if (activeSub && activeSub.cat !== activeCategory) activeSub = null;
 
         if (searchQuery !== "") {
             // חיפוש לפי מילים: כל מילה בשאילתה חייבת להימצא (בכל סדר) בשם/מותג/מק"ט.
@@ -1150,7 +1214,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (filtered.length === 0 && CART_PROMO) filtered = PRODUCTS;
         } else if (activeCategory) {
             filtered = PRODUCTS.filter(p => p.category === activeCategory);
+            subChipsFor = filtered;
+            if (activeSub && activeSub.cat === activeCategory) {
+                filtered = filtered.filter(p => p.subcategory === activeSub.name);
+            }
         }
+        renderSubChips(subChipsFor);
 
         // מיון — ברירת המחדל היא סדר הקובץ, כדי לא לשנות התנהגות קיימת.
         // "לפי מותג" מקבץ יחד את מוצרי אותו יצרן, וזה מה שקונה עסקי סורק.
