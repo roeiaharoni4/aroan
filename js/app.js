@@ -1066,10 +1066,26 @@ document.addEventListener("DOMContentLoaded", async () => {
             count === 1 ? "מוצר אחד" : count + " מוצרים";
     }
 
+    // סדר ידני של תת-קטגוריות לפי קטגוריה (בקשת רועי). תת-קטגוריה שלא ברשימה
+    // נכנסת אחרי הרשומות; קטגוריה בלי רשימה — לפי מספר המוצרים. "נוספים" תמיד בסוף.
+    const SUBCATEGORY_ORDER = {
+        'חד פעמי ואריזות': ['כוסות', 'סכו״ם', 'צלחות', 'קופסאות ואריזות מזון'],
+    };
+    function subcategoryOrder(items, category) {
+        const counts = new Map();
+        items.forEach(p => {
+            if (p.subcategory) counts.set(p.subcategory, (counts.get(p.subcategory) || 0) + 1);
+        });
+        const manual = SUBCATEGORY_ORDER[category] || [];
+        const rank = n => { const i = manual.indexOf(n); return i === -1 ? manual.length : i; };
+        return [...counts.keys()].sort((a, b) =>
+            (a === 'נוספים') - (b === 'נוספים') || rank(a) - rank(b) || counts.get(b) - counts.get(a));
+    }
+
     // שורת תת-קטגוריות ("הכל · נייר טואלט · גליל תעשייתי ...") מעל המוצרים.
     // items = מוצרי הקטגוריה הפעילה, או null כשאין קטגוריה רגילה (חיפוש, מותג,
     // מועדפים, הזמנות אחרונות) — ואז השורה מוסתרת. מוצגת רק כשיש לפחות שתי
-    // תת-קטגוריות ו-10 מוצרים; הסדר לפי מספר המוצרים, ו"נוספים" תמיד בסוף.
+    // תת-קטגוריות ו-10 מוצרים; הסדר לפי subcategoryOrder.
     function renderSubChips(items) {
         if (!productsEl || !productsEl.parentNode) return;
         let bar = document.getElementById('sub-chips');
@@ -1095,8 +1111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        const order = [...counts.keys()].sort((a, b) =>
-            (a === 'נוספים') - (b === 'נוספים') || counts.get(b) - counts.get(a));
+        const order = subcategoryOrder(items, activeCategory);
         const current = activeSub && activeSub.cat === activeCategory ? activeSub.name : null;
 
         bar.hidden = false;
@@ -1224,6 +1239,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         // מיון — ברירת המחדל היא סדר הקובץ, כדי לא לשנות התנהגות קיימת.
         // "לפי מותג" מקבץ יחד את מוצרי אותו יצרן, וזה מה שקונה עסקי סורק.
         // מוצרים בלי מותג יורדים לסוף במקום להתפזר בין המקובצים.
+        // ב"הכל" של קטגוריה עם תת-קטגוריות, המוצרים מסודרים בקבוצות לפי אותו סדר
+        // של שורת הסינון (כוסות ← סכו״ם ← ... ), ובתוך כל קבוצה לפי סדר הקובץ
+        if (sortMode === 'default' && subChipsFor) {
+            const groups = subcategoryOrder(subChipsFor, activeCategory);
+            const idx = p => { const i = groups.indexOf(p.subcategory); return i === -1 ? groups.length : i; };
+            filtered = filtered.map((p, i) => ({ p, i }))
+                .sort((a, b) => idx(a.p) - idx(b.p) || a.i - b.i)
+                .map(x => x.p);
+        }
         if (sortMode === 'name') {
             filtered = filtered.slice().sort((a, b) => a.name.localeCompare(b.name, 'he'));
         } else if (sortMode === 'brand') {
