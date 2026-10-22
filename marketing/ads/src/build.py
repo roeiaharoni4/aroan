@@ -37,10 +37,15 @@ CM = {
     "rolls": 40.0,    # מארז 6 גלילי ניגוב ידיים
     "rolls2": 38.0,   # מארז 6 גלילי תאית
     "jumbo": 22.0,    # גליל תעשייתי ורד צר
+    "gold": 30.0,     # גליל נייר תעשייתי גולד (התווית של אהרוני), קוטר
+    "carton": 48.0,   # קרטון נייר טואלט קומפקט 80, 36 גלילים
+    "squeegee": 40.0, # מגב מתכת 40 ס"מ
+    "bins": 28.0,     # זוג סלי רשת משרדיים, גובה הגבוה
 }
 # Which dimension the cm figure refers to
 AXIS = {"plate": "h", "beer": "h", "cup_paper": "h", "cold": "h",
-        "spoon": "h", "fork": "w", "rolls": "w", "rolls2": "w", "jumbo": "h"}
+        "spoon": "h", "fork": "w", "rolls": "w", "rolls2": "w", "jumbo": "h",
+        "gold": "w", "carton": "w", "squeegee": "w", "bins": "h"}
 
 
 def data_uri(path):

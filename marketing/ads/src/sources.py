@@ -59,6 +59,28 @@ SOURCES = {
         note="6-roll hand towel pack - unbranded, highest resolution in the category",
         radius=61, white=236, contrast=1.05,
     ),
+    # Additions for the Meta set (offices, factories). All unbranded - except "gold",
+    # whose label is Roei's own: it is his private-label roll and stays in frame.
+    "gold": dict(
+        src=CAT / "מוצרי נייר/גליל נייר תעשייתי גולד.webp",
+        note="Aroam's own GOLD-label industrial roll - the label is Roei's",
+        radius=41, white=254, contrast=1.3, alpha_tol=2,
+    ),
+    "carton": dict(
+        src=CAT / "מוצרי נייר/נייר טואלט קומפקט 80 - 36 יח_.webp",
+        note="plain carton, generic Hebrew print, no manufacturer brand",
+        radius=41, white=254, contrast=1.2, alpha_tol=2,
+    ),
+    "squeegee": dict(
+        src=CAT / "אביזרי ניקיון/מגב מתכת 40 סמ.webp",
+        note="unbranded 40cm floor squeegee head",
+        radius=41, white=252, contrast=1.15,
+    ),
+    "bins": dict(
+        src=CAT / "ציוד משרדי/סל אשפה מתכת רשת.webp",
+        note="pair of mesh office bins - generic price stickers only",
+        radius=41, white=252, contrast=1.15,
+    ),
 }
 
 
