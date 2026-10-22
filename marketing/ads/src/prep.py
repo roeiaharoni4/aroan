@@ -184,17 +184,34 @@ def prepare(path, out, radius=61, box=None, neutral=0.0, density=1.0,
     return out_im
 
 
-def prepare_dark(path, out, thresh=40, erode=2, feather=1.0, pad=2):
+def _box(x, r):
+    """Box blur of a 2-D or 3-D array over its first two axes (cumulative sums)."""
+    k = 2 * r + 1
+    pad = [(r, r), (r, r)] + [(0, 0)] * (x.ndim - 2)
+    c = np.pad(x, pad, mode="edge").cumsum(0)
+    c = np.concatenate([np.zeros_like(c[:1]), c], 0)
+    x = (c[k:] - c[:-k]) / k
+    c = x.cumsum(1)
+    c = np.concatenate([np.zeros_like(c[:, :1]), c], 1)
+    return (c[:, k:] - c[:, :-k]) / k
+
+
+def prepare_dark(path, out, thresh=40, smooth=3, erode=4, band=6, trim_bottom=0,
+                 feather=1.0, pad=2):
     """Cut a product out of a near-black ground - Roei's own studio shots.
 
     The ground is every near-black pixel connected to the border. What remains is the
     product plus the watermark leaf in the corner; keeping only the largest object drops
-    the watermark. The mask is pulled in by `erode` pixels first: the anti-aliased rim
-    between a white product and a black ground is grey, and would read as a dark halo
-    on a light tile.
+    the watermark. Two things then stop it reading as a bad cutout on a light tile:
+    - the threshold mask has staircase edges, so it is blurred and re-thresholded
+      (`smooth`) before being pulled in by `erode` pixels;
+    - the pixels along the rim still carry the black ground (a translucent wrap picks it
+      up worst), so a `band` of them is repainted with colour pulled in from the clean
+      interior - a normalised blur of the interior only.
+    `trim_bottom` drops the last rows, where a dark table reflection hugs the base.
     """
     im = Image.open(path).convert("RGB")
-    a = np.asarray(im).astype(int)
+    a = np.asarray(im).astype(float)
     labels, _ = _label(a.max(2) < thresh)
     edge = np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]])
     ground = np.isin(labels, [v for v in np.unique(edge) if v])
@@ -202,14 +219,32 @@ def prepare_dark(path, out, thresh=40, erode=2, feather=1.0, pad=2):
     labels, sizes = _label(obj)
     if len(sizes) > 1:
         obj = labels == int(np.argmax(sizes[1:]) + 1)
-    alpha = Image.fromarray((obj * 255).astype(np.uint8), "L")
+    if trim_bottom:
+        last = np.nonzero(obj.any(1))[0].max()
+        obj[last - trim_bottom + 1:] = False
+
+    m = Image.fromarray((obj * 255).astype(np.uint8), "L")
+    if smooth:
+        m = m.filter(ImageFilter.GaussianBlur(smooth)).point(lambda v: 255 if v >= 128 else 0)
     if erode:
-        alpha = alpha.filter(ImageFilter.MinFilter(2 * erode + 1))
+        m = m.filter(ImageFilter.MinFilter(2 * erode + 1))
+    mask = np.asarray(m) > 127
+
+    inner = np.asarray(m.filter(ImageFilter.MinFilter(2 * band + 1))) > 127
+    w = inner.astype(float)
+    num, den = a * w[..., None], w
+    for _ in range(2):  # two box passes approximate a gaussian
+        num, den = _box(num, band + 2), _box(den, band + 2)
+    clean = num / np.maximum(den, 1e-6)[..., None]
+    rim = mask & ~inner
+    a[rim] = clean[rim]
+
+    alpha = Image.fromarray((mask * 255).astype(np.uint8), "L")
     if feather:
         alpha = alpha.filter(ImageFilter.GaussianBlur(feather))
-    rgba = im.convert("RGBA")
+    rgba = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
     rgba.putalpha(alpha)
-    ys, xs = np.nonzero(obj)
+    ys, xs = np.nonzero(mask)
     rgba = rgba.crop((max(0, xs.min() - pad), max(0, ys.min() - pad),
                       min(im.width, xs.max() + 1 + pad), min(im.height, ys.max() + 1 + pad)))
     rgba.save(out)

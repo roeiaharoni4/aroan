@@ -15,7 +15,8 @@ NEW = ["gold", "carton", "squeegee", "bins"]
 # Roei's picks for the category tiles. Shown at fixed heights inside a tile rather than
 # at real-world scale, so they carry no CM entry.
 TILES = ["p5012", "compact50", "jumbo_tp", "cup500", "a4", "pens", "binder",
-         "jet", "kh7", "gloves", "wipes"]
+         "jet", "kh7", "gloves", "wipes",
+         "bags_trash", "bags_vest", "bags_custom", "bags_branded"]
 fails = []
 
 

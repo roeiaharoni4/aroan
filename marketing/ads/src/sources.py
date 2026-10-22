@@ -87,10 +87,14 @@ SOURCES = {
     # studio shots on a black ground with the Aroam leaf watermarked in a corner.
     "p5012": dict(
         src=CAT / "1787315001044_______________________5012.webp", dark=True,
+        smooth=8, erode=3, band=5, trim_bottom=10,
         note="single-ply industrial roll 5012 - Roei's own shot, black ground",
     ),
     "compact50": dict(
+        # Its edges are coarse blocks from an earlier cut: a light blur turns the steps
+        # into scallops, a wide one into a straight line.
         src=CAT / "1787509434410___________________50_-_36____.webp", dark=True,
+        smooth=8, erode=3, band=5,
         note="compact 50 toilet roll - Roei's own shot, black ground",
     ),
     "jumbo_tp": dict(
@@ -138,19 +142,66 @@ SOURCES = {
         note="long wipes in a bucket",
         radius=41, white=252, contrast=1.05,
     ),
+    # The bags tile (22.10.26): Roei asked for bags with two services shown - bags made
+    # to size and branded bags. "bags_branded" is derived below: the catalog has no
+    # photo of a printed bag.
+    "bags_trash": dict(
+        src=CAT / "שקיות/שקיות אשפה 75-90.webp",
+        note="jumbo 75x90 garbage bag roll",
+        radius=41, white=252, contrast=1.05,
+    ),
+    "bags_vest": dict(
+        src=CAT / "שקיות/שקיות גופיה.webp",
+        note="white vest (t-shirt) bag",
+        radius=41, white=254, contrast=1.2, alpha_tol=2,
+    ),
+    "bags_custom": dict(
+        src=CAT / "שקיות/שקיות ניילון לפי הזמנה - עובי + גודל.webp",
+        note="clear poly bags made to size and gauge",
+        radius=41, white=254, contrast=1.2, alpha_tol=2,
+    ),
 }
+
+
+def branded_bag(share=0.6, at=0.5):
+    """A vest bag with the Aroam logo printed on it, from the bags_vest cutout.
+
+    The logo is multiplied into the bag rather than pasted over it, so the bag's own
+    folds and shading run through the print the way ink on film looks.
+    """
+    import numpy as np
+    from PIL import Image
+
+    bag = Image.open(HERE / "prepped" / "bags_vest.png").convert("RGBA")
+    logo = Image.open(CAT / "logo_512.png").convert("RGBA")
+    w = int(bag.width * share)
+    logo = logo.resize((w, int(logo.height * w / logo.width)), Image.LANCZOS)
+    x = (bag.width - logo.width) // 2
+    y = int(bag.height * at) - logo.height // 2
+    b = np.asarray(bag.crop((x, y, x + logo.width, y + logo.height))).astype(float)
+    lg = np.asarray(logo).astype(float)
+    k = lg[..., 3:4] / 255 * 0.92
+    rgb = b[..., :3] * (1 - k) + b[..., :3] * lg[..., :3] / 255 * k
+    printed = Image.fromarray(np.dstack([rgb, b[..., 3]]).astype(np.uint8))
+    bag.paste(printed, (x, y))
+    bag.save(HERE / "prepped" / "bags_branded.png")
+    print(f"{'bags_branded':10s} {bag.size[0]:4d}x{bag.size[1]:4d}  vest bag with the logo printed on")
 
 
 def build_all(names=None):
     """Prepare every source, or only `names` - so adding products never re-renders the
     cutouts that already shipped (a re-run drifts a few pixels on some of them)."""
     (HERE / "prepped").mkdir(exist_ok=True)
-    for name in names or SOURCES:
+    names = list(names or SOURCES)
+    derive = "bags_branded" in names
+    for name in [n for n in names if n != "bags_branded"]:
         cfg = dict(SOURCES[name])
         src, note = cfg.pop("src"), cfg.pop("note")
         fn = prepare_dark if cfg.pop("dark", False) else prepare
         im = fn(str(src), HERE / "prepped" / f"{name}.png", **cfg)
         print(f"{name:10s} {im.size[0]:4d}x{im.size[1]:4d}  {note}")
+    if derive:
+        branded_bag()
 
 
 if __name__ == "__main__":
