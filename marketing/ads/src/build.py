@@ -8,7 +8,9 @@ the cream field - no cutout, no fringing, no lost rims.
 """
 import base64
 import json
+import os
 import pathlib
+import signal
 import subprocess
 import sys
 
@@ -153,7 +155,7 @@ def page(w, h, panel, logo_css, items_html, floor_h):
 </div></body></html>"""
 
 
-def render(html, out, w, h, slack=200, wait_ms=0):
+def render(html, out, w, h, slack=200, wait_ms=0, timeout=120):
     """Screenshot the page at exactly w x h.
 
     Chrome's --window-size counts window chrome, so the usable viewport comes out
@@ -164,6 +166,10 @@ def render(html, out, w, h, slack=200, wait_ms=0):
 
     wait_ms: pages that pull web fonts need it - the fonts arrive after the load
     event, and without a budget Chrome shoots the fallback face.
+
+    timeout: a headless Chrome has hung here with the renderer idle at 0% CPU. Chrome
+    runs in its own process group so the whole tree can be killed, and its output goes
+    to /dev/null - a helper holding a captured pipe open would block the kill as well.
     """
     from PIL import Image
     import numpy as np
@@ -178,7 +184,15 @@ def render(html, out, w, h, slack=200, wait_ms=0):
     ]
     if wait_ms:
         cmd.append(f"--virtual-time-budget={wait_ms}")
-    subprocess.run(cmd + [tmp.as_uri()], check=True, capture_output=True)
+    proc = subprocess.Popen(cmd + [tmp.as_uri()], stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, start_new_session=True)
+    try:
+        code = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        raise RuntimeError(f"{out}: Chrome did not finish within {timeout}s")
+    if code:
+        raise RuntimeError(f"{out}: Chrome exited with {code}")
 
     im = Image.open(raw).convert("RGB").crop((0, 0, w, h))
     a = np.asarray(im)

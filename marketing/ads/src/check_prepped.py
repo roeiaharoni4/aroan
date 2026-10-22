@@ -12,6 +12,10 @@ EXISTING = ["plate", "beer", "cup_paper", "cold", "spoon", "fork", "rolls", "rol
 # The Meta set's additions. Only these get the cutout-quality checks: the August items
 # shipped long ago, and some of them (forks, the spoon) are thin by nature.
 NEW = ["gold", "carton", "squeegee", "bins"]
+# Roei's picks for the category tiles. Shown at fixed heights inside a tile rather than
+# at real-world scale, so they carry no CM entry.
+TILES = ["p5012", "compact50", "jumbo_tp", "cup500", "a4", "pens", "binder",
+         "jet", "kh7", "gloves", "wipes"]
 fails = []
 
 
@@ -25,7 +29,10 @@ for name in EXISTING + NEW:
     check(name in CM and name in AXIS, f"{name}: real-world size and axis recorded")
     check((HERE / "prepped" / f"{name}.png").exists(), f"{name}: prepped cutout exists")
 
-for name in NEW:
+for name in TILES:
+    check((HERE / "prepped" / f"{name}.png").exists(), f"{name}: prepped cutout exists")
+
+for name in NEW + TILES:
     p = HERE / "prepped" / f"{name}.png"
     if not p.exists():
         continue

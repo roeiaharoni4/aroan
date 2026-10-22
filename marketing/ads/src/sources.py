@@ -4,7 +4,7 @@ Each entry records where the pixels came from, which region was kept, and why -
 the crops exist to exclude other manufacturers' packaging, logos and barcodes.
 """
 import pathlib
-from prep import prepare
+from prep import prepare, prepare_dark
 
 # The repo's own catalog images (the repo moved from ~/Desktop to ~/aroan on 27.8.26).
 CAT = pathlib.Path(__file__).resolve().parents[3] / "images"
@@ -81,17 +81,78 @@ SOURCES = {
         note="pair of mesh office bins - generic price stickers only",
         radius=41, white=252, contrast=1.15,
     ),
+    # Roei's own picks for the Meta category tiles (22.10.26). Unlike the rest of this
+    # file, brands are wanted here: he asked for Sano and Yaakobi by name, and boxed
+    # goods (gloves, copy paper, pens) are shown as he sells them. dark=True marks his
+    # studio shots on a black ground with the Aroam leaf watermarked in a corner.
+    "p5012": dict(
+        src=CAT / "1787315001044_______________________5012.webp", dark=True,
+        note="single-ply industrial roll 5012 - Roei's own shot, black ground",
+    ),
+    "compact50": dict(
+        src=CAT / "1787509434410___________________50_-_36____.webp", dark=True,
+        note="compact 50 toilet roll - Roei's own shot, black ground",
+    ),
+    "jumbo_tp": dict(
+        src=CAT / "מוצרי נייר/נייר טואלט ג׳מבו טישו 1_12.webp",
+        note="loose jumbo toilet rolls, unbranded",
+        radius=41, white=252, contrast=1.15,
+    ),
+    "cup500": dict(
+        src=CAT / "חד פעמי ואריזות/כוס פלסטיק 500 מל.webp",
+        note="clear 500ml plastic cup",
+        radius=41, white=252, contrast=1.15,
+    ),
+    "a4": dict(
+        src=CAT / "מוצרי נייר/נייר צילום A4.webp",
+        note="A4 copy paper ream, as sold",
+        radius=41, white=252, contrast=1.1,
+    ),
+    "pens": dict(
+        src=CAT / "ציוד משרדי/עט לחיץ בקופסא 50 יחידות.webp",
+        note="tub of 50 click pens",
+        radius=41, white=252, contrast=1.1,
+    ),
+    "binder": dict(
+        src=CAT / "ציוד משרדי/קלסר גב 8.webp",
+        note="lever-arch binder",
+        radius=41, white=252, contrast=1.1,
+    ),
+    "jet": dict(
+        src=CAT / "ניקיון/סנו ג_ט רב תכליתי 4 ליטר.webp",
+        note="Sano Jet multi-purpose 4L - Roei asked for Sano",
+        radius=41, white=252, contrast=1.05,
+    ),
+    "kh7": dict(
+        src=CAT / "ניקיון/מסיר שומנים - יעקובי.webp",
+        note="KH-7 degreaser spray - Roei asked for Yaakobi",
+        radius=41, white=252, contrast=1.05,
+    ),
+    "gloves": dict(
+        src=CAT / "אביזרי ניקיון/כפפות ניטריל ללא אבקה.webp",
+        note="nitrile gloves box, as sold",
+        radius=41, white=252, contrast=1.05,
+    ),
+    "wipes": dict(
+        src=CAT / "אביזרי ניקיון/מגבונים ארוכים בדלי.webp",
+        note="long wipes in a bucket",
+        radius=41, white=252, contrast=1.05,
+    ),
 }
 
 
-def build_all():
+def build_all(names=None):
+    """Prepare every source, or only `names` - so adding products never re-renders the
+    cutouts that already shipped (a re-run drifts a few pixels on some of them)."""
     (HERE / "prepped").mkdir(exist_ok=True)
-    for name, cfg in SOURCES.items():
-        cfg = dict(cfg)
+    for name in names or SOURCES:
+        cfg = dict(SOURCES[name])
         src, note = cfg.pop("src"), cfg.pop("note")
-        im = prepare(str(src), HERE / "prepped" / f"{name}.png", **cfg)
+        fn = prepare_dark if cfg.pop("dark", False) else prepare
+        im = fn(str(src), HERE / "prepped" / f"{name}.png", **cfg)
         print(f"{name:10s} {im.size[0]:4d}x{im.size[1]:4d}  {note}")
 
 
 if __name__ == "__main__":
-    build_all()
+    import sys
+    build_all(sys.argv[1:])

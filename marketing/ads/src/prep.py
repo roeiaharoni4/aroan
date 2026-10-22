@@ -182,3 +182,35 @@ def prepare(path, out, radius=61, box=None, neutral=0.0, density=1.0,
                           min(out_im.height, ys.max() + 1 + pad)))
     out_im.save(out)
     return out_im
+
+
+def prepare_dark(path, out, thresh=40, erode=2, feather=1.0, pad=2):
+    """Cut a product out of a near-black ground - Roei's own studio shots.
+
+    The ground is every near-black pixel connected to the border. What remains is the
+    product plus the watermark leaf in the corner; keeping only the largest object drops
+    the watermark. The mask is pulled in by `erode` pixels first: the anti-aliased rim
+    between a white product and a black ground is grey, and would read as a dark halo
+    on a light tile.
+    """
+    im = Image.open(path).convert("RGB")
+    a = np.asarray(im).astype(int)
+    labels, _ = _label(a.max(2) < thresh)
+    edge = np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]])
+    ground = np.isin(labels, [v for v in np.unique(edge) if v])
+    obj = _fill_holes(~ground)
+    labels, sizes = _label(obj)
+    if len(sizes) > 1:
+        obj = labels == int(np.argmax(sizes[1:]) + 1)
+    alpha = Image.fromarray((obj * 255).astype(np.uint8), "L")
+    if erode:
+        alpha = alpha.filter(ImageFilter.MinFilter(2 * erode + 1))
+    if feather:
+        alpha = alpha.filter(ImageFilter.GaussianBlur(feather))
+    rgba = im.convert("RGBA")
+    rgba.putalpha(alpha)
+    ys, xs = np.nonzero(obj)
+    rgba = rgba.crop((max(0, xs.min() - pad), max(0, ys.min() - pad),
+                      min(im.width, xs.max() + 1 + pad), min(im.height, ys.max() + 1 + pad)))
+    rgba.save(out)
+    return rgba

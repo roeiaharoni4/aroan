@@ -10,6 +10,8 @@ built on this file once they arrive.
 """
 import pathlib
 
+from PIL import Image
+
 from build import LOGO, data_uri, render
 
 HERE = pathlib.Path(__file__).parent
@@ -34,10 +36,10 @@ def photo(name):
     return data_uri(HERE / "prepped" / f"{name}.png")
 
 
-# The order in the customer's photo and the rows of the quote are the same four products -
-# all unbranded, so the quote can show their real photos.
-ORDER = [("מגבות נייר", "8", "rolls"), ("גלילי תאית", "12", "rolls2"),
-         ("כוסות 180 מ״ל", "20", "cold"), ("גליל תעשייתי", "6", "gold")]
+# The order in the customer's photo and the rows of the quote are the same four products,
+# from the ones Roei picked (22.10.26), so the quote can show their real photos.
+ORDER = [("נייר טואלט ג׳מבו", "12", "jumbo_tp"), ("גליל תעשייתי 5012", "6", "p5012"),
+         ("כוסות נייר", "20", "cup_paper"), ("כפפות ניטריל", "10", "gloves")]
 
 A = HEAD + BASE + """
 .c{position:relative;width:1080px;height:1350px;overflow:hidden;font-family:Heebo,sans-serif;
@@ -104,16 +106,17 @@ B = HEAD + BASE + """
 .top{display:flex;align-items:center;justify-content:space-between}
 .logo{width:160px;display:block}
 .chip{font-weight:500;font-size:26px;color:#1A4231;background:#E2EFE6;border-radius:40px;padding:9px 24px}
-h1{font-weight:900;font-size:92px;line-height:1.02;letter-spacing:-2px;margin-top:52px}
+h1{font-weight:900;font-size:84px;line-height:1.02;letter-spacing:-2px;margin-top:40px}
 h1 span{display:block;color:#639C7D}
-.lead{font-size:33px;font-weight:500;line-height:1.4;color:#3B5547;margin-top:22px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:40px}
-.tile{background:#fff;border-radius:26px;padding:16px 20px 18px;display:flex;flex-direction:column;
+.lead{font-size:31px;font-weight:500;line-height:1.4;color:#3B5547;margin-top:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:34px}
+.tile{background:#fff;border-radius:26px;padding:14px 18px 16px;display:flex;flex-direction:column;
   align-items:center;box-shadow:0 2px 0 #E1EAE4,0 14px 30px rgba(26,66,49,.07)}
-.ph{height:170px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:10px;
+.ph{height:236px;width:100%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;
   background:radial-gradient(60% 55% at 50% 70%,#EEF4F0 0%,#fff 100%);border-radius:18px}
-.ph img{max-height:150px;max-width:86%;margin-bottom:12px;filter:drop-shadow(0 8px 10px rgba(14,32,54,.18))}
-.tile span{font-weight:700;font-size:34px;margin-top:12px}
+.ph img{display:block;filter:drop-shadow(0 8px 10px rgba(14,32,54,.18))}
+.ph img + img{margin-inline-start:-@@OVERLAP@@px}
+.tile span{font-weight:700;font-size:32px;margin-top:10px}
 .band{position:absolute;left:0;right:0;bottom:0;height:176px;background:#1A4231;
   display:flex;align-items:center;justify-content:space-between;padding:0 76px}
 .cta{display:inline-flex;align-items:center;gap:14px;background:#8FD6A3;color:#1A4231;
@@ -128,24 +131,43 @@ h1 span{display:block;color:#639C7D}
   <div class="band"><span class="cta">@@WA@@שלחו הודעה בוואטסאפ</span><small>מיבנה ועד רעננה</small></div>
 </div></body></html>"""
 
+# Each tile is a small group of products at a target height in px. Roei chose the
+# groups (22.10.26): paper - 5012, compact 50, jumbo; disposables (instead of the coffee
+# corner) - paper cups, rigid spoon, plate, 500ml cup; office - copy paper, pens,
+# binders; cleaning - one Sano and one Yaakobi product, gloves, long wipes in a bucket.
+PAPER = [("p5012", 150), ("compact50", 125), ("jumbo_tp", 100)]
+DISPOSABLES = [("plate", 120), ("cup500", 150), ("cup_paper", 125), ("spoon", 140)]
+OFFICE = [("binder", 200), ("a4", 185), ("pens", 115)]
+CLEANING = [("jet", 180), ("kh7", 195), ("wipes", 150), ("gloves", 85)]
+
 B_ADS = {
     "office": dict(
         h1="ספק אחד.", h2="כל מה שהמשרד צריך.",
-        lead="נייר, קפה, ניקיון וציוד משרדי — הכל בהזמנה אחת.",
-        tiles=[(["rolls"], "נייר ומגבות"), (["cup_paper"], "פינת קפה"),
-               (["squeegee"], "ניקיון"), (["bins"], "ציוד משרדי")]),
+        lead="נייר, חד פעמי, ניקיון וציוד משרדי — הכל בהזמנה אחת.",
+        tiles=[(PAPER, "נייר וטואלט"), (DISPOSABLES, "חד פעמי"),
+               (OFFICE, "ציוד משרדי"), (CLEANING, "ניקיון")]),
     "factory": dict(
         h1="אספקה קבועה.", h2="למפעלים ולמחסנים.",
-        lead="גלילי נייר תעשייתי, נייר טואלט בקרטונים וחומרי ניקוי — מספק אחד.",
-        tiles=[(["gold"], "גלילי נייר תעשייתי"), (["carton"], "נייר טואלט בקרטון"),
-               (["squeegee"], "ניקוי רצפות"), (["plate", "cup_paper"], "חד פעמי לחדר האוכל")]),
+        lead="גלילי נייר תעשייתי, נייר טואלט וחומרי ניקוי — מספק אחד.",
+        tiles=[([("p5012", 160), ("gold", 150)], "גלילי נייר תעשייתי"),
+               ([("compact50", 140), ("jumbo_tp", 100), ("carton", 140)], "נייר טואלט"),
+               (CLEANING, "ניקיון"), (DISPOSABLES, "חד פעמי לחדר האוכל")]),
 }
+OVERLAP = 22     # px each product tucks under its neighbour
+GROUP_W = 400    # usable width of a tile's photo area
 
 
 def tiles(spec):
     out = []
-    for names, label in spec:
-        imgs = "".join(f'<img src="{photo(n)}">' for n in names)
+    for group, label in spec:
+        # Scale the whole group down together when its natural width overflows the tile,
+        # so the proportions inside a group never change.
+        widths = []
+        for name, h in group:
+            with Image.open(HERE / "prepped" / f"{name}.png") as im:
+                widths.append(im.width * h / im.height)
+        k = min(1.0, (GROUP_W + OVERLAP * (len(group) - 1)) / sum(widths))
+        imgs = "".join(f'<img src="{photo(n)}" style="height:{h * k:.0f}px">' for n, h in group)
         out.append(f'<div class="tile"><div class="ph">{imgs}</div><span>{label}</span></div>')
     return "".join(out)
 
@@ -160,6 +182,7 @@ def page_a():
 
 def page_b(ad):
     return (B.replace("@@LOGO@@", data_uri(LOGO)).replace("@@WA@@", WA)
+            .replace("@@OVERLAP@@", str(OVERLAP))
             .replace("@@H1@@", ad["h1"]).replace("@@H2@@", ad["h2"]).replace("@@LEAD@@", ad["lead"])
             .replace("@@TILES@@", tiles(ad["tiles"])))
 
