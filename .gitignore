@@ -10,3 +10,10 @@ images_backup/מחירון/
 # Python cache
 __pycache__/
 *.pyc
+
+# קובצי ביניים של צינור המודעות (marketing/ads/src) — נוצרים מחדש בכל הרצה
+marketing/ads/src/out/
+marketing/ads/src/tmp_page.html
+marketing/ads/src/tmp_shot.png
+marketing/ads/src/scale_report.json
+marketing/ads/src/meta_scale_report.json

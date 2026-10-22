@@ -6,7 +6,8 @@ the crops exist to exclude other manufacturers' packaging, logos and barcodes.
 import pathlib
 from prep import prepare
 
-CAT = pathlib.Path("/Users/roeiaharoni/Desktop/קטלוג לקוחות/aroan/images")
+# The repo's own catalog images (the repo moved from ~/Desktop to ~/aroan on 27.8.26).
+CAT = pathlib.Path(__file__).resolve().parents[3] / "images"
 HERE = pathlib.Path(__file__).parent
 
 SOURCES = {

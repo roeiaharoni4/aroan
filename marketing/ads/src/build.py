@@ -14,11 +14,10 @@ import sys
 
 HERE = pathlib.Path(__file__).parent
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-# The repo's own logo raster. The traced SVG in the ad skill renders its tagline
-# ("שיווק והפצה") as broken letterforms at small sizes, so the real asset wins.
-LOGO = pathlib.Path(
-    "/Users/roeiaharoni/Desktop/קטלוג לקוחות/aroan/images/logo_512.png"
-)
+# The vector logo extracted from Roei's own PDF. The traced SVG in the ad skill breaks
+# the tagline ("שיווק והפצה") at small sizes, and images/logo*.png are upscales of a
+# 182px source that blur at cover and profile sizes.
+LOGO = HERE / "assets" / "aroam_logo_vector.svg"
 
 # Site brand identity (CLAUDE.md): pastel greens. These are the colours Roei's own
 # assets used, so the redesign stays recognisably his.
