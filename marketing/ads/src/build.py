@@ -153,7 +153,7 @@ def page(w, h, panel, logo_css, items_html, floor_h):
 </div></body></html>"""
 
 
-def render(html, out, w, h, slack=200):
+def render(html, out, w, h, slack=200, wait_ms=0):
     """Screenshot the page at exactly w x h.
 
     Chrome's --window-size counts window chrome, so the usable viewport comes out
@@ -161,6 +161,9 @@ def render(html, out, w, h, slack=200):
     ask for a taller window and cut the exact rectangle back out, then assert the
     canvas really reached the bottom edge so a future Chrome change cannot quietly
     reintroduce the clipped strip.
+
+    wait_ms: pages that pull web fonts need it - the fonts arrive after the load
+    event, and without a budget Chrome shoots the fallback face.
     """
     from PIL import Image
     import numpy as np
@@ -168,12 +171,14 @@ def render(html, out, w, h, slack=200):
     tmp = HERE / "tmp_page.html"
     tmp.write_text(html, encoding="utf-8")
     raw = HERE / "tmp_shot.png"
-    subprocess.run([
+    cmd = [
         CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
         "--force-device-scale-factor=1", f"--window-size={w},{h + slack}",
         f"--screenshot={raw}", "--default-background-color=FF00FFFF",
-        tmp.as_uri(),
-    ], check=True, capture_output=True)
+    ]
+    if wait_ms:
+        cmd.append(f"--virtual-time-budget={wait_ms}")
+    subprocess.run(cmd + [tmp.as_uri()], check=True, capture_output=True)
 
     im = Image.open(raw).convert("RGB").crop((0, 0, w, h))
     a = np.asarray(im)
