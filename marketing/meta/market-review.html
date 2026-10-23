@@ -1,0 +1,238 @@
+<title>פרסומי המתחרים בפייסבוק</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@700;800;900&family=Assistant:wght@400;600;700&display=swap">
+<style>
+/* Layout: one reading column; the drafts and the patterns break into grids that stack on a phone. */
+:root{
+  --bg:#F5F8F6; --surface:#FFFFFF; --ink:#1A4231; --text:#26372E; --muted:#557062;
+  --accent:#639C7D; --pastel:#8FD6A3; --tint:#E6F1EA; --line:#DCE7E0;
+  --no-bg:#FBEEDC; --no-ink:#8A4F0E; --mid-bg:#EEF0FA; --mid-ink:#3D4C8A;
+  --sketch:#C9D8CF; --sketch-2:#A9C2B4;
+  --display:"Heebo","Arial Hebrew",Arial,sans-serif;
+  --body:"Assistant","Arial Hebrew",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1D16; --surface:#16281F; --ink:#E4F1E8; --text:#D3E3D9; --muted:#9DB8A8;
+  --accent:#8FD6A3; --pastel:#8FD6A3; --tint:#1D3528; --line:#274235;
+  --no-bg:#3A2A12; --no-ink:#F0C27A; --mid-bg:#232A48; --mid-ink:#B9C3F2;
+  --sketch:#2E4A3B; --sketch-2:#3E604E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1D16; --surface:#16281F; --ink:#E4F1E8; --text:#D3E3D9; --muted:#9DB8A8;
+  --accent:#8FD6A3; --pastel:#8FD6A3; --tint:#1D3528; --line:#274235;
+  --no-bg:#3A2A12; --no-ink:#F0C27A; --mid-bg:#232A48; --mid-ink:#B9C3F2;
+  --sketch:#2E4A3B; --sketch-2:#3E604E; color-scheme:dark}
+
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:18px;line-height:1.65;direction:rtl;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:900px;margin:0 auto;padding-block:48px 72px;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--display);color:var(--ink);text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,6vw,52px);font-weight:900;line-height:1.08;letter-spacing:-.5px}
+h2{font-size:clamp(24px,3.6vw,31px);font-weight:800;line-height:1.2}
+h3{font-size:20px;font-weight:800;line-height:1.3}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:3px solid var(--pastel);outline-offset:2px;border-radius:4px}
+.eyebrow{font-size:14px;font-weight:700;letter-spacing:.06em;color:var(--accent)}
+.method{color:var(--muted);font-size:16px}
+header{display:flex;flex-direction:column;gap:14px}
+section{display:flex;flex-direction:column;gap:20px}
+.lead{max-width:62ch}
+
+.bottom{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px 28px;display:flex;flex-direction:column;gap:16px}
+.bottom ol{margin:0;padding-inline-start:22px;display:flex;flex-direction:column;gap:14px}
+.bottom li::marker{font-family:var(--display);font-weight:800;color:var(--accent)}
+.bottom b{color:var(--ink)}
+
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:16px}
+th,td{text-align:right;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:700;color:var(--ink);background:var(--tint);font-size:15px}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
+td.d{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
+.note{font-size:15px;color:var(--muted)}
+
+.patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.pat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;
+  grid-template-columns:96px minmax(0,1fr);gap:16px;align-items:start}
+.pat h3{margin-bottom:4px}
+.pat p{font-size:16px}
+.pat .who{font-size:14.5px;color:var(--muted);margin-top:6px}
+.chip{display:inline-block;font-size:13.5px;font-weight:700;border-radius:20px;padding:2px 12px;margin-top:10px}
+.yes{background:var(--tint);color:var(--ink)}
+.no{background:var(--no-bg);color:var(--no-ink)}
+.mid{background:var(--mid-bg);color:var(--mid-ink)}
+
+/* Sketches of a 4:5 post, drawn from the tokens: they show structure, not anyone's artwork. */
+.sk{width:96px;aspect-ratio:4/5;max-width:100%;border-radius:10px;background:var(--tint);border:1px solid var(--line);
+  position:relative;overflow:hidden}
+.sk i{position:absolute;display:block;background:var(--sketch);border-radius:4px}
+.sk i.d{background:var(--sketch-2)}
+.sk i.c{background:var(--accent)}
+
+.organic{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 26px}
+.organic div{display:flex;flex-direction:column;gap:4px}
+.organic p{font-size:16px}
+
+.reasons{display:flex;flex-direction:column;gap:12px;margin:0;padding-inline-start:22px}
+
+.drafts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+figure{margin:0;display:flex;flex-direction:column;gap:12px}
+figure img{width:100%;max-width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;border:1px solid var(--line);display:block;background:var(--surface)}
+figcaption{display:flex;flex-direction:column;gap:6px}
+figcaption b{font-family:var(--display);font-size:19px;color:var(--ink)}
+figcaption span{font-size:15.5px}
+figcaption small{font-size:14px;color:var(--muted)}
+
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;gap:16px}
+.plan ol{margin:0;padding-inline-start:22px;display:flex;flex-direction:column;gap:8px}
+.shots{margin:0;padding-inline-start:22px;display:flex;flex-direction:column;gap:6px}
+.src{display:flex;flex-direction:column;gap:6px;font-size:16px}
+.src ul{margin:0;padding-inline-start:22px}
+
+@media (max-width:760px){
+  .drafts{grid-template-columns:minmax(0,1fr)}
+  .drafts figure{max-width:420px}
+  .patterns,.organic{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:420px){.pat{grid-template-columns:72px minmax(0,1fr)}.sk{width:72px}}
+</style>
+
+<div class="wrap" lang="he">
+  <header>
+    <span class="eyebrow">אהרוני שיווק והפצה · קמפיין הוואטסאפ במטא</span>
+    <h1>פרסומי המתחרים בפייסבוק</h1>
+    <p class="lead">איך ספקים לעסקים בתחום שלנו מעצבים את המודעות ואת הפוסטים שלהם, ומה זה אומר על הפוסטים שנעלה לדף.</p>
+    <p class="method">נבדק ב-23.10.2026: 16 חיפושים בספריית המודעות של מטא (ישראל, מודעות פעילות), כ-80 מודעות של ספקים רלוונטיים נבדקו לעומק, ו-5 דפי פייסבוק של מתחרים.</p>
+  </header>
+
+  <div class="bottom">
+    <h2>בשורה התחתונה</h2>
+    <ol>
+      <li><b>אף מתחרה לא מעלה לדף שלו פוסט נפרד לכל קטגוריה.</b> בפיד הם מעלים רגעים: מוצר בשימוש, ברכת חג שהמוצר משחק בה, מבצע עונתי וצילום אמיתי מהמחסן. גריד של מוצרים מופיע רק במודעות ממומנות, וגם שם כמעט תמיד עם מחירים.</li>
+      <li><b>כמעט כל המודעות לעסקים בתחום פונות למסעדות ולבתי קפה.</b> למשרדים ולמפעלים, הלקוחות הטובים שלנו, פונים רק ארבעה מפרסמים: שוהם, משרעדיקה, סופר התאומים ומור פארמה.</li>
+      <li><b>המודעות שרצות הכי הרבה זמן הן הכי פחות מעוצבות.</b> סרטוני טלפון מהמחסן של שיווק העמק רצים מאז יולי 2025, והבעלים של אלירז שיווק מדבר מול המצלמה. מטא לא מפרסמת ביצועים של מודעות מסחריות בישראל, אבל מפרסם לא משאיר מודעה 15 חודשים אם היא לא מביאה לקוחות.</li>
+    </ol>
+  </div>
+
+  <section>
+    <h2>מי מפרסם עכשיו</h2>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>מפרסם</th><th>מה מוכר</th><th>פונה אל</th><th>מה רואים במודעות</th><th>רצה מאז</th></tr></thead>
+        <tbody>
+          <tr><td>מ.ר כלים</td><td>חד פעמי ואריזות ממותגות</td><td>מסעדות, ברים, בתי קפה</td><td>פוסטרים מעוצבים עם צילום "הלוגו שלך כאן", שורת אייקונים של יתרונות ופס הנעה לפעולה. סרטוני שף במטבח. 12 גרסאות במקביל.</td><td class="d">29.5.2026</td></tr>
+          <tr><td>טווינס למסחר</td><td>חד פעמי, נייר, ניקיון</td><td>מסעדות ועסקי מזון</td><td>קרוסלה של כרטיסי מוצר: "ב-64 ₪ במקום 72 ₪", קוד קופון של 10%, גוש צבע שונה לכל מוצר.</td><td class="d">31.5.2026</td></tr>
+          <tr><td>החיים הטובים</td><td>מוצרי צריכה, ניקיון, אריזות</td><td>בעלי מסעדות</td><td>סדרת כרטיסים זהים: מוצר על משטח נירוסטה, מחיר גדול בצהוב, פס לוגו וטלפון.</td><td class="d">22.9.2026</td></tr>
+          <tr><td>מור פארמה</td><td>נייר תעשייתי וכפפות, יבואן</td><td>קליניקות, משרדים, מפעלים, מוסכים</td><td>ערימות גלילים מול המחסן: "כל סוגי הנייר התעשייתי תחת קורת גג אחת". הנעה לוואטסאפ. פותחת בבעיה: "כשנגמר הנייר באמצע יום עבודה".</td><td class="d">18.7.2026</td></tr>
+          <tr><td>פעמית עסקים</td><td>חד פעמי וניקיון, מותג פרטי</td><td>עסקים ובתי מלון</td><td>קרוסלה שנפתחת במשפחת המוצרים וממשיכה למוצרים במקום השימוש: מתקן סבון מעל כיור, דלי מגבונים בחדר.</td><td class="d">19.10.2026</td></tr>
+          <tr><td>שוהם</td><td>ניקיון ואספקה</td><td>עסקים, מוסדות, עיריות</td><td>לוח עם רשימת סימון (ציוד ניקיון, ציוד משרדי, שתייה) ומשפט אחד: "הכל במקום אחד".</td><td class="d">28.5.2026</td></tr>
+          <tr><td>משרעדיקה</td><td>ציוד משרדי</td><td>משרדים</td><td>פלייר קמעונאי: אריחי מחיר, רכב חלוקה, "תוך 24 שעות", 10% הנחה, כפתור לאתר.</td><td class="d">22.10.2026</td></tr>
+          <tr><td>סופר התאומים</td><td>ציוד משרדי ומוצרי סופר</td><td>מנהלי עסקים</td><td>עגלת קניות מלאה במוצרים ושלושה אייקונים של קטגוריות.</td><td class="d">23.7.2026</td></tr>
+          <tr><td>נייר וקרטון הדרום</td><td>אריזות נייר וקרטון</td><td>סיטונאים, מסעדות, מאפיות</td><td>פלייר צהוב-שחור עם תבליטים, אייקונים וכפתור "לקבלת הצעת מחיר". גם סרטונים.</td><td class="d">22.9.2026</td></tr>
+          <tr><td>ספקי שקיות ממותגות</td><td>שקיות ממותגות. שיווק העמק, Gallery BAG, עדן אריזות, אלירז שיווק, פרינס פרינט</td><td>כל עסק</td><td>סרטוני מדפים מהמחסן, צילומי שקיות שהודפסו ללקוחות, הבעלים מול המצלמה ("18 שנה ייצור"), "החל מ-279 ₪ ל-50 שקיות".</td><td class="d">13.7.2025</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">ספריית המודעות מציגה רק מודעות שרצות עכשיו. התאריך הוא של המודעה הוותיקה ביותר של המפרסם שמצאתי.</p>
+  </section>
+
+  <section>
+    <h2>ארבעה דפוסים במודעות</h2>
+    <div class="patterns">
+      <div class="pat">
+        <div class="sk" aria-hidden="true"><i style="inset:8% 8% 54% 52%"></i><i style="inset:8% 52% 54% 8%"></i><i style="inset:50% 8% 12% 52%"></i><i style="inset:50% 52% 12% 8%"></i><i class="c" style="left:58%;right:14%;top:36%;height:8%"></i><i class="c" style="left:14%;right:58%;top:36%;height:8%"></i><i class="c" style="left:58%;right:14%;top:78%;height:8%"></i><i class="c" style="left:14%;right:58%;top:78%;height:8%"></i></div>
+        <div><h3>פלייר מחירים</h3><p>מוצר לכל כרטיס, מחיר גדול, מחיר קודם מחוק, קופון. עובד למי שמוכר באתר.</p>
+          <p class="who">טווינס, החיים הטובים, משרעדיקה</p><span class="chip no">לא בשבילנו: אנחנו לא מפרסמים מחירים</span></div>
+      </div>
+      <div class="pat">
+        <div class="sk" aria-hidden="true"><i class="d" style="right:10%;left:30%;top:9%;height:7%"></i><i class="d" style="right:10%;left:46%;top:19%;height:7%"></i><i style="left:16%;right:16%;top:36%;bottom:30%;border-radius:40% 40% 8px 8px"></i><i style="left:10%;width:14%;top:74%;height:8%;border-radius:50%"></i><i style="left:30%;width:14%;top:74%;height:8%;border-radius:50%"></i><i style="left:50%;width:14%;top:74%;height:8%;border-radius:50%"></i><i style="left:70%;width:14%;top:74%;height:8%;border-radius:50%"></i><i class="c" style="left:0;right:0;bottom:0;height:10%;border-radius:0"></i></div>
+        <div><h3>ספק אחד לכל מה שצריך</h3><p>כל המוצרים יחד בסצנה אחת או ברשימה אחת, כותרת שפונה לקהל ("בעל מסעדה?"), שורת יתרונות ופס הנעה לפעולה.</p>
+          <p class="who">מ.ר כלים, סופר התאומים, שוהם, פעמית עסקים</p><span class="chip yes">המסר שלנו. אצלם הוא למסעדות, למשרדים ולמפעלים הוא פנוי</span></div>
+      </div>
+      <div class="pat">
+        <div class="sk" aria-hidden="true"><i class="d" style="inset:0;border-radius:0"></i><i style="left:10%;right:40%;top:10%;bottom:46%;opacity:.7"></i><i style="left:52%;right:10%;top:22%;bottom:46%;opacity:.7"></i><i class="c" style="right:8%;width:34%;top:70%;height:7%;border-radius:20px"></i><i style="right:8%;left:20%;top:81%;height:8%;background:var(--surface)"></i></div>
+        <div><h3>צילום אמיתי</h3><p>מדפים במחסן, משטחים, ערימות קרטונים, הבעלים מדבר מול המצלמה. כמעט בלי עיצוב.</p>
+          <p class="who">שיווק העמק, מור פארמה, אינדיגו, אלירז שיווק</p><span class="chip yes">הכי אמין והכי זול להפיק. צריך צילומים ממך</span></div>
+      </div>
+      <div class="pat">
+        <div class="sk" aria-hidden="true"><i class="d" style="right:10%;left:14%;top:9%;height:9%"></i><i class="d" style="right:10%;left:36%;top:21%;height:9%"></i><i style="left:30%;right:30%;top:40%;bottom:24%;border-radius:12px"></i><i class="c" style="left:0;right:0;bottom:0;height:10%;border-radius:0"></i></div>
+        <div><h3>בעיה מוכרת</h3><p>הכותרת היא הבעיה, המוצר הוא הפתרון: "כשנגמר הנייר באמצע יום עבודה, העסק פשוט נעצר", "נתקעתם בלי ציוד?".</p>
+          <p class="who">מור פארמה, משרעדיקה</p><span class="chip mid">מתאים, בלי הבטחות זמן כמו "תוך 24 שעות"</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>מה הם מעלים לדף, בלי תשלום</h2>
+    <div class="organic">
+      <div><h3>מוצר בשימוש, בלי טקסט על התמונה</h3><p>מ.ר כלים מצלמים סלטים בקופסאות שלהם על רקע כחול קבוע ומשקאות בכוסות שלהם. כל הטקסט בכיתוב, שתי שורות. אלבום של 3 עד 5 תמונות.</p></div>
+      <div><h3>ברכת חג שהמוצר בתוכה</h3><p>מור פארמה: כפפה מחזיקה רימון לראש השנה, כפפות בצורת לב מעל מצה לפסח, כפפה שחורה עם מסכה לפורים. גם משרעדיקה וטווינס מעלים ברכה לכל חג.</p></div>
+      <div><h3>מבצע עונתי</h3><p>משרעדיקה: "מבצע ראש השנה", "חזרה לבית הספר". טווינס: "10% הנחה על כל האתר".</p></div>
+      <div><h3>המלאי והמקום עצמו</h3><p>משרעדיקה מצלמים ערימת חבילות נייר צילום, פעמית את קיר הלוגו באולם התצוגה, ומ.ר כלים מספרים על חסות לפודקאסט על מסעדנות.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>מה זה אומר עלינו</h2>
+    <ul class="reasons">
+      <li>הפוסטים לפי קטגוריה נראים כמו עמודים מקטלוג. מי שנכנס לדף מהמודעה בודק אם יש עסק אמיתי מאחורי הוואטסאפ, והקטלוג כבר נמצא באתר.</li>
+      <li>חצי מהמפרסמים מתחרים במחיר. אנחנו לא מציגים מחירים, ולכן צריך להראות את מה שכן מבדיל אותנו: הכל בהזמנה אחת, מעל 20 שנה, ואדם שעונה בוואטסאפ.</li>
+      <li>החולשות שלהם הן ההזדמנות שלנו: טקסטים צעקניים עם אימוג'ים והבטחות כלליות ("החברה המובילה בישראל", "מחירים ללא תחרות"), כמעט אף אחד לא מראה אנשים אמיתיים, ואף אחד לא נותן תוכן מועיל, כמו כמה נייר צריך משרד בחודש או איזה גליל מתאים למתקן.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>שלושה כיוונים לפוסטים שלנו</h2>
+    <p class="lead">טיוטות לבחירה, באותם צבעים ואותה טיפוגרפיה של המודעות, אבל במבנה אחר. עוד לא סט סופי.</p>
+    <div class="drafts">
+      <figure>
+        <img src="drafts/A_one_order.png" alt="טיוטה: הכותרת 'ככה נראית הזמנה אחת', ומתחתיה קרטון נייר טואלט עם גליל 5012 עליו, חבילת נייר צילום, שקיות אשפה, סנו ג'ט, KH-7, כפפות, כוסות, דלי מגבונים וגליל טואלט, בעמידה אחת על משטח.">
+        <figcaption><b>א. ככה נראית הזמנה אחת</b><span>כל הקטגוריות בסצנה אחת, בגדלים אמיתיים. פוסט אחד במקום שלושת הפוסטים לפי קטגוריה.</span><small>בהשראת מ.ר כלים וסופר התאומים. מוכן לביצוע עם התמונות שיש.</small></figcaption>
+      </figure>
+      <figure>
+        <img src="drafts/B_real_photo.png" alt="טיוטה: מסגרת לצילום טלפון אמיתי, עם לוגו קטן בפינה, תגית 'מהמחסן' והכיתוב 'גלילי 5012 מוכנים לחלוקה'.">
+        <figcaption><b>ב. מהמחסן</b><span>צילום טלפון אמיתי, לוגו קטן ושורת כיתוב אחת. כאן נכנסות התמונות שלך.</span><small>בהשראת שיווק העמק, מור פארמה ומ.ר כלים. דורש צילומים.</small></figcaption>
+      </figure>
+      <figure>
+        <img src="drafts/C_checklist.png" alt="טיוטה: הכותרת 'מה נגמר החודש?', ומתחתיה דף רשימת קניות של המשרד עם שישה פריטים מסומנים ותמונה קטנה ליד כל אחד, ובסוף 'שלחו לנו את הרשימה' עם מספר הוואטסאפ.">
+        <figcaption><b>ג. מה נגמר החודש?</b><span>רשימת הקניות של המשרד, ובסוף: שלחו לנו את הרשימה. אפשר לעשות סדרה: משרד, מפעל, חדר אוכל.</span><small>בהשראת שוהם. מוכן לביצוע.</small></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <div class="plan">
+    <h2>מה אני ממליץ</h2>
+    <p>ארבעת הפוסטים הראשונים בדף, במקום פוסט המותג ושלושת הפוסטים לפי קטגוריה:</p>
+    <ol>
+      <li>ככה נראית הזמנה אחת (טיוטה א). הדף נפתח במסר של ספק אחד.</li>
+      <li>מה נגמר החודש? (טיוטה ג). מסביר איך מזמינים.</li>
+      <li>צילום מהמחסן (טיוטה ב).</li>
+      <li>צילום של הרכב בחלוקה או שלך עם הסחורה (טיוטה ב). מראה מי עומד מאחורי הדף.</li>
+    </ol>
+    <p>אחרי זה, פוסט או שניים בשבוע, לסירוגין: צילום אמיתי, סצנה של מוצרים, רשימה לקהל אחר, וברכה לחג. החג הבא הוא חנוכה, 4 עד 12 בדצמבר 2026, עם המוצרים בתוך הברכה, כמו שמור פארמה עושה.</p>
+    <p>המודעות, תמונת השער ותמונת הפרופיל נשארים כמו שהם.</p>
+    <h3>מה לצלם לכיוון ב</h3>
+    <ul class="shots">
+      <li>מדפים או משטחים במחסן, צילום רחב.</li>
+      <li>משטח עטוף שמוכן לחלוקה.</li>
+      <li>הרכב פתוח עם קרטונים בפריקה.</li>
+      <li>ערימת קרטונים של 5012 או GOLD, קרוב, שהמדבקה של אהרוני רואים.</li>
+      <li>אתה עם קרטון ביד, אם מתאים לך.</li>
+    </ul>
+    <p class="note">טלפון לאורך, אור יום, לנגב את העדשה, 3 עד 5 צילומים מכל דבר. בלי שמות של לקוחות ובלי שלטים שלהם.</p>
+  </div>
+
+  <section class="src">
+    <h2>מקורות</h2>
+    <p>חיפושים בספריית המודעות של מטא (ישראל, מודעות פעילות):</p>
+    <ul>
+      <li><a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=IL&media_type=all&q=%D7%90%D7%A8%D7%99%D7%96%D7%95%D7%AA%20%D7%98%D7%99%D7%99%D7%A7%20%D7%90%D7%95%D7%95%D7%99&search_type=keyword_unordered">אריזות טייק אווי</a>: מ.ר כלים, החיים הטובים, נייר וקרטון הדרום</li>
+      <li><a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=IL&media_type=all&q=%D7%A0%D7%99%D7%99%D7%A8%20%D7%98%D7%95%D7%90%D7%9C%D7%98&search_type=keyword_unordered">נייר טואלט</a>: טווינס, מור פארמה</li>
+      <li><a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=IL&media_type=all&q=%D7%97%D7%95%D7%9E%D7%A8%D7%99%20%D7%A0%D7%99%D7%A7%D7%95%D7%99%20%D7%9C%D7%A2%D7%A1%D7%A7%D7%99%D7%9D&search_type=keyword_unordered">חומרי ניקוי לעסקים</a>: פעמית עסקים</li>
+      <li><a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=IL&media_type=all&q=%D7%A6%D7%99%D7%95%D7%93%20%D7%9E%D7%A9%D7%A8%D7%93%D7%99%20%D7%9C%D7%A2%D7%A1%D7%A7%D7%99%D7%9D&search_type=keyword_unordered">ציוד משרדי לעסקים</a>: שוהם, משרעדיקה, סופר התאומים</li>
+      <li><a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=IL&media_type=all&q=%D7%A9%D7%A7%D7%99%D7%95%D7%AA%20%D7%9E%D7%9E%D7%95%D7%AA%D7%92%D7%95%D7%AA&search_type=keyword_unordered">שקיות ממותגות</a>: שיווק העמק, Gallery BAG, עדן אריזות, אלירז שיווק</li>
+    </ul>
+    <p>דפי הפייסבוק שנבדקו: <a href="https://www.facebook.com/mr.pack.il/">מ.ר כלים</a>, <a href="https://www.facebook.com/TWINSTRADINGLTD/">טווינס</a>, <a href="https://www.facebook.com/peamitasakim/">פעמית עסקים</a>, <a href="https://www.facebook.com/morpharma/">מור פארמה</a>, <a href="https://www.facebook.com/misradikail/">משרעדיקה</a>.</p>
+  </section>
+</div>
