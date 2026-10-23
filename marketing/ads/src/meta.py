@@ -1,13 +1,14 @@
 """Render the Meta (Facebook/Instagram) set for the click-to-WhatsApp campaign.
 
-Roei rejected the first set (catalog cutouts piled on a light stage, small type) as
-unprofessional (22.10.26) and picked two directions out of three mockups:
-  A - the WhatsApp conversation itself: the customer sends a photo of the last order and
-      Aroam answers with a quote whose rows show the products. The switch ad.
-  B - a large statement over four tiles of real products, grouped the way Roei chose
-      them. The office and factory ads, and the Page's opening post.
-Writes the nine files verify_meta.py checks into marketing/meta/img/: the three ads in
-feed 1080x1350 and story 1080x1920, the opening-post image, the cover and the profile.
+All of it is in the direction Roei chose (22.10.26): a large statement over four white
+tiles of real product photos - a product group or a single named product in each.
+The first ad was a WhatsApp-conversation mockup around "send us your last order"; the
+business owner turned the offer itself down (23.10), and it became the branded-bags ad.
+A single wide hero card was tried for it and left most of the card empty: the bag photos
+are small, and enlarging them past their native size blurs them.
+The Page's posts share the ads' look but not their content - a Page that only repeats
+its ads reads as if it exists for advertising.
+Writes the twelve files verify_meta.py checks into marketing/meta/img/.
 """
 import json
 import pathlib
@@ -28,9 +29,6 @@ WA = ('<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="
       '12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2'
       '-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 '
       '25.7z"/></svg>')
-TICKS = ('<svg class="ticks" viewBox="0 0 18 11" aria-hidden="true"><path d="M1 6l3.2 3.2L11 2" '
-         'fill="none" stroke="#53BDEB" stroke-width="1.8" stroke-linecap="round"/><path d="M7 9.2'
-         'L14 2" fill="none" stroke="#53BDEB" stroke-width="1.8" stroke-linecap="round"/></svg>')
 HEAD = '<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8">' + FONTS + '<style>'
 BASE = """*{margin:0;padding:0;box-sizing:border-box}
 html,body{width:@@W@@px;height:@@H@@px;overflow:hidden}"""
@@ -57,116 +55,35 @@ def fill(template, **values):
     return template
 
 
-# --- A: the conversation ---------------------------------------------------------------
-
-# The order in the customer's photo and the rows of the quote are the same four products,
-# from the ones Roei picked, so the quote can show their real photos.
-ORDER = [("נייר טואלט ג׳מבו", "12", "jumbo_tp"), ("גליל תעשייתי 5012", "6", "p5012"),
-         ("כוסות נייר", "20", "cup_paper"), ("כפפות ניטריל", "10", "gloves")]
-
-A_SIZES = {
-    "feed": dict(pad="66px 76px 0", logo_w=160, h1_fs=74, h1_mt=44, chat_mt=40, msg_w=620,
-                 in_w=640, photo_h=244, row_fs=22, sheet_h_fs=25, cap_fs=28, who_fs=23,
-                 doc_fs=24, li_fs=24, th_w=60, th_h=46, p_fs=28, foot_fs=27, foot_bottom=56),
-    "story": dict(pad="290px 76px 0", logo_w=176, h1_fs=84, h1_mt=50, chat_mt=70, msg_w=720,
-                  in_w=740, photo_h=300, row_fs=26, sheet_h_fs=29, cap_fs=31, who_fs=26,
-                  doc_fs=27, li_fs=28, th_w=74, th_h=56, p_fs=31, foot_fs=29, foot_bottom=290),
-}
-
-A = HEAD + BASE + """
-.c{position:relative;width:@@W@@px;height:@@H@@px;overflow:hidden;font-family:Heebo,sans-serif;
-  color:#fff;padding:@@PAD@@;
-  background:radial-gradient(85% 55% at 88% 0%,#2E7352 0%,rgba(46,115,82,0) 72%),
-             linear-gradient(172deg,#1E4B38 0%,#15392A 100%)}
-.top{display:flex;align-items:center;justify-content:space-between}
-.logo{width:@@LOGO_W@@px;display:block}
-.chip{font-weight:500;font-size:26px;color:#D5ECDD;border:2px solid rgba(143,214,163,.5);
-  border-radius:40px;padding:8px 24px}
-h1{font-weight:800;font-size:@@H1_FS@@px;line-height:1.08;letter-spacing:-1.5px;margin-top:@@H1_MT@@px}
-h1 span{display:block;color:#8FD6A3}
-.chat{margin-top:@@CHAT_MT@@px}
-.msg{position:relative;width:@@MSG_W@@px;border-radius:28px;padding:14px;color:#111B21;
-  box-shadow:0 22px 48px rgba(0,0,0,.30)}
-.out{background:#D9FDD3;margin-right:auto;border-top-left-radius:8px}
-.in{background:#fff;margin-left:auto;margin-top:24px;border-top-right-radius:8px;padding:16px 18px 18px;width:@@IN_W@@px}
-.photo{height:@@PHOTO_H@@px;border-radius:18px;overflow:hidden;position:relative;
-  background:linear-gradient(160deg,#B9BFB7 0%,#8F978E 100%)}
-.sheet{position:absolute;left:62px;right:62px;top:22px;bottom:-40px;background:#FCFCF9;
-  transform:rotate(-3.5deg);box-shadow:0 10px 26px rgba(0,0,0,.35);padding:20px 32px;
-  font-family:Assistant,sans-serif;color:#26302A}
-.sheet .h{font-weight:800;font-size:@@SHEET_H_FS@@px;border-bottom:2px solid #26302A;padding-bottom:6px;margin-bottom:6px}
-.row{display:flex;justify-content:space-between;font-size:@@ROW_FS@@px;padding:4px 0;border-bottom:1px dashed #B8BDB6}
-.row b{font-weight:700}
-.photo:after{content:"";position:absolute;inset:0;
-  background:radial-gradient(120% 90% at 30% 20%,rgba(255,255,255,.18) 0%,rgba(0,0,0,.18) 100%)}
-.cap{font-size:@@CAP_FS@@px;font-weight:500;padding:12px 8px 2px;display:flex;align-items:flex-end;gap:10px}
-.ticks{width:26px;height:16px;flex:none;margin-right:auto}
-.who{font-weight:700;font-size:@@WHO_FS@@px;color:#1A7F55;margin-bottom:10px}
-.doc{border:1px solid #E3E6E8;border-radius:14px;overflow:hidden;background:#fff}
-.doc-h{background:#1A4231;color:#fff;display:flex;align-items:center;justify-content:space-between;
-  padding:10px 18px;font-weight:700;font-size:@@DOC_FS@@px}
-.doc-h img{width:62px;display:block}
-.li{display:flex;align-items:center;gap:16px;padding:6px 18px;border-top:1px solid #EEF1F2;font-size:@@LI_FS@@px}
-.li:nth-child(odd){background:#F6F9F7}
-.li .th{width:@@TH_W@@px;height:@@TH_H@@px;display:flex;align-items:center;justify-content:center;flex:none}
-.li .th img{max-width:@@TH_W@@px;max-height:@@TH_H@@px}
-.li span{flex:1}
-.li b{font-weight:700;color:#1A4231}
-.in p{font-size:@@P_FS@@px;font-weight:500;margin-top:12px}
-.foot{position:absolute;left:76px;right:76px;bottom:@@FOOT_BOTTOM@@px;font-size:@@FOOT_FS@@px;font-weight:500;
-  color:#CFE6D7;display:flex;justify-content:space-between}
-</style></head><body><div class="c">
-  <div class="top"><img class="logo" src="@@LOGO@@"><span class="chip">לעסקים ומוסדות</span></div>
-  <h1>שלחו צילום של ההזמנה.<span>נחזיר הצעה מתחרה.</span></h1>
-  <div class="chat">
-    <div class="msg out">
-      <div class="photo"><div class="sheet"><div class="h">הזמנה חודשית</div>@@ROWS@@</div></div>
-      <div class="cap">זאת ההזמנה הקבועה שלנו. אפשר הצעה?@@TICKS@@</div>
-    </div>
-    <div class="msg in">
-      <div class="who">אהרוני שיווק והפצה</div>
-      <div class="doc"><div class="doc-h"><span>הצעת מחיר</span><img src="@@LOGO@@"></div>@@LINES@@</div>
-      <p>מצורפת הצעה מתחרה על אותם מוצרים.</p>
-    </div>
-  </div>
-  <div class="foot"><span>מעל 20 שנה ספק לעסקים במרכז</span><span>מיבנה ועד רעננה</span></div>
-</div></body></html>"""
-
-
-def page_a(fmt):
-    s = A_SIZES[fmt]
-    rows = "".join(f'<div class="row"><span>{n}</span><b>{q}</b></div>' for n, q, _ in ORDER)
-    lines = "".join(f'<div class="li"><div class="th"><img src="{photo(img)}"></div>'
-                    f'<span>{n}</span><b>{q}</b></div>' for n, q, img in ORDER)
-    scales = {}
-    for _, _, img in ORDER:
-        w, h = native(img)
-        scales[img] = {"scale": round(min(1.0, s["th_w"] / w, s["th_h"] / h), 3)}
-    w, h = SIZES[fmt]
-    return fill(A, w=w, h=h, logo=data_uri(LOGO), ticks=TICKS, rows=rows, lines=lines, **s), scales
-
-
-# --- B: the statement over product tiles ------------------------------------------------
-
-# Each tile is a small group of products at a target height in px. Roei chose the
-# groups (22.10.26): paper - 5012, compact 50, jumbo; disposables (instead of the coffee
-# corner) - paper cups, rigid spoon, plate, 500ml cup; office - copy paper, pens,
-# binders; cleaning - one Sano and one Yaakobi product, gloves, long wipes in a bucket;
-# bags - with the two services he wants shown, made to size and branded.
+# Product groups at a target height in px. Roei chose them (22.10.26): paper - 5012,
+# compact 50, jumbo; disposables (instead of the coffee corner) - paper cups, rigid
+# spoon, plate, 500ml cup; office - copy paper, pens, binders; cleaning - one Sano and
+# one Yaakobi product, gloves, long wipes in a bucket; bags - with the two services he
+# wants shown, made to size and branded.
 PAPER = [("p5012", 150), ("compact50", 125), ("jumbo_tp", 100)]
 DISPOSABLES = [("plate", 120), ("cup500", 150), ("cup_paper", 125), ("spoon", 140)]
 OFFICE = [("binder", 200), ("a4", 185), ("pens", 115)]
 CLEANING = [("jet", 180), ("kh7", 195), ("wipes", 150), ("gloves", 85)]
 BAGS = [("bags_trash", 170), ("bags_vest", 180), ("bags_branded", 180), ("bags_custom", 140)]
 WHATSAPP_CTA = WA + "שלחו הודעה בוואטסאפ"
+SITE = dict(cta="aroam.co.il", aside="052-6000158")
+ADS_BAND = dict(cta=WHATSAPP_CTA, aside="מיבנה ועד רעננה")
 
-B_ADS = {
+PAGES = {
+    # --- the three ads ---
+    # The branded bag stands next to the same bag unprinted, which is the service shown.
+    "bags": dict(
+        h1="שקיות ממותגות.", h2="עם הלוגו של העסק.",
+        lead="גופייה ממותגות, שקיות לפי מידה ושקיות אשפה — מספק אחד.",
+        tiles=[([("bags_branded", 200)], "עם הלוגו שלכם"), ([("bags_vest", 200)], "גופייה HD ו-LD"),
+               ([("bags_custom", 170)], "לפי מידה ועובי"), ([("bags_trash", 200)], "שקיות אשפה")],
+        **ADS_BAND),
     "office": dict(
         h1="ספק אחד.", h2="כל מה שהמשרד צריך.",
         lead="נייר, חד פעמי, ניקיון וציוד משרדי — הכל בהזמנה אחת.",
         tiles=[(PAPER, "נייר וטואלט"), (DISPOSABLES, "חד פעמי"),
                (OFFICE, "ציוד משרדי"), (CLEANING, "ניקיון")],
-        cta=WHATSAPP_CTA, aside="מיבנה ועד רעננה"),
+        **ADS_BAND),
     "factory": dict(
         h1="אספקה קבועה.", h2="למפעלים ולמחסנים.",
         lead="נייר תעשייתי, שקיות, חומרי ניקוי וחד פעמי — מספק אחד.",
@@ -174,15 +91,35 @@ B_ADS = {
                (CLEANING, "ניקיון"),
                (BAGS, "שקיות", "גם לפי מידה וממותגות"),
                (DISPOSABLES, "חד פעמי לחדר האוכל")],
-        cta=WHATSAPP_CTA, aside="מיבנה ועד רעננה"),
-    # The Page's opening post ("מי אנחנו") - organic, so the pill points at the site.
-    "brand": dict(
+        **ADS_BAND),
+    # --- the Page's posts: organic, so the pill points at the site ---
+    "post_brand": dict(
         h1="ספק אחד.", h2="לכל מה שהעסק צריך.",
         lead="נייר, ניקיון, שקיות וציוד משרדי — מיבנה ועד רעננה.",
         tiles=[(PAPER, "נייר וטואלט"), (CLEANING, "ניקיון"),
                (BAGS, "שקיות", "גם לפי מידה וממותגות"), (OFFICE, "ציוד משרדי")],
-        cta="aroam.co.il", aside="052-6000158"),
+        **SITE),
+    "post_paper": dict(
+        h1="נייר לכל העסק.", h2="תעשייתי וטואלט.",
+        lead="באספקה קבועה לעסקים ולמוסדות, מיבנה ועד רעננה.",
+        tiles=[([("p5012", 175)], "גליל תעשייתי 5012"), ([("gold", 165)], "גליל GOLD"),
+               ([("compact50", 160)], "טואלט קומפקט 50"), ([("jumbo_tp", 125)], "טואלט ג׳מבו")],
+        **SITE),
+    "post_cleaning": dict(
+        h1="ניקיון ותחזוקה.", h2="סנו, יעקבי ועוד.",
+        lead="חומרי ניקוי במידות מוסדיות, כפפות ומגבונים.",
+        tiles=[([("jet", 195)], "סנו ג׳ט 4 ליטר"), ([("kh7", 200)], "KH-7 מסיר שומנים"),
+               ([("gloves", 110)], "כפפות ניטריל"), ([("wipes", 175)], "מגבונים בדלי")],
+        **SITE),
+    "post_disposables": dict(
+        h1="חד פעמי לעסקים.", h2="כוסות, צלחות וסכו״ם.",
+        lead="לחדר האוכל, למשרד ולאירועים.",
+        tiles=[([("cup_paper", 170)], "כוסות נייר"), ([("cup500", 180)], "כוס פלסטיק 500 מ״ל"),
+               ([("plate", 165)], "צלחת מתכלה"), ([("spoon", 185)], "סכו״ם קשיח")],
+        **SITE),
 }
+ADS = ("bags", "office", "factory")
+POSTS = ("post_brand", "post_paper", "post_cleaning", "post_disposables")
 
 B_SIZES = {
     "feed": dict(pad="66px 76px 0", h1_fs=84, h1_mt=40, lead_fs=31, grid_mt=34, ph=224,
@@ -223,7 +160,7 @@ h1 span{display:block;color:#639C7D}
   <div class="top"><img class="logo" src="@@LOGO@@"><span class="chip">מעל 20 שנה · לעסקים ומוסדות</span></div>
   <h1>@@H1@@<span>@@H2@@</span></h1>
   <div class="lead">@@LEAD@@</div>
-  <div class="grid">@@TILES@@</div>
+  @@CONTENT@@
   <div class="band"><span class="cta">@@CTA@@</span><small>@@ASIDE@@</small></div>
 </div></body></html>"""
 
@@ -246,15 +183,15 @@ def tiles(spec):
         scales.update(s)
         small = f"<small>{sub[0]}</small>" if sub else ""
         out.append(f'<div class="tile"><div class="ph">{imgs}</div><span>{label}</span>{small}</div>')
-    return "".join(out), scales
+    return f'<div class="grid">{"".join(out)}</div>', scales
 
 
-def page_b(name, fmt):
-    ad = B_ADS[name]
-    html, scales = tiles(ad["tiles"])
+def page(name, fmt):
+    p = PAGES[name]
+    content, scales = tiles(p["tiles"])
     w, h = SIZES[fmt]
-    return fill(B, w=w, h=h, logo=data_uri(LOGO), overlap=OVERLAP, h1=ad["h1"], h2=ad["h2"],
-                lead=ad["lead"], tiles=html, cta=ad["cta"], aside=ad["aside"],
+    return fill(B, w=w, h=h, logo=data_uri(LOGO), overlap=OVERLAP, h1=p["h1"], h2=p["h2"],
+                lead=p["lead"], content=content, cta=p["cta"], aside=p["aside"],
                 **B_SIZES[fmt]), scales
 
 
@@ -305,16 +242,15 @@ def main():
         # wait_ms: Heebo and Assistant come from Google Fonts and land after the load event.
         render(html, OUT / name, w, h, wait_ms=8000)
         report[name] = scales
-        print(f"{name:20s} {w}x{h}")
+        print(f"{name:22s} {w}x{h}")
 
     for fmt, (w, h) in SIZES.items():
-        html, scales = page_a(fmt)
-        shoot(html, f"switch_{fmt}.png", w, h, scales)
-        for name in ("office", "factory"):
-            html, scales = page_b(name, fmt)
+        for name in ADS:
+            html, scales = page(name, fmt)
             shoot(html, f"{name}_{fmt}.png", w, h, scales)
-    html, scales = page_b("brand", "feed")
-    shoot(html, "brand_feed.png", 1080, 1350, scales)
+    for name in POSTS:
+        html, scales = page(name, "feed")
+        shoot(html, f"{name}.png", *SIZES["feed"], scales)
 
     mix, scales = group(COVER_MIX, 492, overlap=18)
     shoot(fill(COVER, w=1640, h=624, logo=data_uri(LOGO), group=mix), "cover.png", 1640, 624, scales)

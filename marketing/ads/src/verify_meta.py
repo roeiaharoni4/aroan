@@ -11,10 +11,13 @@ IMG = HERE.parents[2] / "marketing" / "meta" / "img"
 REPORT = HERE / "meta_scale_report.json"
 
 EXPECTED = {
-    "switch_feed.png": (1080, 1350), "switch_story.png": (1080, 1920),
+    # the three ads, feed and story
+    "bags_feed.png": (1080, 1350), "bags_story.png": (1080, 1920),
     "office_feed.png": (1080, 1350), "office_story.png": (1080, 1920),
     "factory_feed.png": (1080, 1350), "factory_story.png": (1080, 1920),
-    "brand_feed.png": (1080, 1350),
+    # the Page's four opening posts - same look as the ads, different content
+    "post_brand.png": (1080, 1350), "post_paper.png": (1080, 1350),
+    "post_cleaning.png": (1080, 1350), "post_disposables.png": (1080, 1350),
     "cover.png": (1640, 624),
     "profile.png": (720, 720),
 }
