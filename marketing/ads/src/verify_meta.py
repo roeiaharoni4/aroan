@@ -15,9 +15,8 @@ EXPECTED = {
     "bags_feed.png": (1080, 1350), "bags_story.png": (1080, 1920),
     "office_feed.png": (1080, 1350), "office_story.png": (1080, 1920),
     "factory_feed.png": (1080, 1350), "factory_story.png": (1080, 1920),
-    # the Page's four opening posts - same look as the ads, different content
-    "post_brand.png": (1080, 1350), "post_paper.png": (1080, 1350),
-    "post_cleaning.png": (1080, 1350), "post_disposables.png": (1080, 1350),
+    # the Page's opening posts - the ads' colours and type, different content
+    "post_order.png": (1080, 1350), "post_checklist.png": (1080, 1350),
     "cover.png": (1640, 624),
     "profile.png": (720, 720),
 }
