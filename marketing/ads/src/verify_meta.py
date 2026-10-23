@@ -17,6 +17,7 @@ EXPECTED = {
     "factory_feed.png": (1080, 1350), "factory_story.png": (1080, 1920),
     # the Page's opening posts - the ads' colours and type, different content
     "post_order.png": (1080, 1350), "post_checklist.png": (1080, 1350),
+    "post_steps.png": (1080, 1350), "post_area.png": (1080, 1350),
     "cover.png": (1640, 624),
     "profile.png": (720, 720),
 }

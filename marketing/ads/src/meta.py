@@ -10,10 +10,12 @@ The Page's posts share the ads' colours and type but not their content - a Page 
 repeats its ads reads as if it exists for advertising. Roei turned down one post per
 category (23.10.26); after a review of competitors' Pages he chose two of three drafts
 (marketing/meta/drafts): one order in a single scene, and the list an office runs out of.
-Posts from his own warehouse photos follow when he takes them.
-Writes the ten files verify_meta.py checks into marketing/meta/img/.
+He turned down the third, raw warehouse photos, and asked for two more designed posts
+instead: how to order, and a map of where the orders go.
+Writes the twelve files verify_meta.py checks into marketing/meta/img/.
 """
 import json
+import math
 import pathlib
 
 from PIL import Image
@@ -173,14 +175,29 @@ def page(name, fmt):
 
 # --- the Page's posts -------------------------------------------------------------------
 
-# The logo and the ads' chip, so a post from the Page reads as the same business.
+# The logo and the ads' chip, so a post from the Page reads as the same business, and the
+# two closing rows the posts share: the site and number, or a line and the WhatsApp pill.
 POST_CSS = """
 .top{position:absolute;top:64px;right:76px;left:76px;display:flex;align-items:center;
   justify-content:space-between}
 .logo{width:150px;display:block}
-.chip{font-weight:500;font-size:26px;color:#1A4231;background:#E2EFE6;border-radius:40px;padding:9px 24px}"""
+.chip{font-weight:500;font-size:26px;color:#1A4231;background:#E2EFE6;border-radius:40px;padding:9px 24px}
+.foot{position:absolute;left:76px;right:76px;bottom:52px;display:flex;justify-content:space-between;
+  font-size:28px;font-weight:700;color:#1A4231}
+.foot b{font-weight:500;color:#4A6B5A}
+.end{position:absolute;left:76px;right:76px;bottom:64px;display:flex;align-items:center;
+  justify-content:space-between}
+.end b{font-size:40px;font-weight:900}
+.cta{display:inline-flex;align-items:center;gap:12px;background:#1A4231;color:#fff;font-weight:800;
+  font-size:29px;padding:15px 28px;border-radius:60px}
+.cta svg{width:34px;height:34px;color:#8FD6A3}"""
 POST_TOP = ('<div class="top"><img class="logo" src="@@LOGO@@">'
             '<span class="chip">מעל 20 שנה · לעסקים ומוסדות</span></div>')
+
+
+def post_end(line):
+    return f'<div class="end"><b>{line}</b><span class="cta">{WA}052-6000158</span></div>'
+
 
 # One order: every category in one scene at one real-world scale (px per cm), instead of
 # a grid of categories. (name, height in cm, x of the item's centre, baseline y).
@@ -207,9 +224,6 @@ h1 span{display:block;color:#639C7D}
 .p{position:absolute;display:block;filter:drop-shadow(0 10px 12px rgba(14,32,54,.16))}
 .sh{position:absolute;height:22px;border-radius:50%;
   background:radial-gradient(50% 50% at 50% 50%,rgba(26,66,49,.30),rgba(26,66,49,0))}
-.foot{position:absolute;left:76px;right:76px;bottom:52px;display:flex;justify-content:space-between;
-  font-size:28px;font-weight:700;color:#1A4231}
-.foot b{font-weight:500;color:#4A6B5A}
 </style></head><body><div class="c">
   <div class="glow"></div>
   @@TOP@@
@@ -268,12 +282,6 @@ h1 span{color:#639C7D}
 .row span{flex:1;font-size:36px;font-weight:700}
 .row .th{flex:none;width:130px;height:96px;display:flex;align-items:center;justify-content:center}
 .row .th img{display:block;filter:drop-shadow(0 6px 8px rgba(14,32,54,.16))}
-.end{position:absolute;left:76px;right:76px;bottom:64px;display:flex;align-items:center;
-  justify-content:space-between}
-.end b{font-size:40px;font-weight:900}
-.cta{display:inline-flex;align-items:center;gap:12px;background:#1A4231;color:#fff;font-weight:800;
-  font-size:29px;padding:15px 28px;border-radius:60px}
-.cta svg{width:34px;height:34px;color:#8FD6A3}
 </style></head><body><div class="c">
   @@TOP@@
   <h1>מה נגמר <span>החודש?</span></h1>
@@ -281,8 +289,8 @@ h1 span{color:#639C7D}
     <h2>רשימת הקניות של המשרד<small>הכל מספק אחד</small></h2>
     @@ROWS@@
   </div>
-  <div class="end"><b>שלחו לנו את הרשימה.</b><span class="cta">@@WA@@052-6000158</span></div>
-</div></body></html>""").replace("@@TOP@@", POST_TOP)
+  @@END@@
+</div></body></html>""").replace("@@TOP@@", POST_TOP).replace("@@END@@", post_end("שלחו לנו את הרשימה."))
 
 
 def checklist_post():
@@ -295,10 +303,174 @@ def checklist_post():
                     f'<div class="th"><img src="{photo(name)}" style="height:{round(nh * k)}px">'
                     f'</div></div>')
     w, h = SIZES["feed"]
-    return fill(LIST_POST, w=w, h=h, logo=data_uri(LOGO), rows="".join(rows), wa=WA), scales
+    return fill(LIST_POST, w=w, h=h, logo=data_uri(LOGO), rows="".join(rows)), scales
 
 
-POSTS = {"post_order": order_post, "post_checklist": checklist_post}
+# How to order, in the three steps it takes. Each step shows its own object - the message
+# with its read ticks, Aroam's quote, the carton that arrives - rather than a generic icon.
+STEPS = [("שולחים מה צריך", "בוואטסאפ, או מסמנים בקטלוג באתר", "message"),
+         ("מקבלים הצעת מחיר", "על כל ההזמנה, מספק אחד", "quote"),
+         ("ההזמנה מגיעה אליכם", "לעסקים ולמוסדות, מיבנה ועד רעננה", "carton")]
+CARTON_W = 150
+TICKS = ('<svg viewBox="0 0 22 14" fill="none" stroke="currentColor" stroke-width="2.2" '
+         'stroke-linecap="round" stroke-linejoin="round"><path d="M1 8l4 4 8-9"/><path d="M10 12l8-9"/></svg>')
+STEPS_POST = (HEAD + BASE + POST_CSS + """
+.c{position:relative;width:@@W@@px;height:@@H@@px;overflow:hidden;font-family:Heebo,sans-serif;
+  background:#F3F7F4;color:#1A4231}
+h1{position:absolute;top:190px;right:76px;left:76px;font-weight:900;font-size:92px;line-height:1;
+  letter-spacing:-2.4px}
+h1 span{display:block;color:#639C7D}
+.steps{position:absolute;top:426px;right:76px;left:76px;display:flex;flex-direction:column;gap:26px}
+.steps:before{content:"";position:absolute;top:114px;bottom:114px;right:78px;border-right:4px dotted #8FD6A3}
+.step{position:relative;height:228px;background:#fff;border-radius:26px;display:flex;align-items:center;
+  gap:28px;padding:0 34px;box-shadow:0 2px 0 #E1EAE4,0 14px 30px rgba(26,66,49,.07)}
+.num{flex:none;width:92px;height:92px;border-radius:50%;background:#1A4231;color:#fff;font-weight:900;
+  font-size:50px;display:flex;align-items:center;justify-content:center}
+.say{flex:1}
+.say b{display:block;font-weight:800;font-size:44px;line-height:1.15}
+.say span{display:block;font-weight:500;font-size:29px;color:#4A6B5A;margin-top:8px}
+.vis{flex:none;width:170px;height:170px;border-radius:24px;background:#E2EFE6;display:flex;
+  align-items:center;justify-content:center}
+.vis img{display:block;filter:drop-shadow(0 8px 10px rgba(14,32,54,.18))}
+.msg{position:relative;width:118px;height:88px;background:#fff;border-radius:18px 4px 18px 18px;
+  transform:rotate(4deg);box-shadow:0 8px 16px rgba(14,32,54,.14);padding:17px 14px 0;display:flex;
+  flex-direction:column;gap:9px}
+.msg i{display:block;height:7px;border-radius:4px;background:#DCE8E0}
+.msg i.short{margin-inline-end:40px}
+.msg svg{position:absolute;left:12px;bottom:9px;width:22px;height:14px;color:#639C7D}
+.doc{width:96px;height:124px;background:#fff;border-radius:8px;transform:rotate(-5deg);overflow:hidden;
+  box-shadow:0 8px 16px rgba(14,32,54,.14);display:flex;flex-direction:column;gap:9px;padding-bottom:12px}
+.doc i{display:block;height:7px;border-radius:4px;background:#DCE8E0;margin:0 12px}
+.doc i.band{height:24px;border-radius:0;margin:0 0 4px;background:#1A4231}
+.doc i.short{margin-inline-end:38px}
+.doc i.total{margin-top:auto;margin-inline-start:42px;height:9px;background:#639C7D}
+</style></head><body><div class="c">
+  @@TOP@@
+  <h1>איך מזמינים?<span>שלושה צעדים.</span></h1>
+  <div class="steps">@@STEPS@@</div>
+  @@END@@
+</div></body></html>""").replace("@@TOP@@", POST_TOP).replace("@@END@@", post_end("מתחילים בהודעה אחת."))
+
+
+def steps_post():
+    visuals = {
+        "message": f'<div class="msg"><i></i><i class="short"></i><i class="short"></i>{TICKS}</div>',
+        "quote": ('<div class="doc"><i class="band"></i><i></i><i class="short"></i><i></i>'
+                  '<i class="short"></i><i class="total"></i></div>'),
+        "carton": f'<img src="{photo("carton")}" style="width:{CARTON_W}px">',
+    }
+    steps = "".join(f'<div class="step"><div class="num">{n}</div><div class="say"><b>{title}</b>'
+                    f'<span>{sub}</span></div><div class="vis">{visuals[v]}</div></div>'
+                    for n, (title, sub, v) in enumerate(STEPS, 1))
+    w, h = SIZES["feed"]
+    scales = {"carton": {"scale": round(CARTON_W / native("carton")[0], 3)}}
+    return fill(STEPS_POST, w=w, h=h, logo=data_uri(LOGO), steps=steps), scales
+
+
+# Where the orders go: the places the site names, from Yavne to Ra'anana, at their real
+# positions, fanning out from Or Yehuda. Degrees map to px with longitude squeezed by
+# cos(latitude); Ra'anana lands at y=60, Yavne at y=780 and Rosh HaAyin at x=760. The
+# Gush Dan cities sit a few km apart, so each label's side is set by hand.
+MAP_W, MAP_H = 928, 830
+LAT_N, LON_W, PX_LAT = 32.2103, 34.5749, 2347.6
+PX_LON = PX_LAT * math.cos(math.radians(32.03))
+HUB = (32.0306, 34.8564)      # Or Yehuda
+CITIES = [  # (name, lat, lon, label side, label nudge in px)
+    ("רעננה", 32.1847, 34.8706, "e", 0), ("הרצליה", 32.1663, 34.8433, "w", 0),
+    ("ראש העין", 32.0956, 34.9567, "e", 0), ("פתח תקווה", 32.0870, 34.8875, "s", 0),
+    ("בני ברק", 32.0833, 34.8333, "n", 0), ("תל אביב", 32.0853, 34.7818, "n", 0),
+    ("גבעתיים", 32.0722, 34.8125, "w", 0), ("רמת גן", 32.0700, 34.8236, "s", 0),
+    ("קריית אונו", 32.0580, 34.8570, "e", -8), ("יהוד", 32.0333, 34.8911, "e", 0),
+    ("בת ים", 32.0170, 34.7500, "w", 0), ("חולון", 32.0160, 34.7800, "s", 0),
+    ("ראשון לציון", 31.9670, 34.8000, "e", 0), ("לוד", 31.9514, 34.8953, "e", 0),
+    ("יבנה", 31.8781, 34.7383, "e", 0),
+]
+# The shoreline from Ashdod's edge north past Herzliya, close enough at this scale.
+COAST = [(31.84, 34.660), (31.92, 34.692), (31.98, 34.731), (32.02, 34.741), (32.05, 34.749),
+         (32.08, 34.766), (32.10, 34.773), (32.13, 34.787), (32.165, 34.796), (32.20, 34.807),
+         (32.23, 34.815)]
+LABEL_AT = {  # where each side's label box goes, relative to the dot
+    "e": "left:{x:.0f}px;top:{y:.0f}px;transform:translate(14px,-50%)",
+    "w": "left:{x:.0f}px;top:{y:.0f}px;transform:translate(calc(-100% - 14px),-50%)",
+    "n": "left:{x:.0f}px;top:{y:.0f}px;transform:translate(-50%,calc(-100% - 12px))",
+    "s": "left:{x:.0f}px;top:{y:.0f}px;transform:translate(-50%,12px)",
+}
+AREA_POST = (HEAD + BASE + POST_CSS + """
+.c{position:relative;width:@@W@@px;height:@@H@@px;overflow:hidden;font-family:Heebo,sans-serif;
+  background:#F3F7F4;color:#1A4231}
+h1{position:absolute;top:186px;right:76px;left:76px;font-weight:900;font-size:88px;line-height:1;
+  letter-spacing:-2.4px}
+h1 span{color:#639C7D}
+.sub{position:absolute;top:294px;right:76px;left:76px;font-size:32px;font-weight:500;color:#3B5547}
+.map{position:absolute;top:372px;left:76px;width:@@MAP_W@@px;height:@@MAP_H@@px;border-radius:26px;
+  overflow:hidden;background:#fff;box-shadow:0 2px 0 #E1EAE4,0 14px 30px rgba(26,66,49,.07)}
+.map .base{position:absolute;inset:0}
+.dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#639C7D;
+  box-shadow:0 0 0 3px #fff,0 2px 6px rgba(14,32,54,.25)}
+.lbl{position:absolute;white-space:nowrap;font-weight:700;font-size:25px;line-height:1;color:#1A4231;
+  text-shadow:0 0 3px #fff,0 0 6px #fff,0 0 9px #fff}
+.hub{text-align:center}
+.hub b{display:block;font-weight:900;font-size:31px}
+.hub small{display:block;font-weight:500;font-size:21px;color:#4A6B5A;margin-top:5px}
+.pin{position:absolute;width:40px;height:52px;filter:drop-shadow(0 4px 6px rgba(14,32,54,.25))}
+.sea{position:absolute;font-size:23px;font-weight:500;color:#5E8A74;letter-spacing:.5px}
+</style></head><body><div class="c">
+  @@TOP@@
+  <h1>מיבנה <span>ועד רעננה.</span></h1>
+  <div class="sub">אספקה לעסקים ומוסדות בכל המרכז.</div>
+  <div class="map">@@MAP@@</div>
+  <div class="foot"><span>aroam.co.il</span><b>להזמנות: 052-6000158</b></div>
+</div></body></html>""").replace("@@TOP@@", POST_TOP)
+
+
+def project(lat, lon):
+    return (lon - LON_W) * PX_LON, (LAT_N - lat) * PX_LAT
+
+
+def smooth(points):
+    """Path commands through the points as one curve (Catmull-Rom as cubic Beziers), so the
+    coast bends instead of kinking at every sample."""
+    pts = [points[0]] + points + [points[-1]]
+    out = []
+    for i in range(1, len(pts) - 2):
+        (x0, y0), (x1, y1), (x2, y2), (x3, y3) = pts[i - 1:i + 3]
+        out.append(f"C{x1 + (x2 - x0) / 6:.1f} {y1 + (y2 - y0) / 6:.1f} "
+                   f"{x2 - (x3 - x1) / 6:.1f} {y2 - (y3 - y1) / 6:.1f} {x2:.1f} {y2:.1f}")
+    return " ".join(out)
+
+
+def area_post():
+    hx, hy = project(*HUB)
+    coast = [project(*p) for p in COAST]
+    (sx, sy), (ex, ey) = coast[0], coast[-1]
+    shapes = [f'<path d="M-20 {sy:.1f} L{sx:.1f} {sy:.1f} {smooth(coast)} L-20 {ey:.1f}Z" '
+              'fill="#D7EAE1" stroke="#B7D5C5" stroke-width="3"/>']
+    # Routes out of Or Yehuda, each bowed a little to one side so they read as deliveries.
+    for _, lat, lon, _, _ in CITIES:
+        x, y = project(lat, lon)
+        mx, my = (hx + x) / 2, (hy + y) / 2
+        cx, cy = mx + (y - hy) * .12, my - (x - hx) * .12
+        shapes.append(f'<path d="M{hx:.1f} {hy:.1f}Q{cx:.1f} {cy:.1f} {x:.1f} {y:.1f}" fill="none" '
+                      f'stroke="#9FCFB3" stroke-width="3" stroke-dasharray="1 8" stroke-linecap="round"/>')
+    parts = [f'<svg class="base" viewBox="0 0 {MAP_W} {MAP_H}" width="{MAP_W}" height="{MAP_H}">'
+             f'{"".join(shapes)}</svg>',
+             '<div class="sea" style="left:52px;top:668px">הים התיכון</div>']
+    for name, lat, lon, side, nudge in CITIES:
+        x, y = project(lat, lon)
+        parts.append(f'<div class="dot" style="left:{x:.0f}px;top:{y:.0f}px"></div>')
+        parts.append(f'<div class="lbl" style="{LABEL_AT[side].format(x=x, y=y + nudge)}">{name}</div>')
+    parts.append(f'<svg class="pin" viewBox="0 0 40 52" style="left:{hx - 20:.0f}px;top:{hy - 50:.0f}px">'
+                 '<path d="M20 51C20 51 4 31 4 19a16 16 0 0 1 32 0c0 12-16 32-16 32z" fill="#1A4231"/>'
+                 '<circle cx="20" cy="19" r="6.5" fill="#fff"/></svg>')
+    parts.append(f'<div class="lbl hub" style="{LABEL_AT["s"].format(x=hx, y=hy)}">'
+                 '<b>אור יהודה</b><small>אנחנו כאן</small></div>')
+    w, h = SIZES["feed"]
+    return fill(AREA_POST, w=w, h=h, logo=data_uri(LOGO), map_w=MAP_W, map_h=MAP_H,
+                map="".join(parts)), {}
+
+
+POSTS = {"post_order": order_post, "post_checklist": checklist_post,
+         "post_steps": steps_post, "post_area": area_post}
 
 
 # --- Page assets ------------------------------------------------------------------------
