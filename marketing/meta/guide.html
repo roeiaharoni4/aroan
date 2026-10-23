@@ -121,17 +121,10 @@ td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
   <div class="copy"><div class="copy-head"><span class="copy-label">תיאור העסק</span><button type="button" class="copy-btn" id="copy-wa-desc">העתקה</button></div>
 <pre class="copy-text">ספק סיטונאי לעסקים ומוסדות במרכז: חד פעמי ואריזות, מוצרי נייר, חומרי ניקוי, שקיות וציוד משרדי. מעל 20 שנה. אספקה מיבנה ועד רעננה.</pre></div>
 
-  <h3>הודעת פתיחה</h3>
-  <p>כלים לעסקים ← הודעת פתיחה ← להפעיל, נמענים: כולם.</p>
-  <div class="copy"><div class="copy-head"><span class="copy-label">הודעת פתיחה</span><button type="button" class="copy-btn" id="copy-wa-greeting">העתקה</button></div>
-<pre class="copy-text">שלום, תודה שפניתם לאהרוני שיווק והפצה.
-כדי שנכין הצעה מדויקת, כתבו לנו:
-1. שם העסק והעיר
-2. מה אתם מזמינים בדרך כלל — או פשוט צילום של ההזמנה האחרונה</pre></div>
-
-  <h3>הודעת היעדרות</h3>
-  <p>כלים לעסקים ← הודעת היעדרות ← להפעיל, תזמון: מחוץ לשעות הפעילות.</p>
-  <div class="copy"><div class="copy-head"><span class="copy-label">הודעת היעדרות</span><button type="button" class="copy-btn" id="copy-wa-away">העתקה</button></div>
+  <h3>הודעת פתיחה והודעת היעדרות: לא להפעיל באפליקציה</h3>
+  <p>שתיהן נשלחות אוטומטית לכל מי שכותב למספר, ולא רק למי שהגיע מהמודעה. הודעת הפתיחה של האפליקציה נשלחת אפילו כשאתה כותב ראשון למספר חדש. את הודעת הפתיחה שמים במקום זה בתבנית ההודעה של המודעה (שלב 5), ואותה רואה רק מי שלחץ על המודעה.</p>
+  <p class="note">אם בכל זאת רוצים הודעת היעדרות: כלים לעסקים ← הודעת היעדרות ← תזמון: מחוץ לשעות הפעילות, ונמענים: מי שלא שמור באנשי הקשר, כדי שלקוחות קבועים לא יקבלו אותה.</p>
+  <div class="copy"><div class="copy-head"><span class="copy-label">הודעת היעדרות (רק אם מפעילים)</span><button type="button" class="copy-btn" id="copy-wa-away">העתקה</button></div>
 <pre class="copy-text">שלום, קיבלנו את ההודעה ונחזור אליכם בשעות הפעילות.</pre></div>
 
   <h3>תשובות מהירות</h3>
@@ -217,6 +210,14 @@ td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
     <tr><td>מודעה</td><td>זהות: דף הפייסבוק · יעד: WhatsApp 052-6000158 · הודעה מוכנה לפי המודעה, למטה</td></tr>
   </table></div>
 
+  <h3>תבנית ההודעה (אותה ברכה לשלוש המודעות)</h3>
+  <p>בהגדרות המודעה ← תבנית הודעה (Message template) ← יצירה. בשדה הברכה (Greeting) מדביקים את הנוסח שלמטה, ובשדה ההודעה המוכנה (Pre-filled message) את ההודעה של אותה מודעה. הברכה מופיעה רק בשיחה שנפתחת מהמודעה.</p>
+  <div class="copy"><div class="copy-head"><span class="copy-label">ברכה (Greeting)</span><button type="button" class="copy-btn" id="copy-ad-greeting">העתקה</button></div>
+<pre class="copy-text">שלום, תודה שפניתם לאהרוני שיווק והפצה.
+כדי שנכין הצעה מדויקת, כתבו לנו:
+1. שם העסק והעיר
+2. מה אתם מזמינים בדרך כלל — או פשוט צילום של ההזמנה האחרונה</pre></div>
+
   <h3>מודעה 1 · ספק אחר</h3>
   <div class="imgs">
     <figure><img src="img/switch_feed.png" alt="מודעה 1 בגודל לפיד" loading="lazy"><figcaption>פיד 4:5 · <code>switch_feed.png</code></figcaption></figure>
@@ -260,7 +261,8 @@ td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
   <p>לפתוח כל מודעה בתצוגה המקדימה, ללחוץ עליה, ולוודא:</p>
   <ul class="check">
     <li>הוואטסאפ נפתח עם ההודעה המוכנה של אותה מודעה.</li>
-    <li>הודעת הפתיחה מגיעה <b>פעם אחת</b>. העדיפות להודעת הפתיחה של האפליקציה. אם תבנית ההודעה של המודעה מחייבת ברכה, לכבות את הודעת הפתיחה באפליקציה ולהעביר את הנוסח שלה לתבנית.</li>
+    <li>הברכה מתבנית ההודעה מופיעה בשיחה שנפתחת מהמודעה.</li>
+    <li>הודעה רגילה למספר, מטלפון אחר ולא דרך המודעה, <b>לא מקבלת שום תשובה אוטומטית</b>.</li>
     <li>אפשר לסמן את השיחה בתווית "פייסבוק".</li>
   </ul>
 </section>
