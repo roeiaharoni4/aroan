@@ -34,7 +34,13 @@ REQUIRED = [
     "פייסבוק", "לא עסקי", "נשלחה הצעה", "לקוח חדש",
     # Facebook Page
     BIO,
-    # the two opening posts (23.10: one post per category was turned down)
+    # the four opening posts (23.10: one post per category and raw photos were turned down)
+    "מיבנה ועד רעננה — אספקה לעסקים ולמוסדות בכל המרכז: רעננה, הרצליה, פתח תקווה, ראש העין, "
+    "בני ברק, תל אביב, רמת גן, גבעתיים, קריית אונו, אור יהודה, יהוד, חולון, בת ים, ראשון לציון, "
+    "לוד ויבנה. אהרוני שיווק והפצה, מאור יהודה — מעל 20 שנה. להזמנות: 052-6000158 · aroam.co.il",
+    "איך מזמינים מאיתנו? שלושה צעדים: 1. שולחים לנו בוואטסאפ מה צריך — או מסמנים מוצרים בקטלוג "
+    "באתר. 2. מקבלים הצעת מחיר על כל ההזמנה, מספק אחד. 3. ההזמנה מגיעה אליכם — לעסקים ולמוסדות "
+    "מיבנה ועד רעננה. https://wa.me/972526000158 · הקטלוג: aroam.co.il",
     "מה נגמר החודש במשרד? נייר טואלט, סבון ידיים, כוסות, שקיות אשפה, נייר צילום, כפפות… "
     "שלחו לנו את הרשימה בוואטסאפ, ונחזור עם הצעת מחיר על הכל — מספק אחד. "
     "https://wa.me/972526000158",
@@ -46,8 +52,8 @@ REQUIRED = [
     "25–65", "059291906",
 ]
 IMAGES = ["bags_feed.png", "bags_story.png", "office_feed.png", "office_story.png",
-          "factory_feed.png", "factory_story.png", "post_checklist.png", "post_order.png",
-          "cover.png", "profile.png"]
+          "factory_feed.png", "factory_story.png", "post_area.png", "post_checklist.png",
+          "post_order.png", "post_steps.png", "cover.png", "profile.png"]
 
 fails = []
 
