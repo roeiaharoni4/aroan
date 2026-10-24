@@ -72,6 +72,10 @@ CLEANING = [("jet", 180), ("kh7", 195), ("wipes", 150), ("gloves", 85)]
 BAGS = [("bags_trash", 170), ("bags_vest", 180), ("bags_branded", 180), ("bags_custom", 140)]
 WHATSAPP_CTA = WA + "שלחו הודעה בוואטסאפ"
 ADS_BAND = dict(cta=WHATSAPP_CTA, aside="מיבנה ועד רעננה")
+# Two numbers, each for its channel (Roei, 24.10.26): a number to call is the office line,
+# and WhatsApp - where the ads lead - stays on his mobile.
+PHONE = "03-6346236"
+WHATSAPP = "052-6000158"
 
 PAGES = {
     # --- the three ads ---
@@ -196,7 +200,7 @@ POST_TOP = ('<div class="top"><img class="logo" src="@@LOGO@@">'
 
 
 def post_end(line):
-    return f'<div class="end"><b>{line}</b><span class="cta">{WA}052-6000158</span></div>'
+    return f'<div class="end"><b>{line}</b><span class="cta">{WA}{WHATSAPP}</span></div>'
 
 
 # One order: every category in one scene at one real-world scale (px per cm), instead of
@@ -232,8 +236,8 @@ h1 span{display:block;color:#639C7D}
     <div class="sub">נייר, חומרי ניקוי, חד פעמי, שקיות וציוד&nbsp;משרדי — מגיעים יחד, מספק&nbsp;אחד.</div>
   </div>
   @@ITEMS@@
-  <div class="foot"><span>aroam.co.il</span><b>052-6000158 · מיבנה ועד רעננה</b></div>
-</div></body></html>""").replace("@@TOP@@", POST_TOP)
+  <div class="foot"><span>aroam.co.il</span><b>@@PHONE@@ · מיבנה ועד רעננה</b></div>
+</div></body></html>""").replace("@@TOP@@", POST_TOP).replace("@@PHONE@@", PHONE)
 
 
 def order_post():
@@ -419,8 +423,8 @@ h1 span{color:#639C7D}
   <h1>מיבנה <span>ועד רעננה.</span></h1>
   <div class="sub">אספקה לעסקים ומוסדות בכל המרכז.</div>
   <div class="map">@@MAP@@</div>
-  <div class="foot"><span>aroam.co.il</span><b>להזמנות: 052-6000158</b></div>
-</div></body></html>""").replace("@@TOP@@", POST_TOP)
+  <div class="foot"><span>aroam.co.il</span><b>להזמנות: @@PHONE@@</b></div>
+</div></body></html>""").replace("@@TOP@@", POST_TOP).replace("@@PHONE@@", PHONE)
 
 
 def project(lat, lon):
