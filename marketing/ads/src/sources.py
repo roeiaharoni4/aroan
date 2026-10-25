@@ -4,7 +4,7 @@ Each entry records where the pixels came from, which region was kept, and why -
 the crops exist to exclude other manufacturers' packaging, logos and barcodes.
 """
 import pathlib
-from prep import prepare, prepare_dark
+from prep import prepare, prepare_cutout, prepare_dark
 
 # The repo's own catalog images (the repo moved from ~/Desktop to ~/aroan on 27.8.26).
 CAT = pathlib.Path(__file__).resolve().parents[3] / "images"
@@ -44,10 +44,12 @@ SOURCES = {
         radius=41, white=254, contrast=1.55, alpha_tol=2,  # near-white centre;
         # a looser tolerance lets the fill cross the plate and hollow it out
     ),
+    # Roei's new shot (25.10.26), cut out on his phone, with the Aroam label on the pack.
+    # The catalog image (images/מוצרי נייר/נייר ניגוב תאית 6 יחידות.webp) is made from
+    # the same cutout on a white square.
     "rolls2": dict(
-        src=CAT / "מוצרי נייר/נייר ניגוב תאית 6 יחידות.webp",
-        note="6 white cellulose rolls in clear wrap - no print",
-        radius=41, white=254, contrast=1.35, alpha_tol=2,
+        src=HERE / "assets/aroam_hand_towels_6.webp", cutout=True,
+        note="6 cellulose hand-towel rolls in clear wrap - Aroam label",
     ),
     "jumbo": dict(
         src=CAT / "מוצרי נייר/גליל תעשייתי ורד צר.webp",
@@ -86,9 +88,10 @@ SOURCES = {
     # goods (gloves, copy paper, pens) are shown as he sells them. dark=True marks his
     # studio shots on a black ground with the Aroam leaf watermarked in a corner.
     "p5012": dict(
-        src=CAT / "1787315001044_______________________5012.webp", dark=True,
-        smooth=8, erode=3, band=5, trim_bottom=10,
-        note="single-ply industrial roll 5012 - Roei's own shot, black ground",
+        # Replaced 25.10.26 by his new shot, already cut out on his phone (cutout=True);
+        # the catalog image images/מוצרי נייר/גליל תעשייתי חד שכבתי 5012.webp comes from it.
+        src=HERE / "assets/aroam_5012.webp", cutout=True,
+        note="single-ply industrial roll 5012 - Roei's own shot, Aroam label",
     ),
     "compact50": dict(
         # Its edges are coarse blocks from an earlier cut: a light blur turns the steps
@@ -197,7 +200,8 @@ def build_all(names=None):
     for name in [n for n in names if n != "bags_branded"]:
         cfg = dict(SOURCES[name])
         src, note = cfg.pop("src"), cfg.pop("note")
-        fn = prepare_dark if cfg.pop("dark", False) else prepare
+        fn = (prepare_dark if cfg.pop("dark", False) else
+              prepare_cutout if cfg.pop("cutout", False) else prepare)
         im = fn(str(src), HERE / "prepped" / f"{name}.png", **cfg)
         print(f"{name:10s} {im.size[0]:4d}x{im.size[1]:4d}  {note}")
     if derive:

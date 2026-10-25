@@ -196,6 +196,40 @@ def _box(x, r):
     return (c[:, k:] - c[:, :-k]) / k
 
 
+def prepare_cutout(path, out, max_side=900, lo=60, hi=235, band=6, pad=2):
+    """Tidy a product Roei already cut out on his phone (a transparent WebP).
+
+    The phone lifts the product off a dark ground and leaves a soft edge ~15px wide
+    that still carries the ground's colour: on a light tile it reads as a grey rim.
+    The alpha ramp is tightened (`lo`..`hi` maps to 0..255), and the rim pixels are
+    repainted with colour pulled in from the solid interior, as `prepare_dark` does.
+    The image is scaled to `max_side` first, so `band` is in output pixels.
+    """
+    im = Image.open(path).convert("RGBA")
+    im.thumbnail((max_side, max_side), Image.LANCZOS)
+    a = np.asarray(im).astype(float)
+    alpha = np.clip((a[..., 3] - lo) / (hi - lo), 0, 1)
+
+    solid = Image.fromarray(((alpha >= 0.99) * 255).astype(np.uint8), "L")
+    inner = np.asarray(solid.filter(ImageFilter.MinFilter(2 * band + 1))) > 127
+    w = inner.astype(float)
+    num, den = a[..., :3] * w[..., None], w
+    for _ in range(2):  # two box passes approximate a gaussian
+        num, den = _box(num, band + 2), _box(den, band + 2)
+    clean = num / np.maximum(den, 1e-6)[..., None]
+    rim = (alpha > 0) & ~inner
+    rgb = a[..., :3]
+    rgb[rim] = clean[rim]
+
+    rgba = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
+    rgba.putalpha(Image.fromarray((alpha * 255).astype(np.uint8), "L"))
+    ys, xs = np.nonzero(alpha > 0.03)
+    rgba = rgba.crop((max(0, xs.min() - pad), max(0, ys.min() - pad),
+                      min(im.width, xs.max() + 1 + pad), min(im.height, ys.max() + 1 + pad)))
+    rgba.save(out)
+    return rgba
+
+
 def prepare_dark(path, out, thresh=40, smooth=3, erode=4, band=6, trim_bottom=0,
                  feather=1.0, pad=2):
     """Cut a product out of a near-black ground - Roei's own studio shots.
