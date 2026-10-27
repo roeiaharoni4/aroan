@@ -1174,6 +1174,33 @@ CATALOG_CATEGORIES = {
 
 CATALOG_WHATSAPP = '972526000158'
 
+# מעטפת האתר לדפי המוצר ותת-הקטגוריה של הקטלוג העסקי — אותם פונטים, site.css
+# ו-components.js (הדר, פוטר, וואטסאפ צף) כמו בשאר הדפים. דפי /care/ לא משתמשים
+# בהם בכוונה: לקטלוג הטיפוח הדר ופוטר עצמאיים, בלי קישורים לאתר העסקי.
+# גרסת components.js כאן חייבת להתאים להפניות בדפים — להעלות יחד.
+SITE_COMPONENTS_JS = '/js/components.js?v=1'
+SITE_HEAD_ASSETS = """    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap"></noscript>
+    <link rel="stylesheet" href="/css/site.css">"""
+# סמל הוואטסאפ שהאתר כבר משתמש בו (js/components.js)
+WA_ICON = ('<svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 '
+           '3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 '
+           '16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 '
+           '5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7z"/></svg>')
+
+
+def _product_thumb(r):
+    """תמונה קטנה למוצר בכרטיסים (מוצרים קשורים, דפי תת-קטגוריה). בלי תמונה — טקסט."""
+    from urllib.parse import quote
+    from xml.sax.saxutils import escape
+    img = (r.get('image') or '').strip()
+    if not img:
+        return 'אין תמונה'
+    return (f'<img src="/{quote(img.lstrip("/"))}" alt="{escape(r["name"])}" width="200" height="200" '
+            f'loading="lazy" decoding="async">')
+
 
 def _load_catalog_rows():
     """קורא את מוצרי הקטלוג העסקי. מחזיר רק שורות עם מזהה ושם."""
@@ -1340,10 +1367,11 @@ def generate_catalog_subcategory_pages():
         page_url = f'{SITE_BASE_URL}/catalog/{parent}/{slug}/'
 
         cards = '\n'.join(
-            f'''            <article class="sc-item">
-                <h3><a href="/catalog/product/{quote(slugs[r["id"]])}/">{escape(r['name'])}</a></h3>
-                <p>{escape((r.get('description') or '').strip())}</p>
-            </article>''' for r in items)
+            f'''                <article class="sc-item">
+                    <span class="ph">{_product_thumb(r)}</span>
+                    <h3><a href="/catalog/product/{quote(slugs[r["id"]])}/">{escape(r['name'])}</a></h3>
+                    <p>{escape((r.get('description') or '').strip())}</p>
+                </article>''' for r in items)
 
         siblings = '\n'.join(
             f'                <a href="/catalog/{c["parent"]}/{s}/">{escape(c["h1"])}</a>'
@@ -1389,50 +1417,54 @@ def generate_catalog_subcategory_pages():
     <script type="application/ld+json">
 {json.dumps(schema, ensure_ascii=False, indent=2)}
     </script>
+{SITE_HEAD_ASSETS}
     <style>
-        :root {{ --primary: #639C7D; --dark: #1A4231; --ink: #23302a; --muted: #5c6b63; --line: #e3ebe6; }}
-        * {{ box-sizing: border-box; }}
-        body {{ margin: 0; font-family: 'Assistant', 'Heebo', Arial, sans-serif; color: var(--ink);
-               background: #fff; line-height: 1.75; }}
-        .wrap {{ max-width: 980px; margin: 0 auto; padding: 0 16px; }}
-        header.site {{ background: var(--dark); color: #fff; padding: 14px 0; }}
-        header.site .wrap {{ display: flex; align-items: center; justify-content: space-between;
-                            gap: 12px; flex-wrap: wrap; }}
-        header.site a {{ color: #fff; text-decoration: none; font-weight: 700; }}
-        .crumbs {{ font-size: .9rem; color: var(--muted); padding: 14px 0; }}
-        .crumbs a {{ color: var(--muted); }}
-        h1 {{ color: var(--dark); font-size: 1.9rem; margin: 6px 0 12px; }}
-        .lead {{ font-size: 1.06rem; }}
-        .ctas {{ display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 6px; }}
-        .btn {{ flex: 1 1 220px; text-align: center; padding: 13px 18px; border-radius: 8px;
-               text-decoration: none; font-weight: 700; border: 2px solid var(--dark); }}
-        .btn-wa {{ background: var(--dark); color: #fff; }}
-        .btn-cat {{ background: #fff; color: var(--dark); }}
-        .sc-list {{ border-top: 1px solid var(--line); margin-top: 26px; padding-top: 6px; }}
-        .sc-item {{ border-bottom: 1px solid var(--line); padding: 14px 0; }}
-        .sc-item h3 {{ margin: 0 0 4px; font-size: 1.08rem; }}
-        .sc-item h3 a {{ color: var(--dark); text-decoration: none; }}
-        .sc-item h3 a:hover {{ text-decoration: underline; }}
-        .sc-item p {{ margin: 0; color: var(--muted); }}
-        .chips {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }}
-        .chips a {{ display: inline-block; padding: 7px 12px; border: 1px solid var(--line);
-                   border-radius: 999px; text-decoration: none; font-size: .9rem;
-                   background: #f6faf8; color: var(--dark); }}
-        .more {{ display: block; margin-top: 18px; font-weight: 700; color: var(--dark); }}
-        footer.site {{ background: var(--dark); color: #fff; margin-top: 34px; padding: 22px 0; }}
-        footer.site a {{ color: #cfe6d9; }}
+        /* דף תת-קטגוריה במעטפת של האתר (27.10.26). עד אז: הדר ופוטר משלו, בלי לוגו
+           ובלי תמונות — רשימת טקסט, והשהייה הממוצעת בו הייתה 20–30 שניות. */
+        .sc-page {{ padding-block: 4px 56px; }}
+        .crumbs {{ font-size: .9rem; color: var(--text-color); padding: 18px 0 14px; }}
+        .crumbs a {{ color: var(--text-color); }}
+        .sc-page h1 {{ font-size: 2rem; line-height: 1.2; color: var(--secondary-color); margin: 0 0 12px; }}
+        .lead {{ font-size: 1.08rem; line-height: 1.75; color: var(--text-color); max-width: 860px; }}
+        .sc-ctas {{ display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 8px; }}
+        .sc-btn {{ flex: 0 1 260px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+                  padding: 13px 18px; border-radius: 8px; font-weight: 700; border: 2px solid #1A4231; }}
+        .sc-btn svg {{ width: 20px; height: 20px; flex: none; }}
+        .sc-btn-wa {{ background: #1A4231; color: #fff; }}
+        .sc-btn-cat {{ background: transparent; color: var(--secondary-color); border-color: var(--secondary-color); }}
+        .sc-btn:hover {{ filter: brightness(1.2); }}
+        [data-theme="dark"] .sc-btn-wa {{ background: #8FD6A3; color: #1A4231; border-color: #8FD6A3; }}
+        .sc-list {{ margin-top: 34px; }}
+        .sc-list h2, .sc-more h2 {{ font-size: 1.35rem; color: var(--secondary-color); margin-bottom: 16px; }}
+        .sc-grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }}
+        .sc-item {{ display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--white);
+                   border: 1px solid rgba(0, 0, 0, .08); border-radius: 12px; }}
+        .sc-item:hover {{ border-color: var(--primary-color); }}
+        /* רקע לבן גם במצב כהה: לתמונות המוצר יש רקע לבן משלהן */
+        .sc-item .ph {{ aspect-ratio: 1; background: #fff; border-radius: 8px; display: grid; place-items: center;
+                       overflow: hidden; color: #6B7F75; font-size: .85rem; }}
+        .sc-item .ph img {{ max-width: 88%; max-height: 88%; width: auto; height: auto; object-fit: contain; }}
+        .sc-item h3 {{ font-size: 1rem; line-height: 1.35; margin: 0; }}
+        .sc-item h3 a {{ color: var(--secondary-color); }}
+        .sc-item p {{ margin: 0; color: var(--text-color); font-size: .9rem; line-height: 1.55; }}
+        .more {{ display: inline-block; margin-top: 18px; font-weight: 700; color: var(--secondary-color); }}
+        .sc-more {{ margin-top: 40px; }}
+        .chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+        .chips a {{ padding: 7px 14px; border: 1px solid rgba(0, 0, 0, .08); border-radius: 999px;
+                   background: var(--white); color: var(--secondary-color); font-size: .92rem; font-weight: 600; }}
+        .chips a:hover {{ border-color: var(--primary-color); }}
+        @media (max-width: 820px) {{
+            .sc-page h1 {{ font-size: 1.55rem; }}
+            .sc-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }}
+            .sc-btn {{ flex: 1 1 100%; }}
+        }}
     </style>
 </head>
 
 <body>
-    <header class="site">
-        <div class="wrap">
-            <a href="/">אהרוני שיווק והפצה</a>
-            <a href="tel:036346236">03-6346236</a>
-        </div>
-    </header>
+    <site-header></site-header>
 
-    <div class="wrap">
+    <main class="container sc-page">
         <nav class="crumbs" aria-label="breadcrumb">
             <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
             <a href="/catalog/{parent}/">{escape(parent_name)}</a> &laquo; {escape(cfg['h1'])}
@@ -1441,34 +1473,30 @@ def generate_catalog_subcategory_pages():
         <h1>{escape(cfg['h1'])}</h1>
         <p class="lead">{escape(cfg['intro'])}</p>
 
-        <div class="ctas">
-            <a class="btn btn-wa" href="https://wa.me/{CATALOG_WHATSAPP}?text={wa}"
-               target="_blank" rel="noopener">בקש הצעת מחיר בוואטסאפ</a>
-            <a class="btn btn-cat" href="/catalog/{parent}/">להזמנה מהקטלוג</a>
+        <div class="sc-ctas">
+            <a class="sc-btn sc-btn-wa" href="https://wa.me/{CATALOG_WHATSAPP}?text={wa}"
+               target="_blank" rel="noopener">{WA_ICON}בקש הצעת מחיר בוואטסאפ</a>
+            <a class="sc-btn sc-btn-cat" href="/catalog/{parent}/">להזמנה מהקטלוג</a>
         </div>
 
         <section class="sc-list">
             <h2>המוצרים בקטגוריה</h2>
+            <div class="sc-grid">
 {cards}
+            </div>
             <a class="more" href="/catalog/{parent}/">לכל המוצרים ב{escape(parent_name)} &laquo;</a>
         </section>
 
-        <section>
+        <section class="sc-more">
             <h2>קטגוריות נוספות</h2>
             <div class="chips">
 {siblings}
             </div>
         </section>
-    </div>
+    </main>
 
-    <footer class="site">
-        <div class="wrap">
-            <div>אהרוני שיווק והפצה &middot; אור יהודה &middot;
-                <a href="tel:036346236">03-6346236</a></div>
-            <div><a href="/catalog/">קטלוג מוצרים</a> &middot; <a href="/about/">אודות</a> &middot;
-                <a href="/contact/">צור קשר</a></div>
-        </div>
-    </footer>
+    <site-footer></site-footer>
+    <script src="{SITE_COMPONENTS_JS}"></script>
 </body>
 
 </html>
@@ -1599,8 +1627,8 @@ def bake_catalog_product_index():
 
 
 def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
-    """HTML של דף מוצר בקטלוג העסקי. קליל בכוונה — בלי app.js ובלי style.css,
-    ולכן שינוי כאן לא מחייב העלאת פרמטרי גרסה."""
+    """HTML של דף מוצר בקטלוג העסקי, במעטפת של האתר (הדר, פוטר, site.css, components.js).
+    בלי app.js ובלי style.css, ולכן שינוי כאן לא מחייב העלאת פרמטרי הגרסה שלהם."""
     from urllib.parse import quote
     from xml.sax.saxutils import escape
 
@@ -1665,17 +1693,18 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
 
     related_html = ''
     if related:
-        links = '\n'.join(
-            f'      <a class="chip" href="/catalog/product/{quote(slugs[o["id"]])}/">{escape(o["name"])}</a>'
+        cards = '\n'.join(
+            f'''      <a class="rel-card" href="/catalog/product/{quote(slugs[o["id"]])}/">
+        <span class="ph">{_product_thumb(o)}</span>{escape(o["name"])}</a>'''
             for o in related)
         related_html = f'''
-  <section class="related">
-    <h2>מוצרים נוספים בקטגוריית {escape(cat)}</h2>
-    <div class="chips">
-{links}
-    </div>
-    <p><a class="more" href="{escape(cat_url)}">לכל המוצרים בקטגוריה &laquo;</a></p>
-  </section>'''
+        <section class="related">
+            <h2>מוצרים נוספים בקטגוריית {escape(cat)}</h2>
+            <div class="rel-grid">
+{cards}
+            </div>
+            <a class="more" href="{escape(cat_url)}">לכל המוצרים בקטגוריה &laquo;</a>
+        </section>'''
 
     desc_html = f'    <p class="p-desc">{escape(desc)}</p>\n' if desc else ''
 
@@ -1703,91 +1732,90 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
     <script type="application/ld+json">
 {json.dumps(breadcrumb, ensure_ascii=False, indent=2)}
     </script>
+{SITE_HEAD_ASSETS}
     <style>
-        :root {{ --primary: #639C7D; --dark: #1A4231; --ink: #23302a; --muted: #5c6b63; --line: #e3ebe6; }}
-        * {{ box-sizing: border-box; }}
-        body {{ margin: 0; font-family: 'Assistant', 'Heebo', Arial, sans-serif; color: var(--ink);
-               background: #fff; line-height: 1.7; }}
-        a {{ color: var(--dark); }}
-        .wrap {{ max-width: 1000px; margin: 0 auto; padding: 0 16px; }}
-        header.site {{ background: var(--dark); color: #fff; padding: 14px 0; }}
-        header.site .wrap {{ display: flex; align-items: center; justify-content: space-between; gap: 12px;
-                            flex-wrap: wrap; }}
-        header.site a {{ color: #fff; text-decoration: none; font-weight: 700; }}
-        .crumbs {{ font-size: .9rem; color: var(--muted); padding: 14px 0; }}
-        .crumbs a {{ color: var(--muted); }}
-        .p-main {{ display: grid; grid-template-columns: 420px 1fr; gap: 32px; align-items: start;
-                  padding-bottom: 28px; }}
-        .p-img {{ width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; }}
-        .p-noimg {{ width: 100%; aspect-ratio: 1; border: 1px dashed var(--line); border-radius: 10px;
-                   display: flex; align-items: center; justify-content: center; color: var(--muted); }}
-        h1 {{ font-size: 1.8rem; margin: 0 0 10px; color: var(--dark); }}
-        .p-desc {{ font-size: 1.05rem; }}
-        dl.specs {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 18px 0; padding: 0; }}
-        .spec {{ border-bottom: 1px solid var(--line); padding-bottom: 6px; }}
-        .spec dt {{ font-size: .82rem; color: var(--muted); }}
-        .spec dd {{ margin: 0; font-weight: 600; }}
-        .ctas {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }}
-        .btn {{ flex: 1 1 220px; text-align: center; padding: 13px 18px; border-radius: 8px;
-               text-decoration: none; font-weight: 700; border: 2px solid var(--dark); }}
-        .btn-wa {{ background: var(--dark); color: #fff; }}
-        .btn-cat {{ background: #fff; color: var(--dark); }}
-        .note {{ color: var(--muted); font-size: .92rem; margin-top: 12px; }}
-        .related {{ border-top: 1px solid var(--line); padding: 22px 0 8px; }}
-        .related h2 {{ font-size: 1.15rem; color: var(--dark); }}
-        .chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
-        .chip {{ display: inline-block; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
-                text-decoration: none; font-size: .9rem; background: #f6faf8; }}
-        .more {{ font-weight: 700; text-decoration: none; }}
-        footer.site {{ background: var(--dark); color: #fff; margin-top: 30px; padding: 22px 0; }}
-        footer.site a {{ color: #cfe6d9; }}
+        /* דף מוצר במעטפת של האתר (הדר, פוטר, פונטים ו-site.css) — 27.10.26.
+           עד אז היה לו הדר ופוטר משלו, בלי לוגו ובלי תפריט, והוא נראה כמו אתר אחר. */
+        /* padding-block בלבד: padding מלא דרס את השוליים הצדדיים של .container */
+        .pp {{ padding-block: 4px 56px; }}
+        .crumbs {{ font-size: .9rem; color: var(--text-color); padding: 18px 0 16px; }}
+        .crumbs a {{ color: var(--text-color); }}
+        .p-main {{ display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 40px;
+                  align-items: start; }}
+        /* רקע לבן גם במצב כהה: לתמונות המוצר יש רקע לבן משלהן */
+        .p-photo {{ background: #fff; border: 1px solid rgba(0, 0, 0, .08); border-radius: 14px;
+                   padding: 18px; aspect-ratio: 1; display: grid; place-items: center; }}
+        .p-photo img {{ max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }}
+        .p-noimg {{ color: #6B7F75; }}
+        .p-info h1 {{ font-size: 2rem; line-height: 1.2; color: var(--secondary-color); margin: 0 0 12px; }}
+        .p-desc {{ font-size: 1.08rem; line-height: 1.75; color: var(--text-color); }}
+        dl.specs {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin: 22px 0; padding: 0; }}
+        .spec {{ border-bottom: 1px solid rgba(0, 0, 0, .08); padding-bottom: 8px; }}
+        /* --text-color ולא --text-light: האפור-ירוק על הרקע הבהיר הוא 4.08 */
+        .spec dt {{ font-size: .85rem; color: var(--text-color); }}
+        .spec dd {{ margin: 0; font-weight: 700; color: var(--secondary-color); }}
+        .p-ctas {{ display: flex; flex-wrap: wrap; gap: 12px; }}
+        .p-btn {{ flex: 1 1 220px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+                 padding: 14px 18px; border-radius: 8px; font-weight: 700; font-size: 1.05rem;
+                 border: 2px solid #1A4231; }}
+        .p-btn svg {{ width: 20px; height: 20px; flex: none; }}
+        .p-btn-wa {{ background: #1A4231; color: #fff; }}
+        .p-btn-cat {{ background: transparent; color: var(--secondary-color); border-color: var(--secondary-color); }}
+        .p-btn:hover {{ filter: brightness(1.2); }}
+        [data-theme="dark"] .p-btn-wa {{ background: #8FD6A3; color: #1A4231; border-color: #8FD6A3; }}
+        .p-note {{ color: var(--text-color); font-size: .95rem; margin-top: 14px; }}
+        .related {{ margin-top: 48px; padding-top: 28px; border-top: 1px solid rgba(0, 0, 0, .08); }}
+        .related h2 {{ font-size: 1.35rem; color: var(--secondary-color); margin-bottom: 16px; }}
+        .rel-grid {{ display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }}
+        .rel-card {{ display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--white);
+                    border: 1px solid rgba(0, 0, 0, .08); border-radius: 12px; color: var(--secondary-color);
+                    font-weight: 600; font-size: .92rem; line-height: 1.35; }}
+        .rel-card:hover {{ border-color: var(--primary-color); }}
+        .rel-card .ph {{ aspect-ratio: 1; background: #fff; border-radius: 8px; display: grid; place-items: center;
+                        overflow: hidden; color: #6B7F75; font-size: .8rem; }}
+        .rel-card .ph img {{ max-width: 90%; max-height: 90%; width: auto; height: auto; object-fit: contain; }}
+        .more {{ display: inline-block; margin-top: 18px; font-weight: 700; color: var(--secondary-color); }}
         @media (max-width: 820px) {{
             .p-main {{ grid-template-columns: 1fr; gap: 20px; }}
-            dl.specs {{ grid-template-columns: 1fr; }}
+            .p-photo {{ max-width: 360px; width: 100%; margin-inline: auto; }}
+            .p-info h1 {{ font-size: 1.55rem; }}
+            .rel-grid {{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
+        }}
+        @media (max-width: 480px) {{
+            .rel-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
         }}
     </style>
 </head>
 
 <body>
-    <header class="site">
-        <div class="wrap">
-            <a href="/">אהרוני שיווק והפצה</a>
-            <a href="tel:036346236">03-6346236</a>
-        </div>
-    </header>
+    <site-header></site-header>
 
-    <div class="wrap">
+    <main class="container pp">
         <nav class="crumbs" aria-label="breadcrumb">
             <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
             <a href="{escape(cat_url)}">{escape(cat or 'מוצרים')}</a> &laquo; {escape(name)}
         </nav>
 
         <article class="p-main">
-            <div>{img_html}</div>
-            <div>
+            <div class="p-photo">{img_html}</div>
+            <div class="p-info">
                 <h1>{escape(name)}</h1>
 {desc_html}                <dl class="specs">
 {specs_html}
                 </dl>
-                <div class="ctas">
-                    <a class="btn btn-wa" href="{escape(wa_cta)}" target="_blank" rel="noopener">בקש הצעת מחיר בוואטסאפ</a>
-                    <a class="btn btn-cat" href="{escape(catalog_cta)}">הוסף להזמנה בקטלוג</a>
+                <div class="p-ctas">
+                    <a class="p-btn p-btn-wa" href="{escape(wa_cta)}" target="_blank" rel="noopener">{WA_ICON}בקש הצעת מחיר בוואטסאפ</a>
+                    <a class="p-btn p-btn-cat" href="{escape(catalog_cta)}">הוסף להזמנה בקטלוג</a>
                 </div>
-                <p class="note">אספקה סיטונאית לעסקים, מוסדות ומסעדות באור יהודה, בקעת אונו וגוש דן.
+                <p class="p-note">אספקה סיטונאית לעסקים, מוסדות ומסעדות באור יהודה, בקעת אונו וגוש דן.
                     המחירים ניתנים בהצעת מחיר אישית לפי כמות.</p>
             </div>
         </article>
 {related_html}
-    </div>
+    </main>
 
-    <footer class="site">
-        <div class="wrap">
-            <div>אהרוני שיווק והפצה &middot; אור יהודה &middot;
-                <a href="tel:036346236">03-6346236</a></div>
-            <div><a href="/catalog/">קטלוג מוצרים</a> &middot; <a href="/about/">אודות</a> &middot;
-                <a href="/contact/">צור קשר</a></div>
-        </div>
-    </footer>
+    <site-footer></site-footer>
+    <script src="{SITE_COMPONENTS_JS}"></script>
 </body>
 
 </html>
