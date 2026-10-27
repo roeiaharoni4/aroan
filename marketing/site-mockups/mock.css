@@ -1,0 +1,134 @@
+/* כיווני עיצוב לדף הבית (27.10.26) — טיוטות בלבד, לא חלק מהאתר.
+   הצבעים והפונטים זהים לאתר ולמודעות המטא. */
+:root {
+    --primary: #639C7D;
+    --primary-dark: #1A4231;
+    --primary-light: #EAF3EE;
+    --primary-pastel: #8FD6A3;
+    --mint: #F2F6F3;
+    --ink: #1F2D26;
+    --muted: #4E5F56;
+    --line: #DDE7E1;
+    --white: #fff;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(26, 66, 49, .06), 0 6px 24px rgba(26, 66, 49, .07);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: "Assistant", "Heebo", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--white);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 24px; }
+h1, h2, h3 { font-family: "Heebo", "Assistant", sans-serif; line-height: 1.15; }
+
+/* --- רצועה עליונה + כותרת (כמו באתר) --- */
+.utility { background: var(--primary-dark); color: #DFE9E3; font-size: .85rem; }
+.utility .wrap { display: flex; justify-content: space-between; align-items: center; height: 36px; }
+.utility a { font-weight: 700; color: #fff; }
+.site-head { background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+.site-head .wrap { display: flex; align-items: center; gap: 28px; height: 72px; }
+.site-head .logo { height: 48px; width: auto; }
+.site-head nav { display: flex; gap: 22px; font-weight: 600; font-size: .98rem; }
+.site-head nav a.on { color: var(--primary-dark); box-shadow: inset 0 -2px 0 var(--primary); }
+.site-head .head-cta { margin-inline-start: auto; }
+
+/* --- כפתורים --- */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: 700 1rem/1 "Assistant", sans-serif; padding: 14px 22px; border-radius: 999px;
+    border: 2px solid transparent; cursor: pointer; white-space: nowrap;
+}
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn-dark { background: var(--primary-dark); color: #fff; }
+.btn-pastel { background: var(--primary-pastel); color: var(--primary-dark); }
+.btn-ghost { background: transparent; color: var(--primary-dark); border-color: var(--primary-dark); }
+.btn-sm { padding: 9px 16px; font-size: .92rem; }
+.link-phone { font-weight: 700; color: var(--primary-dark); border-bottom: 2px solid var(--primary-pastel); }
+
+/* --- רכיבים משותפים --- */
+.chip { display: inline-block; background: var(--primary-light); color: var(--primary-dark); font-weight: 700; font-size: .92rem; padding: 7px 16px; border-radius: 999px; }
+.eyebrow { color: var(--primary); font-weight: 800; font-size: .9rem; letter-spacing: .02em; }
+.section { padding: 72px 0; }
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.section-head h2 { font-size: 2rem; font-weight: 900; color: var(--primary-dark); }
+.section-head h2 em { font-style: normal; color: var(--primary); }
+.section-head p { color: var(--muted); }
+.card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); }
+.two-tone em { font-style: normal; color: var(--primary); }
+
+/* אריח מוצרים בסגנון המודעות */
+.tile { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 16px 14px; display: flex; flex-direction: column; align-items: center; }
+.tile .shots { height: 130px; display: flex; align-items: flex-end; justify-content: center; gap: 4px; }
+.tile .shots img { height: auto; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0,0,0,.08)); }
+.tile b { margin-top: 10px; font: 800 1.05rem/1.2 "Heebo", sans-serif; color: var(--primary-dark); }
+
+/* קטגוריה עם תמונה */
+.cat { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; transition: border-color .15s; }
+.cat:hover { border-color: var(--primary); }
+.cat .ph { aspect-ratio: 4 / 3; background: #fff; border-radius: 10px; display: grid; place-items: center; overflow: hidden; }
+.cat .ph img { max-height: 100%; object-fit: contain; }
+.cat b { font: 800 1.05rem/1.2 "Heebo", sans-serif; color: var(--primary-dark); }
+.cat span { color: var(--muted); font-size: .9rem; }
+.cat-all { background: var(--primary-dark); border-color: var(--primary-dark); justify-content: center; align-items: center; text-align: center; }
+.cat-all b { color: #fff; font-size: 1.15rem; }
+.cat-all span { color: #DFE9E3; }
+
+/* שלושה צעדים */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.step { padding: 22px; display: flex; gap: 16px; align-items: flex-start; }
+.step .n { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--primary-dark); color: #fff; display: grid; place-items: center; font: 900 1.3rem "Heebo", sans-serif; }
+.step h3 { font-size: 1.2rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 4px; }
+.step p { color: var(--muted); font-size: .98rem; }
+
+/* ביקורות — מקום שמור לטקסט אמיתי מגוגל */
+.reviews { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.review { padding: 22px; border: 1px dashed #B9CDBF; background: #FBFDFB; border-radius: var(--radius); }
+.review .stars { color: #D9A520; letter-spacing: 2px; font-size: 1.05rem; }
+.review p { color: var(--muted); margin: 8px 0 12px; font-style: italic; }
+.review small { color: var(--primary); font-weight: 700; }
+.placeholder-note { display: inline-block; font-size: .8rem; color: #8A6D1F; background: #FFF6DB; border-radius: 6px; padding: 2px 8px; margin-top: 10px; }
+
+/* מפה — חיתוך של פוסט המפה מהמטא (באתר: SVG) */
+.map-crop { aspect-ratio: 928 / 830; border-radius: var(--radius); background: url("../meta/img/post_area.png") no-repeat; background-size: 116.4% auto; background-position: 50% 71.5%; box-shadow: var(--shadow); }
+.cities { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.cities span { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px; font-size: .9rem; font-weight: 600; }
+
+/* טופס */
+.form { padding: 26px; display: grid; gap: 12px; }
+.form h3 { font-size: 1.35rem; font-weight: 900; color: var(--primary-dark); }
+.form label { font-size: .88rem; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
+.form .in { width: 100%; border: 1px solid #CBD8D0; border-radius: 10px; padding: 12px 14px; font: 1rem "Assistant", sans-serif; background: #fff; color: #8B998F; }
+.form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form .fine { font-size: .8rem; color: var(--muted); }
+
+/* פוטר — ירוק כהה (לבן על #639C7D היה 3.19) */
+.foot { background: var(--primary-dark); color: #DFE9E3; padding: 44px 0 26px; font-size: .95rem; }
+.foot .cols { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 28px; }
+.foot h4 { color: #fff; font: 800 1rem "Heebo", sans-serif; margin-bottom: 10px; }
+.foot li { list-style: none; margin-bottom: 6px; }
+.foot a { color: #DFE9E3; }
+.foot .copy { border-top: 1px solid rgba(223,233,227,.18); margin-top: 28px; padding-top: 16px; font-size: .85rem; }
+
+/* תווית הכיוון בראש העמוד (רק בטיוטה) */
+.mock-label { position: fixed; bottom: 14px; left: 14px; z-index: 50; background: #111; color: #fff; font: 700 .85rem "Assistant", sans-serif; padding: 7px 12px; border-radius: 8px; opacity: .85; }
+
+@media (max-width: 860px) {
+    .wrap { padding-inline: 16px; }
+    .site-head nav { display: none; }
+    .site-head .wrap { height: 62px; }
+    .site-head .logo { height: 40px; }
+    .utility .area { display: none; }
+    .section { padding: 48px 0; }
+    .section-head { flex-direction: column; align-items: flex-start; }
+    .section-head h2 { font-size: 1.6rem; }
+    .steps, .reviews { grid-template-columns: 1fr; }
+    .foot .cols { grid-template-columns: 1fr 1fr; }
+    .form .row { grid-template-columns: 1fr; }
+}
