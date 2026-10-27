@@ -94,239 +94,477 @@
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap"></noscript>
     <link rel="stylesheet" href="css/site.css">
     <style>
+        /* דף הבית — כיוון ב׳ (27.10.26): טופס הצעת המחיר במסך הראשון, ומתחתיו עובדות
+           במקום סיסמאות. הטיוטה שאושרה: marketing/site-mockups/home-b.html */
         .hero {
             background: linear-gradient(135deg, #1A4231 0%, #2C5C46 60%, #39705A 100%);
-            padding: 70px 0;
-            display: flex;
-            align-items: center;
+            padding: 56px 0;
             color: #ffffff;
         }
 
         .hero-grid {
             display: grid;
-            grid-template-columns: 1.4fr 1fr;
-            gap: 50px;
+            grid-template-columns: minmax(0, 1fr) 440px;
+            gap: 48px;
             align-items: center;
+        }
+
+        .hero-chip {
+            display: inline-block;
+            background: rgba(143, 214, 163, 0.18);
+            color: #8FD6A3;
+            font-weight: 700;
+            font-size: 0.92rem;
+            padding: 7px 16px;
+            border-radius: 999px;
         }
 
         .hero-content h1 {
             font-size: 3rem;
             color: #ffffff;
-            margin-bottom: 16px;
+            margin: 16px 0 18px;
             line-height: 1.15;
         }
 
-        .hero-content p {
-            font-size: 1.25rem;
-            margin-bottom: 30px;
-            max-width: 560px;
-            opacity: 0.88;
-        }
-
-        .hero-facts {
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 8px;
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 22px;
-        }
-
-        .hero-fact b {
-            display: block;
-            font-family: 'Heebo', sans-serif;
-            font-size: 1.35rem;
-            color: #8FD6A3;
-            margin-bottom: 3px;
-        }
-
-        .hero-fact span {
-            font-size: 0.95rem;
-            opacity: 0.85;
-        }
-
-        .features {
-            padding: 80px 0;
-            background-color: var(--white);
-        }
-
-        .features-grid {
+        .hero-points {
+            list-style: none;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 40px;
-            text-align: center;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+            font-size: 1.12rem;
+            color: #E6EFE9;
         }
 
-        .feature-card {
-            padding: 40px;
-            border-radius: 8px;
-            background-color: var(--bg-light);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .feature-icon {
-            margin-bottom: 20px;
-            display: inline-block;
-        }
-
-        .feature-icon img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            aspect-ratio: 1/1;
-        }
-
-        .feature-card h3 {
-            margin-bottom: 15px;
-            font-size: 1.5rem;
-        }
-
-        .cta-section {
-            padding: 80px 0;
-            background-color: var(--primary-color);
-            color: var(--white);
-            text-align: center;
-        }
-
-        .cta-section h2 {
-            color: var(--white);
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-        }
-
-        /* Hero Search Styles */
-        .hero-search {
+        .hero-points li {
             display: flex;
             gap: 10px;
-            max-width: 560px;
+            align-items: center;
         }
 
-        .hero-search input {
-            flex: 1;
-            padding: 14px 18px;
-            border-radius: 6px;
-            border: none;
-            font-size: 1.05rem;
+        .hero-points li::before {
+            content: "";
+            flex: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #8FD6A3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A4231' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") no-repeat center / 14px;
         }
 
-        .hero-search button {
-            padding: 14px 28px;
-            border-radius: 6px;
-            border: none;
-            background-color: #8FD6A3;
-            color: #1A4231;
-            font-weight: bold;
-            font-size: 1.05rem;
-            cursor: pointer;
-            transition: background 0.2s;
+        .hero-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 22px;
+            margin-top: 28px;
+            font-weight: 700;
         }
 
-        .hero-search button:hover {
-            background-color: #A8E0B8;
+        .hero-links a {
+            color: #ffffff;
+            border-bottom: 2px solid #8FD6A3;
+            padding-bottom: 2px;
         }
 
-        /* Visual Categories Styles */
-        .section-title {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 50px;
-            color: var(--secondary-color);
-        }
-
-        .categories-section {
-            padding: 80px 0;
-            background-color: var(--bg-light);
-        }
-
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 30px;
-            text-align: center;
-        }
-
-        .category-card {
-            display: block;
-            text-decoration: none;
+        .hero-form {
+            padding: 26px;
             color: var(--text-color);
         }
 
-        .category-card:hover h3 {
+        .hero-form h2 {
+            font-size: 1.35rem;
+            color: var(--secondary-color);
+            margin-bottom: 14px;
+        }
+
+        .hero-form .contact-form-ajax {
+            gap: 12px;
+        }
+
+        .hero-form .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* לבן על הירוק הבינוני היה 3.19 — הירוק הכהה נותן 11.2 */
+        .hero-form .btn-form-submit,
+        .cat-search button {
+            background-color: #1A4231;
+            color: #ffffff;
+        }
+
+        .hero-form .btn-form-submit:hover,
+        .cat-search button:hover {
+            background-color: #1A4231;
+            filter: brightness(1.25);
+        }
+
+        /* במצב כהה הירוק הכהה נבלע ברקע הכרטיס — פסטל עם טקסט כהה, כמו בעמוד הסל */
+        [data-theme="dark"] .hero-form .btn-form-submit,
+        [data-theme="dark"] .cat-search button {
+            background-color: #8FD6A3;
+            color: #1A4231;
+        }
+
+        .facts-strip {
+            background-color: var(--white);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .facts-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .fact {
+            padding: 26px 18px;
+            text-align: center;
+            border-inline-start: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .fact:first-child {
+            border-inline-start: 0;
+        }
+
+        .fact b {
+            display: block;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1.9rem;
+            line-height: 1.1;
+            color: var(--secondary-color);
+        }
+
+        /* --text-color ולא --text-light: האפור-ירוק על לבן הוא 4.27, מתחת לסף לטקסט רגיל */
+        .fact span {
+            color: var(--text-color);
+            font-size: 0.95rem;
+        }
+
+        .home-section {
+            padding: 72px 0;
+        }
+
+        .home-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .home-head h2 {
+            font-size: 2rem;
+            color: var(--secondary-color);
+            margin: 0;
+        }
+
+        .cat-search {
+            display: flex;
+            gap: 8px;
+            width: min(420px, 100%);
+        }
+
+        .cat-search input {
+            flex: 1;
+            min-width: 0;
+            padding: 11px 18px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 999px;
+            font: inherit;
+            background-color: var(--white);
+            color: var(--text-color);
+        }
+
+        .cat-search button {
+            border: none;
+            border-radius: 999px;
+            padding: 11px 20px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .home-cats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .home-cat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px;
+            text-align: center;
+            background-color: var(--white);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            color: var(--secondary-color);
+            font-weight: 700;
+            transition: border-color 0.15s;
+        }
+
+        .home-cat:hover {
+            border-color: var(--primary-color);
+        }
+
+        /* רקע לבן גם במצב כהה: לתמונות המוצר יש רקע לבן משלהן */
+        .home-cat .ph {
+            width: 100%;
+            aspect-ratio: 1;
+            display: grid;
+            place-items: center;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .home-cat .ph img {
+            max-width: 86%;
+            max-height: 86%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .home-cat-all {
+            justify-content: center;
+            background-color: #1A4231;
+            border-color: #1A4231;
+            color: #ffffff;
+        }
+
+        .home-area {
+            background: #F2F6F3;
+        }
+
+        [data-theme="dark"] .home-area {
+            background: #14231b;
+        }
+
+        .area-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .area-eyebrow {
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .home-area h2 {
+            font-size: 2.3rem;
+            color: var(--secondary-color);
+            margin: 4px 0 0;
+        }
+
+        .home-area h2 span {
             color: var(--primary-color);
         }
 
-        .category-card img {
-            width: 150px;
-            height: 150px;
-            object-fit: contain;
-            border-radius: 10px;
-            background: var(--white);
-            padding: 20px;
-            border: 1px solid rgba(0, 0, 0, 0.07);
-            margin-bottom: 15px;
-            aspect-ratio: 1/1;
+        .home-area p {
+            color: var(--text-color);
+            font-size: 1.1rem;
+            margin-top: 10px;
         }
 
-        .category-card h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
-        .more-icon {
-            width: 150px;
-            height: 150px;
-            border-radius: 10px;
-            background: var(--primary-color);
-            color: var(--white);
+        .area-cities {
             display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        .area-cities a {
+            background-color: var(--white);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 999px;
+            padding: 5px 13px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+
+        .area-cities a:hover {
+            border-color: var(--primary-color);
+        }
+
+        .area-map {
+            width: 100%;
+            height: auto;
+            border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(26, 66, 49, 0.06), 0 6px 24px rgba(26, 66, 49, 0.07);
+        }
+
+        .home-steps {
+            padding: 48px 0;
+            text-align: center;
+        }
+
+        .home-steps h2 {
+            font-size: 1.6rem;
+            color: var(--secondary-color);
+            margin-bottom: 18px;
+        }
+
+        .steps-row {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 15px;
-            padding: 40px;
+            gap: 10px 14px;
+            margin: 0;
+            padding: 0;
+            font-weight: 700;
+            color: var(--secondary-color);
         }
 
-        /* חץ SVG לבן (היה תמונה עם רקע לבן אטום, שהפילטר הפך לריבוע לבן ריק) */
-        .more-icon svg {
-            width: 100%;
-            height: 100%;
+        .steps-row li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
+        .steps-row .n {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #1A4231;
+            color: #ffffff;
+            display: inline-grid;
+            place-items: center;
+            font-family: 'Heebo', sans-serif;
+        }
 
+        .steps-row .arrow {
+            color: var(--primary-color);
+            font-size: 1.3rem;
+        }
 
-        /* Mobile Optimization */
+        .about-seo-section {
+            padding: 64px 0;
+            background-color: var(--white);
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .about-seo-section h2 {
+            font-size: 1.7rem;
+            color: var(--secondary-color);
+            margin-bottom: 22px;
+        }
+
+        .seo-text-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+        }
+
+        .seo-text-col h3 {
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+            margin-bottom: 8px;
+        }
+
+        .seo-text-col p {
+            font-size: 1.02rem;
+            line-height: 1.75;
+            color: var(--text-color);
+            margin-bottom: 14px;
+        }
+
+        .seo-text-col a {
+            color: var(--secondary-color);
+            border-bottom: 1px solid var(--accent-color);
+        }
+
         @media (max-width: 768px) {
-            .hero-grid {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
-
             .hero {
-                padding: 45px 0;
+                padding: 26px 0 30px;
             }
 
-            .hero-search {
-                flex-direction: column;
+            .hero-grid,
+            .area-grid,
+            .seo-text-grid {
+                grid-template-columns: 1fr;
+                gap: 22px;
             }
 
             .hero-content h1 {
-                font-size: 2rem;
+                font-size: 2.05rem;
             }
 
-            .hero-content p {
-                font-size: 1.1rem;
+            .hero-points {
+                font-size: 1rem;
             }
 
-            .categories-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .hero-links {
+                margin-top: 18px;
+                gap: 10px 16px;
             }
 
-            .category-card img,
-            .more-icon {
-                width: 100px;
-                height: 100px;
-                padding: 10px;
-                font-size: 2rem;
+            .hero-form {
+                padding: 20px;
+            }
+
+            .hero-form .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .facts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .fact {
+                padding: 16px 10px;
+                border-top: 1px solid rgba(0, 0, 0, 0.08);
+            }
+
+            .fact:nth-child(odd) {
+                border-inline-start: 0;
+            }
+
+            .fact b {
+                font-size: 1.5rem;
+            }
+
+            .home-section {
+                padding: 48px 0;
+            }
+
+            .home-head h2 {
+                font-size: 1.6rem;
+            }
+
+            .home-cats-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .home-cat {
+                font-size: 0.85rem;
+            }
+
+            .home-area h2 {
+                font-size: 1.8rem;
+            }
+
+            .home-steps {
+                text-align: start;
+            }
+
+            .steps-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .steps-row .arrow {
+                display: none;
             }
         }
     </style>
@@ -337,127 +575,138 @@
     <section class="hero">
         <div class="container hero-grid">
             <div class="hero-content">
+                <span class="hero-chip">מעל 20 שנה · לעסקים ומוסדות</span>
                 <h1>ספק סיטונאי לחומרי ניקוי, נייר וחד־פעמי לעסקים</h1>
-                <p>כל פתרונות הניקיון,
-                    הכלים החד-פעמיים והציוד המקצועי תחת קורת גג אחת — למשרדים, מפעלים, מסעדות ומוסדות.</p>
-                <!-- Hero Search -->
-                <form action="/catalog/" method="GET" class="hero-search"><input type="text" name="search"
-                        placeholder="מה תרצו להזמין היום? (למשל: אקונומיקה, כוסות...)" aria-label="חיפוש מוצרים"
-                        required><button type="submit">חפש</button></form>
-                <div class="hero-cta-row" style="margin-top: 25px; display: flex; gap: 12px; flex-wrap: wrap;">
-                    <a href="/catalog/" class="btn btn-primary">למעבר לקטלוג המלא</a>
+                <ul class="hero-points">
+                    <li>מחירון סיטונאי למשרדים, מפעלים, מוסדות ומסעדות</li>
+                    <li>כ-200 מוצרים — ספק אחד לכל ההזמנה</li>
+                    <li>אספקה מהמחסן באור יהודה, מיבנה ועד רעננה</li>
+                </ul>
+                <div class="hero-links">
                     <a href="https://wa.me/972526000158?text=%D7%A9%D7%9C%D7%95%D7%9D%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8"
-                        target="_blank" rel="noopener" class="btn btn-primary">דברו איתנו בוואטסאפ</a>
-                    <a href="tel:036346236" class="btn btn-outline" style="border-width: 2px;">03-6346236</a>
+                        target="_blank" rel="noopener">שלחו הודעה בוואטסאפ</a>
+                    <a href="tel:036346236">03-6346236</a>
+                    <a href="/catalog/">לקטלוג המוצרים</a>
                 </div>
             </div>
-            <div class="hero-facts">
-                <div class="hero-fact"><b>מעל 20 שנה בתחום</b><span>חומרי ניקוי, נייר, חד־פעמי, ציוד משרדי ועוד</span></div>
-                <div class="hero-fact"><b>המותגים המובילים בשוק</b><span>סנו, קימברלי קלארק, יעקובי, פיירי ועוד</span></div>
-                <div class="hero-fact"><b>משלוח עד בית העסק</b><span>אור יהודה, בקעת אונו, גוש דן והמרכז</span></div>
-            </div>
-        </div>
-    </section>
-    <!-- Visual Categories -->
-    <section class="categories-section">
-        <div class="container">
-            <h2 class="section-title">קטגוריות מובילות</h2>
-            <div class="categories-grid"><a href="/catalog/cleaning/" class="category-card"><img
-                        src="images/cat_cleaning.webp" alt="חומרי ניקיון" width="150" height="150" loading="lazy" decoding="async">
-                    <h3>חומרי ניקוי</h3>
-                </a><a href="/catalog/paper/" class="category-card"><img src="images/cat_paper.webp"
-                        alt="מוצרי נייר" width="150" height="150" loading="lazy" decoding="async">
-                    <h3>מוצרי נייר</h3>
-                </a><a href="/catalog/disposables/" class="category-card"><img
-                        src="images/cat_disposables.webp" alt="חד פעמי" width="150" height="150" loading="lazy" decoding="async">
-                    <h3>חד פעמי</h3>
-                </a><a href="/catalog/" class="category-card">
-                    <div class="more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
-                    <h3>לכל הקטגוריות</h3>
-                </a></div>
-        </div>
-    </section>
-    <section class="features">
-        <div class="container">
-            <div class="features-grid">
-                <div class="feature-card"><span class="feature-icon"><img src="images/icon_rocket.webp"
-                            alt="" width="60" height="60" loading="lazy" decoding="async"></span>
-                    <h3>משלוח</h3>
-                    <p>הזמינו היום וקבלו את הסחורה עד בית העסק.</p>
-                </div>
-                <div class="feature-card"><span class="feature-icon"><img src="images/icon_diamond.webp"
-                            alt="" width="60" height="60" loading="lazy" decoding="async"></span>
-                    <h3>איכות ללא פשרות</h3>
-                    <p>אנו עובדים עם המותגים המובילים בשוק כדי להבטיח תוצאות מושלמות.</p>
-                </div>
-                <div class="feature-card"><span class="feature-icon"><img src="images/icon_tag.webp"
-                            alt="" width="60" height="60" loading="lazy" decoding="async"></span>
-                    <h3>מחירים הוגנים</h3>
-                    <p>פתרונות סיטונאיים המותאמים לתקציב שלכם,
-                        ללא הפתעות.</p>
-                </div>
+            <div class="contact-form-container hero-form">
+                <h2>קבלו הצעת מחיר</h2>
+                <form class="contact-form-ajax">
+                    <!-- Honeypot spam prevention -->
+                    <input type="text" name="_honey" style="display:none">
+                    <input type="hidden" name="_subject" value="ליד חדש מדף הבית">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="hp-name">שם מלא <span style="color: red;">*</span></label>
+                            <input type="text" id="hp-name" name="name" required autocomplete="name">
+                        </div>
+                        <div class="form-group">
+                            <label for="hp-business">שם העסק</label>
+                            <input type="text" id="hp-business" name="business" autocomplete="organization">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hp-phone">טלפון <span style="color: red;">*</span></label>
+                        <input type="tel" id="hp-phone" name="phone" required placeholder="050-1234567" autocomplete="tel">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hp-message">מה תרצו שנספק לכם?</label>
+                        <textarea id="hp-message" name="message" rows="2" placeholder="למשל: נייר, חד פעמי וחומרי ניקוי למשרד"></textarea>
+                    </div>
+
+                    <div class="form-status-alert"></div>
+
+                    <button type="submit" class="btn-form-submit">שלחו לי הצעה</button>
+                </form>
             </div>
         </div>
     </section>
 
-    <!-- Brands Strip -->
-    <section class="brands-strip" style="padding: 45px 0; background-color: var(--bg-light); border-top: 1px solid rgba(0,0,0,0.05);">
-        <div class="container" style="text-align: center;">
-            <h2 style="font-size: 1.25rem; color: var(--text-light); font-weight: 600; margin-bottom: 25px;">המותגים המובילים שאנחנו מפיצים</h2>
-            <div style="display: flex; flex-wrap: wrap; gap: 12px 16px; justify-content: center; align-items: center;">
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">סנו</span>
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">יעקובי</span>
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">קימברלי קלארק</span>
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">פיירי</span>
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">פיניש</span>
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">דטול</span>
-                <span style="background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 10px 24px; font-weight: 700; font-size: 1.1rem; color: var(--secondary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.04);">זוהר דליה</span>
+    <section class="facts-strip" aria-label="עובדות על אהרוני שיווק והפצה">
+        <div class="container facts-grid">
+            <div class="fact"><b dir="ltr">20+</b><span>שנה בתחום</span></div>
+            <div class="fact"><b dir="ltr">~200</b><span>מוצרים בקטלוג</span></div>
+            <div class="fact"><b>11</b><span>קטגוריות</span></div>
+            <div class="fact"><b>היצירה 16</b><span>המחסן באור יהודה</span></div>
+        </div>
+    </section>
+
+    <section class="home-section">
+        <div class="container">
+            <div class="home-head">
+                <h2>מה אנחנו מספקים</h2>
+                <form action="/catalog/" method="GET" class="cat-search" role="search">
+                    <input type="search" name="search" placeholder="מה תרצו להזמין? (למשל: כוסות)" aria-label="חיפוש מוצרים" required>
+                    <button type="submit">חיפוש</button>
+                </form>
             </div>
+            <div class="home-cats-grid">
+                <a href="/catalog/disposables/" class="home-cat"><span class="ph"><img src="images/home/cup500.webp" alt="" width="233" height="320" loading="lazy" decoding="async"></span>חד פעמי ואריזות</a>
+                <a href="/catalog/cleaning/" class="home-cat"><span class="ph"><img src="images/home/kh7.webp" alt="" width="97" height="320" loading="lazy" decoding="async"></span>חומרי ניקוי</a>
+                <a href="/catalog/paper/" class="home-cat"><span class="ph"><img src="images/home/p5012.webp" alt="" width="320" height="252" loading="lazy" decoding="async"></span>מוצרי נייר</a>
+                <a href="/catalog/office-supplies/" class="home-cat"><span class="ph"><img src="images/home/a4.webp" alt="" width="233" height="320" loading="lazy" decoding="async"></span>ציוד משרדי</a>
+                <a href="/catalog/cleaning-accessories/" class="home-cat"><span class="ph"><img src="images/home/squeegee.webp" alt="" width="320" height="75" loading="lazy" decoding="async"></span>אביזרי ניקיון</a>
+                <a href="/catalog/bags/" class="home-cat"><span class="ph"><img src="images/home/bags_vest.webp" alt="" width="169" height="320" loading="lazy" decoding="async"></span>שקיות</a>
+                <a href="/catalog/dispensers/" class="home-cat"><span class="ph"><img src="images/מתקנים/מתקן%20לסבון%20ידיים%20סנו.webp" alt="" width="300" height="300" loading="lazy" decoding="async"></span>מתקנים</a>
+                <a href="/catalog/hygiene/" class="home-cat"><span class="ph"><img src="images/טיפוח%20והיגיינה/אבקת%20כביסה%207%20קג.webp" alt="" width="300" height="300" loading="lazy" decoding="async"></span>טיפוח והיגיינה</a>
+                <a href="/catalog/air-fresheners/" class="home-cat"><span class="ph"><img src="images/מבשמים/מבשם%20אויר%20-%20בלו%20דרים.webp" alt="" width="300" height="300" loading="lazy" decoding="async"></span>מבשמים</a>
+                <a href="/catalog/misc/" class="home-cat"><span class="ph"><img src="images/שונים/FUJICOM%20סוללות%20AAA%208%20יח.webp" alt="" width="300" height="300" loading="lazy" decoding="async"></span>שונים</a>
+                <a href="/catalog/crafts/" class="home-cat"><span class="ph"><img src="images/מוצרי%20יצירה/דפי%20בריסטול%20מנילה%20במגוון%20צבעים%20A4.webp" alt="" width="300" height="300" loading="lazy" decoding="async"></span>מוצרי יצירה</a>
+                <a href="/catalog/" class="home-cat home-cat-all">לכל הקטלוג</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-section home-area">
+        <div class="container area-grid">
+            <div>
+                <span class="area-eyebrow">אזור החלוקה</span>
+                <h2>מיבנה <span>ועד רעננה.</span></h2>
+                <p>המחסן שלנו ברחוב היצירה 16 באור יהודה, ומשם יוצאות ההזמנות לעסקים ולמוסדות בכל המרכז.</p>
+                <div class="area-cities">
+                    <a href="/or-yehuda/">אור יהודה</a>
+                    <a href="/yehud/">יהוד</a>
+                    <a href="/kiryat-ono/">קריית אונו</a>
+                    <a href="/tel-aviv/">תל אביב</a>
+                    <a href="/ramat-gan/">רמת גן</a>
+                    <a href="/givatayim/">גבעתיים</a>
+                    <a href="/bnei-brak/">בני ברק</a>
+                    <a href="/petah-tikva/">פתח תקווה</a>
+                    <a href="/holon/">חולון</a>
+                    <a href="/bat-yam/">בת ים</a>
+                    <a href="/rishon-lezion/">ראשון לציון</a>
+                    <a href="/herzliya/">הרצליה</a>
+                    <a href="/raanana/">רעננה</a>
+                    <a href="/rosh-haayin/">ראש העין</a>
+                    <a href="/lod/">לוד</a>
+                    <a href="/gush-dan/">גוש דן</a>
+                </div>
+            </div>
+            <img class="area-map" src="images/home/area-map.webp" width="928" height="830" loading="lazy" decoding="async"
+                alt="מפת אזור החלוקה: מאור יהודה ליבנה, ראשון לציון, חולון, בת ים, תל אביב, רמת גן, גבעתיים, בני ברק, קריית אונו, יהוד, פתח תקווה, ראש העין, לוד, הרצליה ורעננה">
+        </div>
+    </section>
+
+    <section class="home-steps">
+        <div class="container">
+            <h2>איך מזמינים?</h2>
+            <ol class="steps-row">
+                <li><span class="n">1</span>שולחים מה צריך — בוואטסאפ או מהקטלוג</li>
+                <li class="arrow" aria-hidden="true">←</li>
+                <li><span class="n">2</span>מקבלים הצעת מחיר על כל ההזמנה</li>
+                <li class="arrow" aria-hidden="true">←</li>
+                <li><span class="n">3</span>ההזמנה מגיעה אליכם</li>
+            </ol>
         </div>
     </section>
 
     <!-- Rich B2B/SEO Text Section for Google & AI Engines -->
-    <section class="about-seo-section" style="padding: 80px 0; background-color: var(--white); border-top: 1px solid rgba(0,0,0,0.05);">
+    <section class="about-seo-section">
         <div class="container">
-            <h2 class="section-title" style="text-align: center; margin-bottom: 40px; font-size: 2.2rem; position: relative; padding-bottom: 15px;">
-                אהרוני שיווק והפצה – ספק סיטונאי של חומרי ניקיון וחד פעמי במרכז
-            </h2>
-            <style>
-                .about-seo-section .section-title::after {
-                    content: '';
-                    position: absolute;
-                    bottom: 0;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    width: 80px;
-                    height: 3px;
-                    background-color: var(--accent-color);
-                }
-                .seo-text-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 40px;
-                    margin-top: 40px;
-                }
-                @media (max-width: 768px) {
-                    .seo-text-grid {
-                        grid-template-columns: 1fr;
-                        gap: 20px;
-                    }
-                }
-                .seo-text-col p {
-                    font-size: 1.1rem;
-                    line-height: 1.7;
-                    color: var(--text-color);
-                    margin-bottom: 20px;
-                }
-                .seo-text-col h3 {
-                    font-size: 1.4rem;
-                    color: var(--primary-color);
-                    margin-bottom: 15px;
-                    font-weight: 600;
-                }
-            </style>
+            <h2>אהרוני שיווק והפצה – ספק סיטונאי של חומרי ניקיון וחד פעמי במרכז</h2>
             <div class="seo-text-grid">
                 <div class="seo-text-col">
                     <h3>סל פתרונות אספקה מקיף לעסקים, משרדים ומפעלים</h3>
@@ -471,80 +720,8 @@
                 </div>
             </div>
         </div>
-    <!-- Lead Capture Section -->
-    <section class="lead-section">
-        <div class="container lead-grid">
-            <div class="lead-content">
-                <h2>השאירו פרטים ונחזור אליכם עם הצעה!</h2>
-                <p>מחפשים ספק אמין ושוטף של חומרי ניקוי, מוצרי נייר או חד-פעמי לעסק שלכם? מלאו את הפרטים ונשמח להתאים לכם פתרון סיטונאי משתלם במיוחד.</p>
-                <div class="lead-benefits">
-                    <div class="benefit-item">
-                        <span class="benefit-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
-                        <span>מחירים סיטונאיים הוגנים ללא דמי תיווך</span>
-                    </div>
-                    <div class="benefit-item">
-                        <span class="benefit-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
-                        <span>משלוח עד פתח העסק/משרד/מפעל</span>
-                    </div>
-                    <div class="benefit-item">
-                        <span class="benefit-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
-                        <span>מענה אנושי ושירות VIP אישי</span>
-                    </div>
-                </div>
-                <div class="switch-offer">
-                    <strong>כבר עובדים עם ספק אחר?</strong>
-                    <p>שלחו לנו בוואטסאפ צילום של ההזמנה או החשבונית האחרונה, ונחזיר אליכם הצעה מתחרה על אותם מוצרים.</p>
-                    <a class="switch-offer-btn" href="https://wa.me/972526000158?text=%D7%A9%D7%9C%D7%95%D7%9D%2C%20%D7%90%D7%A0%D7%97%D7%A0%D7%95%20%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D%20%D7%A2%D7%9D%20%D7%A1%D7%A4%D7%A7%20%D7%90%D7%97%D7%A8%20%D7%95%D7%A8%D7%95%D7%A6%D7%99%D7%9D%20%D7%94%D7%A6%D7%A2%D7%94%20%D7%9E%D7%AA%D7%97%D7%A8%D7%94.%20%D7%9E%D7%A6%D7%A8%D7%A4%D7%99%D7%9D%20%D7%A6%D7%99%D7%9C%D7%95%D7%9D%20%D7%A9%D7%9C%20%D7%94%D7%94%D7%96%D7%9E%D7%A0%D7%94%20%D7%94%D7%90%D7%97%D7%A8%D7%95%D7%A0%D7%94%3A" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7z"/></svg>שלחו צילום בוואטסאפ</a>
-                </div>
-            </div>
-            <div class="contact-form-container">
-                <form class="contact-form-ajax">
-                    <!-- Honeypot spam prevention -->
-                    <input type="text" name="_honey" style="display:none">
-                    <!-- Subject -->
-                    <input type="hidden" name="_subject" value="ליד חדש מדף הבית">
-                    
-                    <div class="form-group">
-                        <label for="hp-name">שם מלא <span style="color: red;">*</span></label>
-                        <input type="text" id="hp-name" name="name" required autocomplete="name">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="hp-business">שם העסק</label>
-                        <input type="text" id="hp-business" name="business" autocomplete="organization">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="hp-phone">טלפון ליצירת קשר <span style="color: red;">*</span></label>
-                        <input type="tel" id="hp-phone" name="phone" required placeholder="050-1234567">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="hp-email">אימייל (אופציונלי)</label>
-                        <input type="email" id="hp-email" name="email" placeholder="name@company.com">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="hp-message">מה תרצו שנספק לכם?</label>
-                        <textarea id="hp-message" name="message" rows="3" placeholder="פירוט קצר על סוג העסק והמוצרים המבוקשים (למשל: ציוד משרדי, חומרי ניקוי למוסד...)"></textarea>
-                    </div>
-                    
-                    <div class="form-status-alert"></div>
-                    
-                    <button type="submit" class="btn-form-submit">שלח לי הצעה</button>
-                </form>
-            </div>
-        </div>
     </section>
-
-    <section class="cta-section">
-        <div class="container">
-            <h2>מוכנים להתחיל?</h2>
-            <p style="margin-bottom: 30px; font-size: 1.2rem; opacity: 0.8;">הצטרפו למאות לקוחות מרוצים ותיהנו
-                משירות VIP</p><a href="/catalog/" class="btn btn-outline" style="border-width: 2px;">צפייה
-                בקטלוג המלא</a>
-        </div>
-    </section><site-footer></site-footer>
+<site-footer></site-footer>
     <script src="js/components.js?v=1"></script>
 </body>
 
