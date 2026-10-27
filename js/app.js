@@ -1147,10 +1147,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     // צורות חלופיות למילת חיפוש בעברית. בלי זה "סבון לידיים" החזיר 0 (המוצר
     // הוא "סבון ידיים"), וכך גם "הכוסות", "צלחות" ו"שקיות זבל" (בקטלוג: אשפה).
     // הצורה המקורית תמיד ראשונה, ולכן מה שנמצא היום ממשיך להימצא.
-    const SEARCH_SYNONYMS = { 'זבל': 'אשפה', 'מגבות': 'ניגוב' };
+    // מילים נרדפות: המילה שהלקוח מקליד ← מילים שמופיעות בשמות המוצרים.
+    // ממוקד בכוונה — הרחבה כללית (למשל "קפה" ← "נייר") הייתה מחזירה כל מוצר נייר.
+    // מקור: חיפושים אמיתיים מ-GA4 (27.10.26: "כוסות שתיה חמה" החזיר 0, כי כוסות
+    // הנייר לא נקראות כך) ושמות המוצרים בקטלוג.
+    const SEARCH_SYNONYMS = {
+        'זבל': ['אשפה', 'אשפתון'],
+        'מגבות': ['ניגוב', 'מגבת'], 'מגבת': ['ניגוב'],
+        'שתיה': ['כוס'], 'שתייה': ['שתיה', 'כוס'],
+        'חמה': ['כוסות נייר', 'אספרסו', 'בוחשני'], 'חם': ['כוסות נייר', 'אספרסו', 'בוחשני'],
+        'קרה': ['שתיה קרה', 'כוס פלסטיק', 'כוסות פלסטיק'], 'קר': ['שתיה קרה', 'כוס פלסטיק', 'כוסות פלסטיק'],
+        'קפה': ['אספרסו', 'כוסות נייר'],
+        'ניקוי': ['ניקיון'], 'ניקיון': ['ניקוי'],
+        'ספריי': ['רסס'],
+        'סלוטיפ': ['סלוטייפ'], 'סלוטייפ': ['סלוטיפ'],
+        'שקית': ['שקיות'], 'צלחת': ['צלחות'], 'מטלית': ['מטליות'],
+        'קופסא': ['קופסת', 'קופסאות'], 'קופסה': ['קופסת', 'קופסאות'],
+        'ממחטה': ['ממחטות', 'טישו'], 'טישיו': ['טישו'],
+        'מגבון': ['מגבונים'],
+    };
+    // מילים כלליות שלא מופיעות בשמות ("חומרי ניקוי לעסקים") — מדולגות כשיש
+    // בשאילתה מילה נוספת, אחרת כל חיפוש שכולל אותן היה מחזיר אפס
+    const SEARCH_STOPWORDS = new Set(['חומרי', 'חומר', 'מוצרי', 'מוצר', 'לעסקים', 'לעסק', 'סיטונאי',
+        'סיטונאות', 'בסיטונאות', 'למשרד', 'למשרדים', 'של', 'עם', 'ל', 'ב']);
     function searchVariants(term) {
         const out = [term];
-        if (SEARCH_SYNONYMS[term]) out.push(SEARCH_SYNONYMS[term]);
+        (SEARCH_SYNONYMS[term] || []).forEach(v => out.push(v));
         // אותיות שימוש בתחילת מילה (ו/ה/ב/ל/מ/ש/כ) — עד שתיים, כל עוד נשארת מילה
         let s = term;
         for (let i = 0; i < 2 && s.length >= 4 && /^[ולבהמשכ]/.test(s); i++) {
@@ -1169,8 +1191,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // בלבד ולא הציגו כלום לחיפושים שהתוצאות עצמן כן מצאו.
     function productMatchesSearch(p, query) {
         const nq = normalizeSearch(query);
-        const terms = nq.split(" ").filter(Boolean);
-        const hay = normalizeSearch(`${p.name} ${p.brand || ""}`);
+        const all = nq.split(" ").filter(Boolean);
+        const kept = all.filter(t => !SEARCH_STOPWORDS.has(t));
+        const terms = kept.length ? kept : all;
+        // גם הקטגוריה ותת-הקטגוריה: "כוסות חד פעמיות" ו"סכו״ם" מוצאים מוצרים
+        // שהשם שלהם לא כולל את המילים האלה
+        const hay = normalizeSearch(`${p.name} ${p.brand || ""} ${p.category || ""} ${p.subcategory || ""}`);
         if (terms.every(t => searchVariants(t).some(v => hay.includes(v)))) return true;   // כל מילה בשם/מותג
         return normalizeSearch(p.id || "").includes(nq);                                    // או מק"ט מלא
     }
@@ -1266,6 +1292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         renderResultsBar(filtered.length);
+        if (searchQuery !== "") reportSearch(searchQuery, filtered.length);
 
         if (filtered.length === 0) {
             productsEl.appendChild(renderNoResults(searchQuery));
@@ -1556,6 +1583,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // מעקב אירועים: שולח גם ל-dataLayer (GTM) וגם ל-GA4, באותה תבנית של order_sent.
     // עד כה דווח רק order_sent — כלומר לא היה מידע על מה שקורה לפני השליחה.
+    // מדידת החיפוש בתוך הקטלוג. עד 27.10.26 נמדדו רק חיפושים שהגיעו בכתובת
+    // (?search= מדף הבית), ולא היה שום מידע על מה שלקוחות מקלידים ולא מוצאים.
+    // נשלח אחרי שההקלדה נעצרת, פעם אחת לכל מונח, כדי לא לדווח על כל אות.
+    // search — כל חיפוש, עם מספר התוצאות; search_no_results — רק כשלא נמצא כלום.
+    let searchReportTimer = null;
+    let lastReportedSearch = '';
+    function reportSearch(term, count) {
+        clearTimeout(searchReportTimer);
+        const key = normalizeSearch(term).trim();
+        if (key.length < 2) return;
+        searchReportTimer = setTimeout(() => {
+            if (key === lastReportedSearch) return;
+            lastReportedSearch = key;
+            trackEvent('search', { search_term: key, results_count: count });
+            if (count === 0) trackEvent('search_no_results', { search_term: key });
+        }, 1500);
+    }
+
     function trackEvent(name, params) {
         try {
             window.dataLayer = window.dataLayer || [];
