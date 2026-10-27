@@ -782,7 +782,7 @@ def generate_care_product_pages():
     for r in rows:
         by_cat.setdefault(r.get('category', ''), []).append(r)
 
-    generated, sitemap_urls = set(), []
+    generated, sitemap_urls, changed = set(), [], set()
     for r in rows:
         price = _effective_price(r, category_discounts, window)
         if price <= 0:
@@ -810,13 +810,29 @@ def generate_care_product_pages():
                                          _bundle_label(r, window), _promo_dates_for(r, window, category_discounts))
         out_dir = os.path.join('care', 'product', slug)
         os.makedirs(out_dir, exist_ok=True)
-        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
-            f.write(html)
+        if _write_if_changed(os.path.join(out_dir, 'index.html'), html):
+            changed.add(page_url)
         generated.add(slug)
         sitemap_urls.append(page_url)
 
     _cleanup_stale_product_pages(generated)
-    _update_sitemap_care_products(sitemap_urls)
+    _update_sitemap_care_products(sitemap_urls, changed=changed)
+
+
+def _write_if_changed(path, content):
+    """כותב קובץ רק כשהתוכן שונה, ומחזיר True אם נכתב (כולל קובץ חדש).
+
+    משמש את ה-lastmod ב-sitemap: דף שלא השתנה שומר את התאריך הקודם שלו.
+    """
+    try:
+        with open(path, encoding='utf-8') as f:
+            if f.read() == content:
+                return False
+    except FileNotFoundError:
+        pass
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return True
 
 
 def _cleanup_stale_product_pages(valid_slugs, base=os.path.join('care', 'product')):
@@ -835,27 +851,44 @@ def _cleanup_stale_product_pages(valid_slugs, base=os.path.join('care', 'product
 
 
 def _update_sitemap_care_products(urls, start='  <!-- CARE_PRODUCTS_SITEMAP_START -->',
-                                  end='  <!-- CARE_PRODUCTS_SITEMAP_END -->'):
+                                  end='  <!-- CARE_PRODUCTS_SITEMAP_END -->', changed=None):
     """מזריק כתובות דפי מוצר ל-sitemap.xml בין הסימונים (או לפני </urlset> בפעם הראשונה).
 
     הסימונים פרמטריים כדי ששני עצי המוצרים (care ו-catalog) יחזיקו בלוק נפרד
     ולא ידרסו זה את זה.
+
+    changed — הכתובות שהדף שלהן נכתב מחדש בריצה הזאת. רק הן מקבלות את התאריך
+    של היום; כתובת שלא השתנתה שומרת את ה-lastmod הקודם. בלי זה הרענון היומי
+    כתב תאריך חדש לכל הכתובות בכל יום — גוגל לומד להתעלם מ-lastmod כזה,
+    וה-Action יצר commit יומי שהתנגש עם הדחיפות של רועי. None = הכל השתנה.
     """
     import datetime
     from xml.sax.saxutils import escape
     sitemap_file = 'sitemap.xml'
     today = datetime.date.today().isoformat()
-    entries = '\n'.join(
-        f'  <url>\n    <loc>{escape(u)}</loc>\n    <lastmod>{today}</lastmod>\n'
-        f'    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>'
-        for u in urls
-    )
-    block = f'{start}\n{entries}\n{end}'
     try:
         with open(sitemap_file, encoding='utf-8') as f:
             xml = f.read()
     except FileNotFoundError:
         return
+
+    previous = {}
+    old_block = re.search(re.escape(start) + r'.*?' + re.escape(end), xml, flags=re.S)
+    if old_block:
+        previous = dict(re.findall(r'<loc>(.*?)</loc>\s*<lastmod>(.*?)</lastmod>', old_block.group(0)))
+
+    def lastmod(u):
+        loc = escape(u)
+        if changed is not None and u not in changed and loc in previous:
+            return previous[loc]
+        return today
+
+    entries = '\n'.join(
+        f'  <url>\n    <loc>{escape(u)}</loc>\n    <lastmod>{lastmod(u)}</lastmod>\n'
+        f'    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>'
+        for u in urls
+    )
+    block = f'{start}\n{entries}\n{end}'
     if start in xml and end in xml:
         xml = re.sub(re.escape(start) + r'.*?' + re.escape(end), lambda m: block, xml, flags=re.S)
     else:
@@ -1296,7 +1329,7 @@ def generate_catalog_subcategory_pages():
 
     rows = _load_catalog_rows()
     slugs = _care_product_slugs(rows)
-    generated = []
+    generated, changed = [], set()
 
     for slug, cfg in CATALOG_SUBCATEGORIES.items():
         items = [r for r in rows if _in_subcategory_page(r, slug)]
@@ -1442,15 +1475,15 @@ def generate_catalog_subcategory_pages():
 '''
         out_dir = os.path.join('catalog', parent, slug)
         os.makedirs(out_dir, exist_ok=True)
-        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
-            f.write(html)
+        if _write_if_changed(os.path.join(out_dir, 'index.html'), html):
+            changed.add(page_url)
         generated.append(f'{parent}/{slug}:{len(items)}')
 
     _update_sitemap_care_products(
         [f'{SITE_BASE_URL}/catalog/{c["parent"]}/{s}/' for s, c in CATALOG_SUBCATEGORIES.items()
          if any(_in_subcategory_page(r, s) for r in rows)],
         start='  <!-- CATALOG_SUBCATS_SITEMAP_START -->',
-        end='  <!-- CATALOG_SUBCATS_SITEMAP_END -->')
+        end='  <!-- CATALOG_SUBCATS_SITEMAP_END -->', changed=changed)
     return generated
 
 
@@ -1470,7 +1503,7 @@ def generate_catalog_product_pages():
     for r in rows:
         by_cat.setdefault(r.get('category', ''), []).append(r)
 
-    generated, sitemap_urls = set(), []
+    generated, sitemap_urls, changed = set(), [], set()
     for r in rows:
         slug = slugs[r['id']]
         cat = r.get('category', '')
@@ -1481,15 +1514,15 @@ def generate_catalog_product_pages():
 
         out_dir = os.path.join('catalog', 'product', slug)
         os.makedirs(out_dir, exist_ok=True)
-        with open(os.path.join(out_dir, 'index.html'), 'w', encoding='utf-8') as f:
-            f.write(html)
+        if _write_if_changed(os.path.join(out_dir, 'index.html'), html):
+            changed.add(page_url)
         generated.add(slug)
         sitemap_urls.append(page_url)
 
     _cleanup_stale_product_pages(generated, base=os.path.join('catalog', 'product'))
     _update_sitemap_care_products(sitemap_urls,
                                   start='  <!-- CATALOG_PRODUCTS_SITEMAP_START -->',
-                                  end='  <!-- CATALOG_PRODUCTS_SITEMAP_END -->')
+                                  end='  <!-- CATALOG_PRODUCTS_SITEMAP_END -->', changed=changed)
     return len(generated)
 
 
