@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>כיוון ב׳ — הצעת מחיר במסך הראשון</title>
+<title>כיוון ב׳ — הגרסה שאושרה</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="mock.css">
 <style>
-/* כיוון ב׳: הדף בנוי לליד. הטופס במסך הראשון, ומתחתיו הוכחות במקום סיסמאות */
+/* כיוון ב׳ (נבחר 27.10.26, בלי ביקורות מגוגל): הטופס במסך הראשון, ומתחתיו עובדות במקום סיסמאות */
 .hero { background: linear-gradient(135deg, #1A4231 0%, #2C5E46 100%); color: #fff; padding: 56px 0; }
 .hero .wrap { display: grid; grid-template-columns: 1fr 440px; gap: 48px; align-items: center; }
 .hero h1 { font-size: 3rem; font-weight: 900; margin: 16px 0 18px; }
@@ -15,7 +15,7 @@
 .hero ul { list-style: none; display: grid; gap: 12px; font-size: 1.12rem; color: #E6EFE9; }
 .hero li { display: flex; gap: 10px; align-items: center; }
 .hero li::before { content: ""; width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--primary-pastel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A4231' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") no-repeat center / 14px; }
-.hero .alt { display: flex; gap: 18px; align-items: center; margin-top: 28px; font-weight: 700; color: #fff; }
+.hero .alt { display: flex; gap: 22px; align-items: center; margin-top: 28px; font-weight: 700; color: #fff; flex-wrap: wrap; }
 .hero .alt a { border-bottom: 2px solid var(--primary-pastel); }
 .hero .form { color: var(--ink); }
 
@@ -26,57 +26,69 @@
 .fact b { display: block; font: 900 1.9rem/1.1 "Heebo", sans-serif; color: var(--primary-dark); }
 .fact span { color: var(--muted); font-size: .95rem; }
 
-.cats-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.cat-search { display: flex; gap: 8px; width: min(420px, 100%); }
+.cat-search .in { flex: 1; border: 1px solid #CBD8D0; border-radius: 999px; padding: 11px 18px; font: .98rem "Assistant", sans-serif; color: #8B998F; background: #fff; }
+.cat-search .btn { padding: 11px 18px; }
+.cats-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .cats-row .cat { padding: 10px; align-items: center; text-align: center; gap: 6px; }
 .cats-row .cat .ph { width: 100%; aspect-ratio: 1; }
 .cats-row .cat b { font-size: .98rem; }
 
-.proof .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
-.proof .reviews { grid-template-columns: 1fr; gap: 12px; }
-.proof .review { padding: 16px 18px; }
-.proof h2 { font-size: 1.7rem; font-weight: 900; color: var(--primary-dark); margin-bottom: 16px; }
+.area .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.area h2 { font-size: 2.3rem; font-weight: 900; color: var(--primary-dark); }
+.area p { color: var(--muted); font-size: 1.1rem; margin-top: 10px; }
+.cities a { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px; font-size: .9rem; font-weight: 600; }
 
 .steps-inline { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; font-weight: 700; color: var(--primary-dark); }
 .steps-inline .n { width: 30px; height: 30px; border-radius: 50%; background: var(--primary-dark); color: #fff; display: inline-grid; place-items: center; font: 800 .95rem "Heebo"; margin-inline-end: 8px; }
 .steps-inline .arrow { color: var(--primary); font-size: 1.3rem; }
+.steps-title { text-align: center; font: 900 1.5rem "Heebo", sans-serif; color: var(--primary-dark); margin-bottom: 18px; }
+
+.about { border-top: 1px solid var(--line); }
+.about h2 { font-size: 1.7rem; font-weight: 900; color: var(--primary-dark); margin-bottom: 22px; }
+.about .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+.about h3 { font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 8px; }
+.about p { color: var(--muted); margin-bottom: 14px; }
+.about a { color: var(--primary-dark); border-bottom: 1px solid var(--primary-pastel); }
 
 @media (max-width: 860px) {
     .hero { padding: 26px 0 30px; }
-    .hero .wrap, .proof .wrap { grid-template-columns: 1fr; gap: 22px; }
+    .hero .wrap, .area .wrap, .about .cols { grid-template-columns: 1fr; gap: 22px; }
     .hero h1 { font-size: 2.05rem; }
     .hero ul { font-size: 1rem; }
-    .hero .alt { margin-top: 4px; flex-wrap: wrap; }
+    .hero .alt { margin-top: 4px; gap: 16px; }
     .facts .wrap { grid-template-columns: 1fr 1fr; }
     .fact { padding: 16px 10px; border-top: 1px solid var(--line); }
     .fact:nth-child(odd) { border-inline-start: 0; }
     .fact b { font-size: 1.5rem; }
-    .cats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .cats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .cats-row .cat b { font-size: .85rem; }
+    .area h2 { font-size: 1.8rem; }
     .steps-inline { flex-direction: column; align-items: flex-start; }
     .steps-inline .arrow { display: none; }
+    .steps-title { text-align: start; }
 }
 </style>
 </head>
 <body>
-<div class="mock-label">כיוון ב׳ — הצעת מחיר במסך הראשון</div>
+<div class="mock-label">כיוון ב׳ — הגרסה שאושרה</div>
 
-<div class="utility"><div class="wrap"><span class="area">אור יהודה · אספקה מיבנה ועד רעננה</span><a href="#">03-6346236</a></div></div>
+<div class="utility"><div class="wrap"><span class="area">אור יהודה · משלוחים בגוש דן והמרכז</span><a href="#">03-6346236</a></div></div>
 <header class="site-head"><div class="wrap">
     <img class="logo" src="../ads/src/assets/aroam_logo_vector.svg" alt="אהרוני שיווק והפצה">
     <nav><a class="on" href="#">דף הבית</a><a href="#">קטלוג מוצרים</a><a href="#">אודות</a><a href="#">צור קשר</a></nav>
-    <a class="btn btn-ghost btn-sm head-cta" href="#">לקטלוג המוצרים</a>
 </div></header>
 
 <section class="hero"><div class="wrap">
     <div>
         <span class="chip">מעל 20 שנה · לעסקים ומוסדות</span>
-        <h1>ספק סיטונאי לחומרי ניקוי, נייר וחד פעמי לעסקים</h1>
+        <h1>ספק סיטונאי לחומרי ניקוי, נייר וחד־פעמי לעסקים</h1>
         <ul>
             <li>מחירון סיטונאי למשרדים, מפעלים, מוסדות ומסעדות</li>
             <li>כ-200 מוצרים — ספק אחד לכל ההזמנה</li>
             <li>אספקה מהמחסן באור יהודה, מיבנה ועד רעננה</li>
         </ul>
-        <div class="alt"><a href="#">שלחו הודעה בוואטסאפ</a><a href="#">03-6346236</a></div>
+        <div class="alt"><a href="#">שלחו הודעה בוואטסאפ</a><a href="#">03-6346236</a><a href="#">לקטלוג המוצרים</a></div>
     </div>
     <div class="card form">
         <h3>קבלו הצעת מחיר</h3>
@@ -84,7 +96,7 @@
         <div><label>טלפון *</label><div class="in">050-1234567</div></div>
         <div><label>מה תרצו שנספק לכם?</label><div class="in" style="height:64px">למשל: נייר, חד פעמי וחומרי ניקוי למשרד</div></div>
         <a class="btn btn-dark" href="#">שלחו לי הצעה</a>
-        <p class="fine">בשליחת הטופס אתם מאשרים את מדיניות הפרטיות.</p>
+        <p class="fine">בשליחת הטופס אתם מאשרים את מדיניות הפרטיות. הפרטים משמשים רק כדי לחזור אליכם.</p>
     </div>
 </div></section>
 
@@ -96,7 +108,7 @@
 </div></div>
 
 <section class="section"><div class="wrap">
-    <div class="section-head"><h2>מה אנחנו מספקים</h2><a class="link-phone" href="#">לכל הקטלוג ←</a></div>
+    <div class="section-head"><h2>מה אנחנו מספקים</h2><div class="cat-search"><div class="in">מה תרצו להזמין? (למשל: כוסות)</div><a class="btn btn-dark" href="#">חיפוש</a></div></div>
     <div class="cats-row">
         <a class="cat" href="#"><div class="ph"><img src="../ads/src/prepped/cup500.png" style="height:86%" alt=""></div><b>חד פעמי ואריזות</b></a>
         <a class="cat" href="#"><div class="ph"><img src="../ads/src/prepped/kh7.png" style="height:90%" alt=""></div><b>חומרי ניקוי</b></a>
@@ -113,37 +125,48 @@
     </div>
 </div></section>
 
-<section class="section proof" style="background:var(--mint)"><div class="wrap">
+<section class="section area" style="background:var(--mint)"><div class="wrap">
     <div>
+        <span class="eyebrow">אזור החלוקה</span>
         <h2 class="two-tone">מיבנה <em>ועד רעננה.</em></h2>
-        <div class="map-crop" role="img" aria-label="מפת אזור החלוקה"></div>
+        <p>המחסן שלנו ברחוב היצירה 16 באור יהודה, ומשם יוצאות ההזמנות לעסקים ולמוסדות בכל המרכז.</p>
+        <div class="cities"><a href="#">אור יהודה</a><a href="#">יהוד</a><a href="#">קריית אונו</a><a href="#">תל אביב</a><a href="#">רמת גן</a><a href="#">גבעתיים</a><a href="#">בני ברק</a><a href="#">פתח תקווה</a><a href="#">חולון</a><a href="#">בת ים</a><a href="#">ראשון לציון</a><a href="#">הרצליה</a><a href="#">רעננה</a><a href="#">ראש העין</a><a href="#">לוד</a><a href="#">גוש דן</a></div>
     </div>
-    <div>
-        <h2>מה אומרים עלינו בגוגל</h2>
-        <div class="reviews">
-            <div class="review"><div class="stars">★★★★★</div><p>כאן ייכנס ציטוט אמיתי מביקורת בגוגל.</p><small>שם פרטי, מתוך הביקורת</small> <span class="placeholder-note">מקום שמור</span></div>
-            <div class="review"><div class="stars">★★★★★</div><p>כאן ייכנס ציטוט אמיתי מביקורת בגוגל.</p><small>שם פרטי, מתוך הביקורת</small> <span class="placeholder-note">מקום שמור</span></div>
-            <div class="review"><div class="stars">★★★★★</div><p>כאן ייכנס ציטוט אמיתי מביקורת בגוגל.</p><small>שם פרטי, מתוך הביקורת</small> <span class="placeholder-note">מקום שמור</span></div>
-        </div>
+    <div class="map-crop" role="img" aria-label="מפת אזור החלוקה"></div>
+</div></section>
+
+<section class="section" style="padding-block:48px"><div class="wrap">
+    <h2 class="steps-title">איך מזמינים?</h2>
+    <div class="steps-inline">
+        <span><span class="n">1</span>שולחים מה צריך — בוואטסאפ או מהקטלוג</span><span class="arrow">←</span>
+        <span><span class="n">2</span>מקבלים הצעת מחיר על כל ההזמנה</span><span class="arrow">←</span>
+        <span><span class="n">3</span>ההזמנה מגיעה אליכם</span>
     </div>
 </div></section>
 
-<section class="section" style="padding-block:44px"><div class="wrap">
-    <div class="steps-inline">
-        <span><span class="n">1</span>שולחים מה צריך</span><span class="arrow">←</span>
-        <span><span class="n">2</span>מקבלים הצעת מחיר</span><span class="arrow">←</span>
-        <span><span class="n">3</span>ההזמנה מגיעה אליכם</span>
+<section class="section about"><div class="wrap">
+    <h2>אהרוני שיווק והפצה – ספק סיטונאי של חומרי ניקיון וחד פעמי במרכז</h2>
+    <div class="cols">
+        <div>
+            <h3>סל פתרונות אספקה מקיף לעסקים, משרדים ומפעלים</h3>
+            <p>אהרוני שיווק והפצה (Aroam) מתמחה באספקה בפורמט סיטונאי שוטף של מוצרי צריכה, היגיינה וניקיון עבור <a href="#">משרדים</a>, <a href="#">מוסדות חינוך</a>, <a href="#">מפעלים</a>, <a href="#">מסעדות</a> וועדי בתים…</p>
+            <p>(כאן כל הטקסט הקיים מדף הבית, עם כל 16 הקישורים, בלי שינוי בתוכן)</p>
+        </div>
+        <div>
+            <h3>משלוחים באור יהודה, בקעת אונו וגוש דן</h3>
+            <p>המחסן הפיזי שלנו ממוקם ברחוב היצירה 16 <a href="#">באור יהודה</a>, וממנו אנו מפעילים מערך הפצה יעיל לכל אזור המרכז…</p>
+        </div>
     </div>
 </div></section>
 
 <footer class="foot"><div class="wrap">
     <div class="cols">
-        <div><h4>אהרוני שיווק והפצה</h4><p>ספק סיטונאי לחומרי ניקוי, נייר, חד פעמי וציוד משרדי. מעל 20 שנה.</p></div>
-        <div><h4>קטלוג</h4><ul><li>חומרי ניקוי</li><li>מוצרי נייר</li><li>חד פעמי ואריזות</li><li>ציוד משרדי</li></ul></div>
-        <div><h4>פתרונות</h4><ul><li>למשרדים</li><li>למפעלים</li><li>למוסדות חינוך</li><li>למסעדות</li></ul></div>
-        <div><h4>צור קשר</h4><ul><li>היצירה 16, אור יהודה</li><li>טלפון: 03-6346236</li><li>וואטסאפ: 052-6000158</li></ul></div>
+        <div><h4>אהרוני שיווק</h4><p>ספק סיטונאי לחומרי ניקוי, נייר, חד פעמי וציוד משרדי.</p></div>
+        <div><h4>קישורים מהירים</h4><ul><li>דף הבית</li><li>קטלוג</li><li>פתרונות למשרדים</li><li>מדריכים</li></ul></div>
+        <div><h4>קטגוריות פופולריות</h4><ul><li>חומרי ניקוי</li><li>מוצרי נייר</li><li>חד פעמי ואריזות</li><li>ציוד משרדי</li></ul></div>
+        <div><h4>צור קשר</h4><ul><li>היצירה 16, אור יהודה</li><li>052-6000158</li><li>050-6444290</li><li>03-6346236</li></ul></div>
     </div>
-    <div class="copy">© 2026 אהרוני שיווק והפצה</div>
+    <div class="copy">© 2026 אהרוני שיווק. כל הזכויות שמורות.</div>
 </div></footer>
 </body>
 </html>
