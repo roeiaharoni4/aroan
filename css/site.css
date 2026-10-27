@@ -158,6 +158,22 @@ ul {
     background-color: var(--accent-hover);
 }
 
+/* כפתור הוואטסאפ בראש דפי הקטגוריה — ירוק כהה (11.2 במקום 3.19).
+   מגודר ל-.cat-hero: בשאר האתר יש כפתורי btn-primary על רקע כהה. */
+.cat-hero .btn-primary {
+    background-color: #1A4231;
+}
+
+.cat-hero .btn-primary:hover {
+    background-color: #1A4231;
+    filter: brightness(1.25);
+}
+
+[data-theme="dark"] .cat-hero .btn-primary {
+    background-color: #8FD6A3;
+    color: #1A4231;
+}
+
 .btn-outline {
     background-color: transparent;
     border: 2px solid var(--white);

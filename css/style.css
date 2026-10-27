@@ -256,15 +256,23 @@ button {
 
 .cat-btn:hover {
     border-color: var(--primary);
-    color: var(--primary);
+    color: var(--primary-dark);
     background-color: var(--primary-light);
 }
 
+/* הכפתורים הראשיים בקטלוג בירוק הכהה: לבן על --primary הוא 3.19, כאן 11.2.
+   במצב כהה — פסטל עם טקסט כהה (6.59), כמו כפתור השליחה בעמוד הסל. */
 .cat-btn.active {
-    background-color: var(--primary);
+    background-color: var(--primary-dark);
     color: white;
-    border-color: var(--primary);
+    border-color: var(--primary-dark);
     box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .cat-btn.active {
+    background-color: var(--primary-pastel);
+    color: var(--primary-dark);
+    border-color: var(--primary-pastel);
 }
 
 /* שורת "X מוצרים" + מיון */
@@ -741,12 +749,13 @@ button {
 }
 
 .qty-btn {
-    width: 26px;
+    /* 32 ולא 26: מטרת מגע נוחה יותר, ועדיין משאירה ל"הוסף" את רוב השורה */
+    width: 32px;
     height: 44px;
     border: none;
     border-radius: 0;
     background: transparent;
-    color: var(--primary);
+    color: var(--primary-dark);
     font-size: 1.15rem;
     font-weight: bold;
     cursor: pointer;
@@ -804,7 +813,7 @@ button {
 }
 
 .fab {
-    background: var(--primary);
+    background: var(--primary-dark);
     color: white;
     border: none;
     padding: 0.7rem 1.5rem;
@@ -823,7 +832,7 @@ button {
 }
 
 .fab:hover {
-    background: var(--primary-dark);
+    filter: brightness(1.25);
 }
 
 .fab-badge {
@@ -831,6 +840,15 @@ button {
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 0.9rem;
+}
+
+[data-theme="dark"] .fab {
+    background: var(--primary-pastel);
+    color: var(--primary-dark);
+}
+
+[data-theme="dark"] .fab-badge {
+    background: rgba(26, 66, 49, 0.15);
 }
 
 /* Lift floating buttons above the order bar (catalog pages only) */
@@ -1825,7 +1843,7 @@ body:has(.fab-container) .scroll-top-btn {
     }
 
     .qty-btn {
-        width: 26px;
+        width: 32px;
         height: 40px;
         font-size: 1.05rem;
     }
@@ -1960,8 +1978,29 @@ body:has(.fab-container) .scroll-top-btn {
 }
 
 .view-toggle button.active {
-    background: var(--primary);
+    background: var(--primary-dark);
     color: #fff;
+}
+
+[data-theme="dark"] .view-toggle button.active {
+    background: var(--primary-pastel);
+    color: var(--primary-dark);
+}
+
+[data-theme="dark"] .qty-btn {
+    color: var(--primary-pastel);
+}
+
+/* בטלפון החיפוש בשורה משלו: כשחלק שורה עם בורר התצוגה והמותגים
+   הוא נשאר ברוחב 119px והטקסט נחתך ל"חיפוש מוצ…" */
+@media (max-width: 768px) {
+    .search-container {
+        flex-wrap: wrap;
+    }
+
+    .search-container .search-input {
+        flex: 1 1 100%;
+    }
 }
 
 /* --- List View --- */

@@ -941,7 +941,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         container.style.display = "flex";
         container.style.gap = "8px";
         container.style.alignItems = "center";
-        if (searchInput) searchInput.style.flex = "1";
 
         const select = document.createElement("select");
         select.id = "brand-filter";
@@ -1542,7 +1541,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (!CONFIG.showAddButton) return;
                 const has = (cart[product.id] || 0) > 0;
                 card.classList.toggle("in-cart", has);
-                if (addBtn) addBtn.textContent = has ? "בסל" : "הוסף";
+                // "הוסף עוד" ולא "בסל": לחיצה מוסיפה יחידה, והכיתוב הקודם תיאר מצב ולא פעולה
+                if (addBtn) addBtn.textContent = has ? "הוסף עוד" : "הוסף";
             };
             syncAddState();
 
