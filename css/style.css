@@ -1075,6 +1075,14 @@ body:has(.fab-container) .scroll-top-btn {
         grid-column: 1;
     }
 
+    /* הטבלה היא גולל (overflow:auto), ולגולל בגריד אין גובה מינימלי. כשהיא
+       עברה לראש הטור (המוצרים לפני הטופס) השורה שלה קרסה ל-0, ופרטי הלקוח
+       עלו עליה. ברוחב הזה היא נכנסת לטור, ולכן אין צורך בגלילה אופקית.
+       important — כמו בכלל המובייל — כי ה-overflow-x מוגדר inline ב-HTML. */
+    .cart-page .modal-body > .table-responsive {
+        overflow-x: visible !important;
+    }
+
     /* הכרטיס לבדו בטור השני, ושטח הגריד שלו משתרע על גובה העמודה —
        זה מה שמאפשר ל-sticky לעבוד בלי לדרוס שום דבר.
        ה-top קטן בכוונה: הגולל הוא .modal-body וההדר יושב מחוצה לו. */
@@ -1337,8 +1345,6 @@ body:has(.fab-container) .scroll-top-btn {
 #cart-summary-card #cs-send-btn {
     width: 100%;
     margin-top: 0.35rem;
-    background: #25D366;
-    color: #fff;
     font-size: 1rem;
     padding-block: 0.7rem;
 }
@@ -1512,6 +1518,23 @@ body:has(.fab-container) .scroll-top-btn {
 
 .btn-primary:hover {
     background: var(--primary-dark);
+}
+
+/* כפתור השליחה בעמוד הסל. היה לבן על ירוק הוואטסאפ (#25D366) — יחס ניגודיות
+   1.98, כלומר הכפתור החשוב ביותר באתר כמעט לא נקרא. לבן על הירוק הכהה: 11. */
+.btn-send {
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+.btn-send:hover {
+    filter: brightness(1.25);
+}
+
+/* במצב כהה הירוק הכהה כמעט נבלע ברקע — פסטל עם טקסט כהה, כמו כפתור החיפוש */
+[data-theme="dark"] .btn-send {
+    background: var(--primary-pastel);
+    color: var(--primary-dark);
 }
 
 .btn-accent {

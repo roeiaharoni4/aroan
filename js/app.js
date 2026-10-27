@@ -47,7 +47,10 @@ const DEFAULT_CONFIG = {
     // מכובה ב-/care/ (לקוחה פרטית לא חוזרת על אותו סל) וב-/agent/ (המפתח
     // הוא פר-עמוד ולא פר-לקוח, ולכן הרשימה הייתה מערבבת לקוחות; שם יש
     // צ'יפ "ההזמנה הקודמת" פר-לקוח ב-js/agent.js).
-    recentOrdersList: true
+    recentOrdersList: true,
+    // שדה "תאריך הזמנה" בחלון ההזמנה. בקטלוג העסקי הוא מכובה: הלקוח מזמין
+    // תמיד להיום, והשדה רק עמד בראש עמוד הסל לפני רשימת המוצרים.
+    showOrderDate: true
 };
 
 // שיעור המע״מ בישראל. שינוי כאן משנה גם את התצוגה בחלון ההזמנה וגם את המסמך
@@ -431,6 +434,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const dd = String(today.getDate()).padStart(2, '0');
         orderDateInput.value = `${yyyy}-${mm}-${dd}`;
         if (orderDateDisplay) orderDateDisplay.textContent = `תאריך: ${dd}/${mm}/${yyyy}`;
+
+        // מוסתר בלבד — הערך של היום עדיין נשלח בנתוני ההזמנה (buildOrderPayload)
+        if (CONFIG.showOrderDate === false) {
+            const field = orderDateInput.closest('.modal-body > *');
+            if (field) field.style.display = 'none';
+        }
 
         orderDateInput.addEventListener("input", () => {
             const d = orderDateInput.value;
@@ -1673,7 +1682,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <span>${CONFIG.showPrices ? 'סה״כ לתשלום' : 'סה״כ פריטים'}</span>
                 <strong id="cs-total-value">—</strong>
             </div>
-            <button type="button" id="cs-send-btn" class="btn btn-success">${sendLabel}</button>
+            <button type="button" id="cs-send-btn" class="btn btn-send">${sendLabel}</button>
             <div class="cs-secondary">
                 ${showEmail ? '<button type="button" data-proxy="send-email">שליחה במייל</button><span aria-hidden="true">·</span>' : ''}
                 <button type="button" data-proxy="clear-cart-btn">ניקוי הסל</button>
@@ -1764,6 +1773,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             btn.textContent = '→ המשך בקנייה';
             btn.addEventListener('click', () => closeOrderView());
             header.appendChild(btn);
+        }
+
+        // המוצרים לפני הטופס: הלקוח רואה מה הזמין לפני שהוא ממלא פרטים.
+        // ב-HTML הטבלה מופיעה אחרי התאריך ופרטי הלקוח (הסדר של דף הסוכן,
+        // שלא משתמש בתצוגת הסל). מזיזים פעם אחת, לפני שמצב הסל הריק מוזרק מעליה.
+        const body = orderModal.querySelector('.modal-body');
+        const table = body && body.querySelector('.table-responsive');
+        if (table && !body.dataset.productsFirst) {
+            body.insertBefore(table, body.firstElementChild);
+            body.dataset.productsFirst = '1';
         }
     }
 
