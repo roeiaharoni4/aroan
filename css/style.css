@@ -1373,6 +1373,32 @@ body:has(.fab-container) .scroll-top-btn {
     cursor: not-allowed;
 }
 
+/* בקשת הצעת מחיר (הקטלוג העסקי) — משנית לשליחה, אבל במסגרת המותג ולא
+   באפור של .btn-outline, כדי שלקוח חדש יראה שיש דרך בלי התחייבות */
+#send-quote,
+#cart-summary-card #cs-quote-btn {
+    border: 2px solid var(--primary-dark);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+[data-theme="dark"] #send-quote,
+[data-theme="dark"] #cart-summary-card #cs-quote-btn {
+    border-color: var(--primary-pastel);
+    color: var(--primary-pastel);
+}
+
+#cart-summary-card #cs-quote-btn {
+    width: 100%;
+    font-size: 0.95rem;
+    padding-block: 0.6rem;
+}
+
+#cart-summary-card #cs-quote-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 #cart-summary-card .cs-secondary {
     display: flex;
     align-items: center;
@@ -1415,8 +1441,24 @@ body:has(.fab-container) .scroll-top-btn {
 @media (max-width: 1023px) {
 
     #cart-summary-card #cs-send-btn,
+    #cart-summary-card #cs-quote-btn,
     #cart-summary-card .cs-secondary,
     #cart-summary-card .cs-note {
+        display: none;
+    }
+
+    /* עם "בקשת הצעת מחיר" בבר התחתון אין בו מקום ל"נקה הזמנה" — וממילא
+       כפתור אדום גדול ליד "שלח" הוא מלכודת. הניקוי עובר לקישור שקט בכרטיס. */
+    .cart-page.has-quote-request .modal-footer #clear-cart-btn {
+        display: none;
+    }
+
+    .cart-page.has-quote-request #cart-summary-card .cs-secondary {
+        display: flex;
+    }
+
+    .cart-page.has-quote-request #cart-summary-card .cs-secondary [data-proxy="send-email"],
+    .cart-page.has-quote-request #cart-summary-card .cs-secondary span {
         display: none;
     }
 }

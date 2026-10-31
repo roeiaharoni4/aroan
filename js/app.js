@@ -176,6 +176,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     // עגלה שמורה במכשיר — הלקוח ממשיך מאיפה שהפסיק (מפתח נפרד לכל קטלוג)
     const CART_KEY = 'aroam_cart_' + (window.location.pathname.split('/')[1] || 'root');
 
+    // הקטלוג העסקי (/catalog/ ודפי הקטגוריה): המחירים מוסתרים וההזמנה יוצאת
+    // בוואטסאפ/מייל. רק שם יש כפתור "בקשת הצעת מחיר" בסל וקישור "הזמנה חוזרת"
+    // בהודעה — בטיפוח ובוועד העובדים המחירים גלויים, ובסוכן וברשת אין וואטסאפ.
+    function isB2BShareCatalog() {
+        return !!CONFIG.allowShare && !CONFIG.showPrices && !CONFIG.directSend && !CONFIG.agentMode;
+    }
+
     // הודעת אזהרה גלויה ולא-חוסמת: קישור ?cart= (מייל הזמנה, "שתף קישור") שהתיישן —
     // מזהי מוצר שנמחקו/שונו בעורך מאז שהקישור נוצר. בלי ההודעה הפריט פשוט נעלם
     // בשקט מהעגלה. בנויה עם textContent בלבד (לא innerHTML) כי המזהים מגיעים מה-URL.
@@ -257,12 +264,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         // שיטות אספקה ודמי משלוח (רק כשמוגדר shippingSource — קטלוג הטיפוח)
         await loadShipping();
 
-        // שחזור עגלה שמורה מהמכשיר (פרמטר cart ב-URL גובר עליה בהמשך).
-        // באישור רכש מדלגים עליה בכוונה: מנהלת הרכש פותחת הזמנה של סניף אחד
-        // אחרי השני מאותו דפדפן, ושארית מהזמנה קודמת הייתה נדבקת לזו הבאה —
-        // ההזמנה שבקישור היא המקור היחיד.
+        // עגלה מהקישור (?cart=id:qty,id:qty): "שתף קישור", "הזמנה חוזרת" מהודעת
+        // ההזמנה, וקישור "פתח כהצעת מחיר" של דף הסוכן. נקראת כאן ומוחלת בהמשך.
+        const cartParamRaw = initParams.get('cart');
+        const urlCart = {};
+        const missingCartIds = [];
+        if (cartParamRaw) {
+            cartParamRaw.split(',').forEach(item => {
+                const [id, qty] = item.split(':');
+                const q = parseInt(qty, 10);
+                if (!id || !(q > 0)) return;
+                if (PRODUCTS.some(p => p.id === id)) urlCart[id] = q;
+                else missingCartIds.push(id);   // קישור ישן — המוצר נמחק או שהמזהה שלו השתנה
+            });
+        }
+        const cartFromUrl = Object.keys(urlCart).length > 0;
+
+        // שחזור עגלה שמורה מהמכשיר. מדלגים עליה בשני מקרים:
+        // אישור רכש — מנהלת הרכש פותחת הזמנה של סניף אחד אחרי השני מאותו
+        // דפדפן, ושארית מהזמנה קודמת הייתה נדבקת לזו הבאה.
+        // עגלה מהקישור — היא מחליפה את השמורה ולא מתמזגת איתה, אחרת קישור
+        // "הזמנה חוזרת" היה מוסיף את שאריות ההזמנה האחרונה שנשארו במכשיר.
         try {
-            const savedCart = PENDING_APPROVAL
+            const savedCart = (PENDING_APPROVAL || cartFromUrl)
                 ? null
                 : JSON.parse(localStorage.getItem(CART_KEY) || 'null');
             if (savedCart) {
@@ -296,34 +320,32 @@ document.addEventListener("DOMContentLoaded", async () => {
         // presetCategory מאפשר לדפי קטגוריה סטטיים (/catalog/cleaning/ וכו') לקבע קטגוריה
         const categoryParam = urlParams.get('category') || CONFIG.presetCategory || null;
         const searchParam = urlParams.get('search');
-        const cartParam = urlParams.get('cart');
 
         // Restore Cart from URL
-        if (cartParam) {
+        if (cartFromUrl) {
+            Object.assign(cart, urlCart);
+            // from=order מסמן קישור "הזמנה חוזרת" מהודעת ההזמנה, כדי שאפשר
+            // יהיה לראות ב-GA4 אם לקוחות באמת חוזרים דרכו
+            trackEvent("cart_link_open", {
+                link_source: initParams.get('from') || 'share',
+                order_items: Object.keys(urlCart).length
+            });
+            updateSummary();
+        }
+        if (missingCartIds.length > 0) {
+            console.warn("Cart param referenced missing product ids:", missingCartIds);
+            showCartWarning(missingCartIds);
+        }
+        // הפרמטר יורד מהכתובת — מעכשיו העגלה שמורה במכשיר, ורענון עם ?cart=
+        // היה דורס כל שינוי כמות שהלקוח עשה אחרי שנכנס מהקישור. באישור רכש
+        // הוא נשאר: שם אין עגלה שמורה, והקישור הוא המקור היחיד גם ברענון.
+        if (cartParamRaw && !PENDING_APPROVAL) {
             try {
-                // Format: id:qty,id:qty
-                const items = cartParam.split(',');
-                const missingIds = [];
-                items.forEach(item => {
-                    const [id, qty] = item.split(':');
-                    if (id && qty) {
-                        if (PRODUCTS.some(p => p.id === id)) {
-                            cart[id] = parseInt(qty, 10);
-                        } else {
-                            // מזהה שלא קיים בקטלוג הנוכחי — קישור ישן (מייל/שיתוף) שהתיישן
-                            missingIds.push(id);
-                        }
-                    }
-                });
-                console.log("Restored cart from URL:", cart);
-                if (missingIds.length > 0) {
-                    console.warn("Cart param referenced missing product ids:", missingIds);
-                    showCartWarning(missingIds);
-                }
-                updateSummary();
-            } catch (e) {
-                console.error("Failed to parse cart param", e);
-            }
+                const u = new URL(window.location.href);
+                u.searchParams.delete('cart');
+                u.searchParams.delete('from');
+                history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+            } catch (e) { }
         }
 
         // קישור למוצר (?product=ID) פותח את הקטגוריה של המוצר עצמו — אחרת המוצר
@@ -1717,6 +1739,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const sendProxy = directSend ? 'submit-order-btn' : 'send-whatsapp';
         const sendLabel = directSend ? 'שלח הזמנה' : 'שלח הזמנה בוואטסאפ';
         const showEmail = !directSend && CONFIG.allowShare !== false;
+        const showQuote = !!document.getElementById('send-quote');
 
         const card = document.createElement('aside');
         card.id = 'cart-summary-card';
@@ -1728,6 +1751,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <strong id="cs-total-value">—</strong>
             </div>
             <button type="button" id="cs-send-btn" class="btn btn-send">${sendLabel}</button>
+            ${showQuote ? '<button type="button" id="cs-quote-btn" class="btn btn-outline" data-proxy="send-quote">בקשת הצעת מחיר — בלי התחייבות</button>' : ''}
             <div class="cs-secondary">
                 ${showEmail ? '<button type="button" data-proxy="send-email">שליחה במייל</button><span aria-hidden="true">·</span>' : ''}
                 <button type="button" data-proxy="clear-cart-btn">ניקוי הסל</button>
@@ -1774,6 +1798,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const send = document.getElementById('cs-send-btn');
         if (send) send.disabled = totals.totalItems === 0;
+        const quote = document.getElementById('cs-quote-btn');
+        if (quote) quote.disabled = totals.totalItems === 0;
     }
 
     // כרום התצוגה: רצועת ה-utility והלוגו של האתר, כדי שהסל ירגיש חלק
@@ -1908,6 +1934,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                     // חלון אישור ללקוח
                     showOrderConfirmation(sent.orderId, 'email');
+                });
+            }
+
+            // בקשת הצעת מחיר — בקטלוג העסקי בלבד. לקוח חדש לא רואה מחירים,
+            // ו"שלח הזמנה" מבקש ממנו להתחייב בלי לדעת כמה זה יעלה. אותו ערוץ
+            // (וואטסאפ + webhook), אבל ההודעה, מספר הבקשה (HM-) וההערה בגיליון
+            // אומרים שזו בקשה להצעה ולא הזמנה. בגיליון היא מקבלת את אותו קישור
+            // "פתח כהצעת מחיר" לדף הסוכן כמו כל הזמנה מהקטלוג העסקי.
+            if (isB2BShareCatalog() && sendWhatsappBtn) {
+                const quoteBtn = document.createElement('button');
+                quoteBtn.type = 'button';
+                quoteBtn.id = 'send-quote';
+                quoteBtn.className = 'btn btn-outline';
+                quoteBtn.textContent = 'בקשת הצעת מחיר';
+                (sendEmailBtn || sendWhatsappBtn).before(quoteBtn);
+                if (orderModal) orderModal.classList.add('has-quote-request');
+                quoteBtn.addEventListener('click', () => {
+                    if (Object.keys(cart).length === 0) return;
+                    const sent = commitOrder('quote');
+                    if (!sent) return;
+                    const text = encodeURIComponent(buildMessage(sent.orderId, 'quote'));
+                    window.open(`https://wa.me/972526000158?text=${text}`, "_blank");
+                    showOrderConfirmation(sent.orderId, 'quote');
                 });
             }
         }
@@ -2157,6 +2206,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             methodText = PENDING_APPROVAL
                 ? 'ההזמנה נשלחה לאהרוני שיווק והפצה.'
                 : 'ההזמנה נשלחה ותעבור לאישור מנהלת הרכש של הרשת.';
+        } else if (method === 'quote') {
+            methodText = 'הבקשה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם הצעת מחיר.';
         } else if (method === 'whatsapp') {
             methodText = 'ההזמנה נפתחה בוואטסאפ - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.';
         } else {
@@ -2167,8 +2218,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
         box.innerHTML = `
             <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#639C7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>
-            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${isDirect ? 'ההזמנה נקלטה' : 'ההזמנה נשלחה!'}</h2>
-            <p style="margin:0 0 0.4rem; font-weight:700;">מספר הזמנה: ${orderId}</p>
+            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${isDirect ? 'ההזמנה נקלטה' : (method === 'quote' ? 'הבקשה נשלחה!' : 'ההזמנה נשלחה!')}</h2>
+            <p style="margin:0 0 0.4rem; font-weight:700;">${method === 'quote' ? 'מספר בקשה' : 'מספר הזמנה'}: ${orderId}</p>
             <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">${methodText}</p>
             <button id="order-confirm-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">סגור</button>
         `;
@@ -2562,10 +2613,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    function buildMessage(orderId) {
+    // קישור שממלא מחדש את אותו סל ופותח אותו (?cart=id:qty,...&view=cart).
+    // נכנס לסוף הודעת ההזמנה, כך שבחודש הבא הלקוח מוצא אותו בצ'אט שלו — מכל
+    // מכשיר, בניגוד ל"הזמנות אחרונות" שנשמרות רק בדפדפן שממנו הזמינו.
+    // המזהים מקודדים: בלי זה וואטסאפ לא מזהה את הכתובת כקישור עד הסוף.
+    function reorderUrl() {
+        const param = Object.entries(cart)
+            .filter(([, qty]) => qty > 0)
+            .map(([id, qty]) => `${encodeURIComponent(id)}:${qty}`)
+            .join(',');
+        if (!param) return '';
+        return `${window.location.origin}${window.location.pathname}?cart=${param}&from=order&${CART_PARAM}=${CART_PARAM_VALUE}`;
+    }
+
+    // kind = 'quote' — בקשת הצעת מחיר מהקטלוג העסקי (ולא הזמנה)
+    function buildMessage(orderId, kind) {
+        const isQuote = kind === 'quote';
         let lines = ["שלום,", ""];
+        if (isQuote) {
+            lines.push("אשמח לקבל הצעת מחיר על המוצרים הבאים (עדיין לא הזמנה).", "");
+        }
         if (orderId) {
-            lines.push(`מספר הזמנה: #${orderId}`, "");
+            lines.push(`${isQuote ? 'מספר בקשה' : 'מספר הזמנה'}: #${orderId}`, "");
         }
         // פרטי הלקוח (אם קיים טופס בדף)
         // התנאי בודק גם contact: בקטלוג הטיפוח (B2C) אין שם עסק, ובדיקה על business
@@ -2588,7 +2657,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (customer.notes) lines.push(`הערות: ${customer.notes}`);
             lines.push("");
         }
-        lines.push("פירוט הזמנה:", "");
+        lines.push(isQuote ? "המוצרים:" : "פירוט הזמנה:", "");
         for (const [id, qty] of Object.entries(cart)) {
             const product = PRODUCTS.find(p => p.id === id);
             if (!product || qty <= 0) continue;
@@ -2614,10 +2683,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             lines.push(`סה״כ לתשלום: ${t.total.toFixed(2)} ₪`);
         }
         lines.push("", "תודה");
+        const reorder = isB2BShareCatalog() ? reorderUrl() : '';
+        if (reorder) {
+            lines.push("", isQuote ? "להזמנת אותם מוצרים:" : "להזמנה חוזרת של אותם מוצרים:", reorder);
+        }
         return lines.join("\n");
     }
 
-    function generateOrderId() {
+    function generateOrderId(prefixOverride) {
         const today = new Date();
         const yyyymmdd = today.getFullYear() +
             String(today.getMonth() + 1).padStart(2, '0') +
@@ -2628,7 +2701,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const rand = Math.floor(100000 + Math.random() * 900000);
         // הזמנה שעברה את מנהלת הרכש מקבלת קידומת משלה, כדי שבגיליון של רועי
         // יהיה ברור מיד שהיא אושרה ולא הגיעה ישירות מסניף.
-        const prefix = PENDING_APPROVAL ? 'RA' : (CONFIG.orderPrefix || 'AR');
+        const prefix = prefixOverride || (PENDING_APPROVAL ? 'RA' : (CONFIG.orderPrefix || 'AR'));
         return `${prefix}-${yyyymmdd}-${rand}`;
     }
 
@@ -2744,7 +2817,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const customer = getCustomerDetails();
         if (customer && !validateCustomerDetails(customer)) return null;
 
-        const orderId = generateOrderId();
+        // בקשת הצעת מחיר מקבלת קידומת משלה (HM = הצעת מחיר, כמו VD = ועד),
+        // כדי שבגיליון ובמייל יהיה ברור מיד שזו לא הזמנה — בלי לגעת בסקריפט בענן.
+        const isQuote = method === 'quote';
+        const orderId = generateOrderId(isQuote ? 'HM' : null);
         const { items, totalItems } = getCartItemsData();
 
         // Save to recent orders history (הזמנות אחרונות)
@@ -2753,6 +2829,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         // נשלח הסכום הסופי (אחרי הנחת סל ודמי משלוח) ולא סכום הביניים.
         const totals = orderTotals();
         const payload = buildOrderPayload(orderId, items, totals, totalItems);
+        if (isQuote && payload.customer) {
+            // ההערות מופיעות בגיליון, בגוף המייל ובתעודה — שם רועי יראה את זה
+            const n = payload.customer.notes;
+            payload.customer.notes = 'בקשת הצעת מחיר (לא הזמנה)' + (n ? ' · ' + n : '');
+        }
         const delivery = postOrderPayload(payload);
 
         // Conversion Tracking: דיווח שליחת הזמנה ל-GTM ול-GA4
