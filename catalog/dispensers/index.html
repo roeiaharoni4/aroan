@@ -37,7 +37,7 @@
     <!-- Styles -->
         <script>(function () { var l = document.createElement('link'); l.rel = 'preload'; l.as = 'fetch'; l.href = '/data/products.csv?v=1&_t=' + Math.floor(Date.now() / 3600000); document.head.appendChild(l); })();</script>
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=43">
+    <link rel="stylesheet" href="/css/style.css?v=44">
     <style>
         body { padding-top: 0; }
         .fixed-header { position: sticky; top: 80px; z-index: 900; }
@@ -57,7 +57,7 @@
         .cat-seo p { font-size: 1rem; line-height: 1.8; color: var(--text-light); max-width: 900px; margin-bottom: 14px; }
         .cat-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
         .cat-links a { background: var(--bg-light); border: 1px solid rgba(0,0,0,0.08); border-radius: 50px; padding: 6px 16px; font-size: 0.9rem; color: var(--text-color); text-decoration: none; }
-        .cat-links a:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .cat-links a:hover { border-color: var(--primary-color); color: var(--link-color); }
         /* בטלפון ראש הדף תפס 337px והמוצר הראשון התחיל ב-651 מתוך 812 — כמעט
            מסך שלם לפני מוצר. הפירורים והמשפט שמתחת לכותרת מוסתרים (הפירורים
            קיימים גם בסכמה, והתוכן המלא בבלוק שבתחתית הדף). */
@@ -85,8 +85,8 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/catalog-shell.js?v=1" defer></script>
-    <script src="/js/app.js?v=68" defer></script>
+    <script src="/js/catalog-shell.js?v=2" defer></script>
+    <script src="/js/app.js?v=69" defer></script>
 
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -174,6 +174,7 @@
 <body>
 
     <site-header></site-header>
+    <main id="main-content" tabindex="-1">
 
     <section class="cat-hero">
         <div class="container">
@@ -247,8 +248,10 @@
     </section>
     <!-- CATALOG_INDEX_END -->
 
+    </main>
+
     <site-footer></site-footer>
-    <script src="/js/components.js?v=1" defer></script>
+    <script src="/js/components.js?v=2" defer></script>
 </body>
 
 </html>

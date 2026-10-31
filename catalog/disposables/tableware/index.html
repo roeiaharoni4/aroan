@@ -173,7 +173,7 @@
         .sc-item:hover { border-color: var(--primary-color); }
         /* רקע לבן גם במצב כהה: לתמונות המוצר יש רקע לבן משלהן */
         .sc-item .ph { aspect-ratio: 1; background: #fff; border-radius: 8px; display: grid; place-items: center;
-                       overflow: hidden; color: #6B7F75; font-size: .85rem; }
+                       overflow: hidden; color: #5B6E64; font-size: .85rem; }
         .sc-item .ph img { max-width: 88%; max-height: 88%; width: auto; height: auto; object-fit: contain; }
         .sc-item h3 { font-size: 1rem; line-height: 1.35; margin: 0; }
         .sc-item h3 a { color: var(--secondary-color); }
@@ -195,7 +195,7 @@
 <body>
     <site-header></site-header>
 
-    <main class="container sc-page">
+    <main id="main-content" class="container sc-page" tabindex="-1">
         <nav class="crumbs" aria-label="breadcrumb">
             <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
             <a href="/catalog/disposables/">חד פעמי ואריזות</a> &laquo; צלחות וסכו״ם חד פעמי בסיטונאות
@@ -294,7 +294,7 @@
     </main>
 
     <site-footer></site-footer>
-    <script src="/js/components.js?v=1"></script>
+    <script src="/js/components.js?v=2"></script>
 </body>
 
 </html>

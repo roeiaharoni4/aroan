@@ -35,7 +35,7 @@
         .article h2 { font-size: 1.35rem; color: var(--secondary-color); margin: 32px 0 10px; }
         .article p { line-height: 1.85; color: var(--text-color); margin-bottom: 16px; }
         .article ul { margin: 0 20px 16px; line-height: 1.85; }
-        .article a { color: var(--primary-color); }
+        .article a:not(.btn) { color: var(--link-color); }
         .article .cta-box { background: var(--bg-light); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 22px; margin-top: 34px; text-align: center; }
         .article .cta-box .btn { margin-top: 10px; }
     </style>
@@ -66,6 +66,7 @@
 
 <body>
     <site-header></site-header>
+    <main id="main-content" tabindex="-1">
 
     <article class="article">
         <nav class="breadcrumbs" aria-label="breadcrumb">
@@ -92,8 +93,10 @@
         </div>
     </article>
 
+    </main>
+
     <site-footer></site-footer>
-    <script src="/js/components.js?v=1"></script>
+    <script src="/js/components.js?v=2"></script>
 </body>
 
 </html>

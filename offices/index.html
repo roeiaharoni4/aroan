@@ -134,13 +134,13 @@
 
         .cta-section {
             padding: 80px 0;
-            background-color: var(--primary-color);
-            color: var(--white);
+            background-color: #2C5C46;
+            color: #ffffff;
             text-align: center;
         }
 
         .cta-section h2 {
-            color: var(--white);
+            color: #ffffff;
             font-size: 2.5rem;
             margin-bottom: 20px;
         }
@@ -167,6 +167,7 @@
 
     
     <site-header></site-header>
+    <main id="main-content" tabindex="-1">
 
     <!-- Hero Section -->
     <section class="hero">
@@ -260,12 +261,12 @@
                     <input type="hidden" name="_subject" value="בקשת הצעת מחיר - משרדים">
                     
                     <div class="form-group">
-                        <label for="offices-name">שם מלא / שם המשרד <span style="color: red;">*</span></label>
+                        <label for="offices-name">שם מלא / שם המשרד <span class="req" aria-hidden="true">*</span></label>
                         <input type="text" id="offices-name" name="name" required placeholder="שם החברה או שם איש קשר">
                     </div>
                     
                     <div class="form-group">
-                        <label for="offices-phone">טלפון ליצירת קשר <span style="color: red;">*</span></label>
+                        <label for="offices-phone">טלפון ליצירת קשר <span class="req" aria-hidden="true">*</span></label>
                         <input type="tel" id="offices-phone" name="phone" required placeholder="050-1234567">
                     </div>
                     
@@ -301,7 +302,7 @@
     <section style="padding:44px 0;background:var(--white);border-top:1px solid rgba(0,0,0,0.05);">
         <div class="container" style="max-width:900px;">
             <h2 style="font-size:1.4rem;color:var(--secondary-color);margin-bottom:14px;">ספק אחד לחומרי ניקוי, נייר וציוד משרדי למשרד</h2>
-            <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">משרד מתפקד צריך זרימה קבועה של מוצרי תחזוקה וכלי עבודה – ולרוב מפזרים את הרכש בין כמה ספקים. אצלנו מרכזים את הכול במקום אחד: <a href="/catalog/cleaning/" style="color:var(--primary-color);">חומרי ניקוי</a> למשרד ולשירותים, <a href="/catalog/paper/" style="color:var(--primary-color);">מוצרי נייר</a> להיגיינה ולמטבחון, <a href="/catalog/disposables/" style="color:var(--primary-color);">כלים חד פעמיים</a> וכוסות, ו<a href="/catalog/office-supplies/" style="color:var(--primary-color);">ציוד משרדי</a> שוטף. הזמנה אחת, משלוח אחד וחשבונית אחת.</p>
+            <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">משרד מתפקד צריך זרימה קבועה של מוצרי תחזוקה וכלי עבודה – ולרוב מפזרים את הרכש בין כמה ספקים. אצלנו מרכזים את הכול במקום אחד: <a href="/catalog/cleaning/" style="color:var(--link-color);">חומרי ניקוי</a> למשרד ולשירותים, <a href="/catalog/paper/" style="color:var(--link-color);">מוצרי נייר</a> להיגיינה ולמטבחון, <a href="/catalog/disposables/" style="color:var(--link-color);">כלים חד פעמיים</a> וכוסות, ו<a href="/catalog/office-supplies/" style="color:var(--link-color);">ציוד משרדי</a> שוטף. הזמנה אחת, משלוח אחד וחשבונית אחת.</p>
 
             <h3 style="font-size:1.12rem;color:var(--secondary-color);margin:24px 0 8px;">ניקיון והיגיינה למשרד</h3>
             <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">נוזלי ניקוי רצפות ומשטחים, חומרי חיטוי, ג'ל וסבון אסלה, נייר טואלט מוסדי, מגבות ידיים וסבון ידיים – כל מה שנדרש כדי לשמור על משרד נקי ומזמין לעובדים וללקוחות, באריזות מוסדיות שמורידות עלות.</p>
@@ -341,9 +342,11 @@
             </div>
         </div>
     </section>
+    </main>
+
     <site-footer></site-footer>
 
-    <script src="/js/components.js?v=1"></script>
+    <script src="/js/components.js?v=2"></script>
 </body>
 
 </html>

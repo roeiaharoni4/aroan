@@ -42,15 +42,23 @@ Disallow: /agent/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /admin/
+Disallow: /agent/
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /admin/
+Disallow: /agent/
 
 User-agent: Meta-ExternalAgent
 Allow: /
+Disallow: /admin/
+Disallow: /agent/
 
 User-agent: Bytespider
 Allow: /
+Disallow: /admin/
+Disallow: /agent/
 
 Sitemap: https://aroam.co.il/sitemap.xml
 # llms.txt (מפת האתר לסורקי AI): https://aroam.co.il/llms.txt

@@ -1544,8 +1544,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             qtyControl.className = "qty-control";
 
             const minus = document.createElement("button");
+            minus.type = "button";
             minus.className = "qty-btn";
             minus.textContent = "–";
+            minus.setAttribute("aria-label", "הורדת יחידה - " + product.name);
 
             const input = document.createElement("input");
             input.type = "number";
@@ -1556,8 +1558,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             input.value = currentQty > 0 ? currentQty : "";
 
             const plus = document.createElement("button");
+            plus.type = "button";
             plus.className = "qty-btn";
             plus.textContent = "+";
+            plus.setAttribute("aria-label", "הוספת יחידה - " + product.name);
 
             qtyControl.appendChild(minus);
             qtyControl.appendChild(input);
@@ -1638,6 +1642,88 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.body.style.overflow = document.querySelector(".modal-overlay.open") ? "hidden" : "";
     }
 
+    // --- חלונות קופצים מהמקלדת (ת"י 5568) ---
+    // עד כה הפוקוס נשאר מאחורי החלון ו-Esc לא עשה כלום: משתמש מקלדת או קורא
+    // מסך לא ידע שנפתח חלון, והמשיך לטייל בעמוד שמתחתיו. כל חלון שנפתח נכנס
+    // למחסנית — הפוקוס עובר לכותרת שלו, Tab מסתובב בתוכו, Esc סוגר את העליון,
+    // ובסגירה הפוקוס חוזר לכפתור שפתח אותו.
+    const dialogStack = [];
+
+    function dialogFocusables(el) {
+        const all = Array.from(el.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(n => n.getClientRects().length > 0 && getComputedStyle(n).visibility !== 'hidden');
+        // מקבוצת רדיו נכנס לסבב רק הכפתור המסומן — כמו ב-Tab הרגיל של הדפדפן
+        return all.filter(n => {
+            if (n.type !== 'radio' || !n.name) return true;
+            const group = all.filter(m => m.type === 'radio' && m.name === n.name);
+            const checked = group.find(m => m.checked);
+            return checked ? n === checked : n === group[0];
+        });
+    }
+
+    function markDialog(el, label) {
+        if (!el) return;
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-modal', 'true');
+        const heading = el.querySelector('h2, h3');
+        if (heading) {
+            if (!heading.id) heading.id = (el.id || 'dialog') + '-title';
+            el.setAttribute('aria-labelledby', heading.id);
+        } else if (label) {
+            el.setAttribute('aria-label', label);
+        }
+    }
+
+    function dialogOpened(el, close, focusTarget) {
+        if (!el || dialogStack.some(d => d.el === el)) return;
+        dialogStack.push({ el, close, opener: document.activeElement });
+        const target = focusTarget || el.querySelector('h2, h3') || dialogFocusables(el)[0];
+        if (!target) return;
+        if (!target.matches('a[href], button, input, select, textarea, [tabindex]')) {
+            target.setAttribute('tabindex', '-1');
+        }
+        // החלון נחשף ב-display, ולכן focus() מיידי עובד; ניסיון נוסף לשנייה
+        // הקרובה למקרה שהתוכן עוד נבנה (requestAnimationFrame לא תמיד רץ מיד)
+        target.focus({ preventScroll: true });
+        if (document.activeElement !== target) setTimeout(() => target.focus({ preventScroll: true }), 50);
+    }
+
+    function dialogClosed(el) {
+        const i = dialogStack.findIndex(d => d.el === el);
+        if (i === -1) return;
+        const { opener } = dialogStack.splice(i, 1)[0];
+        if (opener && opener.isConnected && opener.getClientRects().length > 0) {
+            opener.focus({ preventScroll: true });
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const top = dialogStack[dialogStack.length - 1];
+        if (!top || e.defaultPrevented) return;
+        // תפריט הנגישות פתוח מעל החלון — הוא מטפל ב-Esc וב-Tab בעצמו
+        if (document.querySelector('#a11y-menu.visible')) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            top.close();
+            return;
+        }
+        if (e.key !== 'Tab') return;
+        const f = dialogFocusables(top.el);
+        if (!f.length) { e.preventDefault(); return; }
+        const first = f[0], last = f[f.length - 1], active = document.activeElement;
+        if (!top.el.contains(active)) {
+            e.preventDefault();
+            (e.shiftKey ? last : first).focus();
+            return;
+        }
+        // הכותרת (tabindex=-1) לא ברשימה, ולכן משווים לפי מיקום במסמך
+        const beforeFirst = active === first || !!(first.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_PRECEDING);
+        const afterLast = active === last || !!(last.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (e.shiftKey && beforeFirst) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && afterLast) { e.preventDefault(); first.focus(); }
+    });
+
     // --- תצוגת סל מלאת-מסך (CONFIG.cartView) ---
     // הסל מקבל כתובת משלו (?cart=1) כדי ש-GA4 יראה אותו כשלב במשפך, שכפתור
     // "אחורה" יסגור אותו במקום לצאת מהעמוד, ושאפשר יהיה לבנות קהל רימרקטינג
@@ -1660,6 +1746,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         fillOrderTable();
         renderFulfillmentOptions();
         orderModal.classList.add("open");
+        dialogOpened(orderModal, () => closeOrderView());
         if (CONFIG.cartView) {
             orderModal.classList.add("cart-page");
             // שורות מוצר עשירות (תמונה גדולה) רק בקטלוג עם מחירים — קטלוג הטיפוח.
@@ -1700,6 +1787,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         orderModal.classList.remove("cart-page");
         orderModal.classList.remove("cart-rich");
         syncModalScrollLock();
+        dialogClosed(orderModal);
         if (!CONFIG.cartView || fromPopstate) { cartStatePushed = false; return; }
         if (cartStatePushed) {
             cartStatePushed = false;
@@ -1858,6 +1946,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function setupEventListeners() {
+        // החלונות הקבועים — תפקיד dialog וכותרת, ושם לכפתורי ה-× (בלי שם קורא
+        // המסך מקריא "כפול")
+        [orderModal, quickViewModal, document.getElementById("history-modal")].forEach(m => markDialog(m));
+        if (qvMinus) qvMinus.setAttribute('aria-label', 'הורדת יחידה');
+        if (qvPlus) qvPlus.setAttribute('aria-label', 'הוספת יחידה');
+        if (qvInput) qvInput.setAttribute('aria-label', 'כמות');
+        document.querySelectorAll('#close-order-btn, #close-quick-view-btn, .modal-overlay .btn-close').forEach(b => {
+            if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', 'סגירה');
+        });
+
         if (searchInput) {
             searchInput.addEventListener("input", () => {
                 renderProducts();
@@ -1924,7 +2022,38 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             if (sendEmailBtn) {
-                sendEmailBtn.addEventListener("click", () => {
+                sendEmailBtn.addEventListener("click", async () => {
+                    // הקטלוג העסקי: שליחה ישירה, בלי לפתוח את Gmail. הזמנה ארוכה
+                    // (כתובת מעל ~8,000 תווים — כ-25 פריטים) החזירה שם שגיאה 400,
+                    // ומי שלא מחובר ל-Gmail — משרד שעובד עם Outlook — נחת בדף
+                    // ההתחברות של גוגל. ההזמנה ממילא מגיעה לרועי במייל דרך ה-webhook,
+                    // עם תעודת PDF, ולכן החלון אצל הלקוח היה רק נקודת כשל נוספת.
+                    if (isB2BShareCatalog()) {
+                        if (sendEmailBtn.disabled) return;
+                        if (Object.keys(cart).length === 0) return;
+                        const proxy = document.querySelector('#cart-summary-card [data-proxy="send-email"]');
+                        const setBusy = (busy) => {
+                            [sendEmailBtn, proxy].forEach(b => {
+                                if (!b) return;
+                                if (busy) { b.dataset.label = b.textContent; b.textContent = 'שולח…'; }
+                                else if (b.dataset.label) b.textContent = b.dataset.label;
+                                b.disabled = busy;
+                            });
+                        };
+                        setBusy(true);
+                        const sent = commitOrder('email');
+                        if (!sent) { setBusy(false); return; }
+                        let ok = false;
+                        try { ok = await sent.delivery; } catch (e) { ok = false; }
+                        setBusy(false);
+                        if (!ok) {
+                            showSendFailure('לא הצלחנו להתחבר לשרת. ההזמנה נשמרה בעגלה — בדקו את החיבור לאינטרנט ונסו שוב, או שלחו אותה בוואטסאפ.');
+                            return;
+                        }
+                        showOrderConfirmation(sent.orderId, 'email', { direct: true });
+                        return;
+                    }
+
                     const sent = commitOrder('email');
                     if (!sent) return;
 
@@ -2173,7 +2302,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // --- Order Confirmation (אישור לאחר שליחת הזמנה) ---
     // ההזמנה לא יצאה. חייב להיות חלון ולא טוסט: טוסט נעלם אחרי 3 שניות,
     // והסניף היה יוצא מהעמוד בטוח שההזמנה נשלחה.
-    function showSendFailure() {
+    function showSendFailure(message) {
         const overlay = document.createElement("div");
         overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
         const box = document.createElement("div");
@@ -2181,25 +2310,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         box.innerHTML = `
             <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#D32F2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             <h2 style="margin:0.8rem 0 0.4rem; color:#B71C1C; font-size:1.5rem;">ההזמנה לא נשלחה</h2>
-            <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">לא הצלחנו להתחבר לשרת. ההזמנה נשמרה בעגלה — בדקו את החיבור לאינטרנט ולחצו שוב על "שלח הזמנה".</p>
-            <button id="send-fail-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">הבנתי</button>
+            <p style="margin:0 0 1.3rem; color:#5B6E64; font-size:0.95rem; line-height:1.6;">${message || 'לא הצלחנו להתחבר לשרת. ההזמנה נשמרה בעגלה — בדקו את החיבור לאינטרנט ולחצו שוב על "שלח הזמנה".'}</p>
+            <button id="send-fail-close" style="background:#1A4231; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">הבנתי</button>
         `;
         overlay.appendChild(box);
         document.body.appendChild(overlay);
-        const close = () => overlay.remove();
+        markDialog(overlay);
+        const close = () => { overlay.remove(); dialogClosed(overlay); };
         box.querySelector('#send-fail-close').addEventListener('click', close);
         overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+        dialogOpened(overlay, close, box.querySelector('#send-fail-close'));
     }
 
-    function showOrderConfirmation(orderId, method) {
+    function showOrderConfirmation(orderId, method, opts) {
         const overlay = document.createElement("div");
         overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
 
-        // שני מסלולים שבהם לא נפתח שום ערוץ חיצוני: דף הסוכן ועמוד רשת
-        // החנויות דוחפים ישירות ל-webhook, ולכן אין חלון לוודא בו שנשלח.
-        const isDirect = method === 'agent' || method === 'direct';
+        // מסלולים שבהם לא נפתח שום ערוץ חיצוני: דף הסוכן, עמוד רשת החנויות
+        // והמייל בקטלוג העסקי דוחפים ישירות ל-webhook, ואין חלון לוודא בו שנשלח.
+        const isDirect = method === 'agent' || method === 'direct' || !!(opts && opts.direct);
         let methodText;
-        if (method === 'agent') {
+        if (method === 'email' && isDirect) {
+            methodText = 'ההזמנה נשלחה אלינו במייל, ונחזור אליכם בהקדם עם אישור והצעת מחיר.<br>עותק שלה שמור אצלכם ב"הזמנות אחרונות" בקטלוג.';
+        } else if (method === 'agent') {
             methodText = 'ההזמנה נשלחה למשרד. תעודת ההזמנה תגיע למייל.';
         } else if (method === 'direct') {
             // אותו כפתור משמש את הסניף ואת מנהלת הרכש, ולכל אחד היעד שונה
@@ -2218,16 +2351,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
         box.innerHTML = `
             <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#639C7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>
-            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${isDirect ? 'ההזמנה נקלטה' : (method === 'quote' ? 'הבקשה נשלחה!' : 'ההזמנה נשלחה!')}</h2>
+            <h2 style="margin:0.8rem 0 0.4rem; color:#1A4231; font-size:1.5rem;">${method === 'email' && isDirect ? 'ההזמנה נשלחה!' : (isDirect ? 'ההזמנה נקלטה' : (method === 'quote' ? 'הבקשה נשלחה!' : 'ההזמנה נשלחה!'))}</h2>
             <p style="margin:0 0 0.4rem; font-weight:700;">${method === 'quote' ? 'מספר בקשה' : 'מספר הזמנה'}: ${orderId}</p>
-            <p style="margin:0 0 1.3rem; color:#6B7F75; font-size:0.95rem; line-height:1.6;">${methodText}</p>
-            <button id="order-confirm-close" style="background:#639C7D; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">סגור</button>
+            <p style="margin:0 0 1.3rem; color:#5B6E64; font-size:0.95rem; line-height:1.6;">${methodText}</p>
+            <button id="order-confirm-close" style="background:#1A4231; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">סגור</button>
         `;
         overlay.appendChild(box);
         document.body.appendChild(overlay);
+        markDialog(overlay);
 
         const close = () => {
             overlay.remove();
+            dialogClosed(overlay);
             // מסלול ישיר: ההזמנה כבר נקלטה — הסל מתרוקן כדי שהביקור הבא
             // (לקוח אחר אצל הסוכן, או הזמנה חדשה של הסניף) יתחיל נקי
             if (isDirect) {
@@ -2240,6 +2375,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         box.querySelector("#order-confirm-close").addEventListener("click", close);
         overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+        // הפוקוס לכותרת, כדי שקורא מסך יקריא "ההזמנה נשלחה" ואת מספר ההזמנה
+        dialogOpened(overlay, close);
     }
 
     // --- Customer Details (פרטי לקוח בהזמנה) ---
@@ -2289,6 +2426,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         el.addEventListener('input', clear);
     }
 
+    // טלפון ישראלי: נייד ו-07X — 10 ספרות, קווי — 9, וגם 1-599/1-700/1-800.
+    // עותק זהה ל-isValidIsraeliPhone ב-js/components.js (דף הסוכן לא טוען אותו).
+    function isValidPhone(raw) {
+        let d = String(raw || '').replace(/\D/g, '');
+        if (d.startsWith('00972')) d = d.slice(2);
+        if (d.startsWith('972')) { d = d.slice(3); if (!d.startsWith('0')) d = '0' + d; }
+        return /^(0[57]\d{8}|0[2-489]\d{7}|1(?:599|700|800|801)\d{6})$/.test(d);
+    }
+
     function validateCustomerDetails(customer) {
         // עמוד רשת החנויות: הסניף נבחר בשער ולכן תמיד קיים, והשדה היחיד שנדרש
         // הוא שם המזמין. לא שומרים ל-aroam_customer_details — המפתח משותף לכל
@@ -2312,6 +2458,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ? "נא למלא שם מלא וטלפון לפני שליחת ההזמנה"
                 : "נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
             markMissingField(!nameValue ? nameField : "cust-phone", "שדה חובה");
+            return false;
+        }
+        // ספרה חסרה או מיותרת — בלי המספר אין דרך לחזור ללקוח שהזמין במייל
+        if (!isValidPhone(customer.phone)) {
+            showToast("מספר הטלפון לא תקין — בדקו שהוקלד במלואו");
+            markMissingField("cust-phone", "מספר טלפון לא תקין (למשל 050-1234567 או 03-1234567)");
             return false;
         }
         // שמירת הפרטים במכשיר - ימולאו אוטומטית בהזמנה הבאה.
@@ -2904,21 +3056,22 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         };
     }
+    function closeQuickView() {
+        if (!quickViewModal) return;
+        quickViewModal.classList.remove("open");
+        syncModalScrollLock();
+        dialogClosed(quickViewModal);
+    }
+
     function setupQuickViewListeners() {
         if (!quickViewModal) return;
 
         if (closeQuickViewBtn) {
-            closeQuickViewBtn.onclick = () => {
-                quickViewModal.classList.remove("open");
-                syncModalScrollLock();
-            };
+            closeQuickViewBtn.onclick = closeQuickView;
         }
 
         quickViewModal.onclick = (e) => {
-            if (e.target === quickViewModal) {
-                quickViewModal.classList.remove("open");
-                syncModalScrollLock();
-            }
+            if (e.target === quickViewModal) closeQuickView();
         };
 
         if (qvMinus) qvMinus.onclick = () => {
@@ -2941,8 +3094,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Refresh grid if needed to show updated input there
             renderProducts();
 
-            quickViewModal.classList.remove("open");
-            syncModalScrollLock();
+            closeQuickView();
+            // הכרטיסים נבנו מחדש, ולכן הכפתור שפתח את החלון כבר לא קיים —
+            // הפוקוס חוזר לכפתור התצוגה המהירה של אותו מוצר בכרטיס החדש
+            const trigger = document.querySelector(`[id="product-${CSS.escape(currentQvProductId)}"] .qv-btn-trigger`);
+            const active = document.activeElement;
+            if (trigger && (!active || active === document.body || quickViewModal.contains(active))) {
+                trigger.focus({ preventScroll: true });
+            }
 
             // Animation
             const btnRect = qvAddToCart.getBoundingClientRect();
@@ -3011,6 +3170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         quickViewModal.classList.add("open");
         syncModalScrollLock();
+        dialogOpened(quickViewModal, closeQuickView);
         trackEvent("view_item", {
             item_id: product.id,
             item_name: product.name,
@@ -3453,12 +3613,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderHistoryList();
         modal.classList.add("open");
         syncModalScrollLock();
+        dialogOpened(modal, closeHistoryModal);
     }
 
     function closeHistoryModal() {
         const modal = document.getElementById("history-modal");
         if (modal) modal.classList.remove("open");
         syncModalScrollLock();
+        dialogClosed(modal);
     }
 
     async function renderHistoryList() {

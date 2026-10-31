@@ -111,8 +111,9 @@
 
         .hero-chip {
             display: inline-block;
-            background: rgba(143, 214, 163, 0.18);
-            color: #8FD6A3;
+            background: rgba(143, 214, 163, 0.14);
+            /* לבן ולא פסטל: הפסטל על הצ'יפ היה 3.6 (נדרש 4.5) */
+            color: #ffffff;
             font-weight: 700;
             font-size: 0.92rem;
             padding: 7px 16px;
@@ -352,7 +353,7 @@
         }
 
         .area-eyebrow {
-            color: var(--primary-color);
+            color: var(--link-color);
             font-weight: 700;
             font-size: 0.9rem;
         }
@@ -364,7 +365,12 @@
         }
 
         .home-area h2 span {
-            color: var(--primary-color);
+            /* ירוק המותג היה 2.92 על הרקע הבהיר — כאן 3.91 (טקסט גדול: נדרש 3) */
+            color: #52856A;
+        }
+
+        [data-theme="dark"] .home-area h2 span {
+            color: #8FD6A3;
         }
 
         .home-area p {
@@ -572,6 +578,7 @@
 
 <body>
 <site-header></site-header>
+<main id="main-content" tabindex="-1">
     <section class="hero">
         <div class="container hero-grid">
             <div class="hero-content">
@@ -598,7 +605,7 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="hp-name">שם מלא <span style="color: red;">*</span></label>
+                            <label for="hp-name">שם מלא <span class="req" aria-hidden="true">*</span></label>
                             <input type="text" id="hp-name" name="name" required autocomplete="name">
                         </div>
                         <div class="form-group">
@@ -608,7 +615,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="hp-phone">טלפון <span style="color: red;">*</span></label>
+                        <label for="hp-phone">טלפון <span class="req" aria-hidden="true">*</span></label>
                         <input type="tel" id="hp-phone" name="phone" required placeholder="050-1234567" autocomplete="tel">
                     </div>
 
@@ -721,8 +728,10 @@
             </div>
         </div>
     </section>
+</main>
+
 <site-footer></site-footer>
-    <script src="js/components.js?v=1"></script>
+    <script src="js/components.js?v=2"></script>
 </body>
 
 </html>

@@ -134,13 +134,13 @@
 
         .cta-section {
             padding: 80px 0;
-            background-color: var(--primary-color);
-            color: var(--white);
+            background-color: #2C5C46;
+            color: #ffffff;
             text-align: center;
         }
 
         .cta-section h2 {
-            color: var(--white);
+            color: #ffffff;
             font-size: 2.5rem;
             margin-bottom: 20px;
         }
@@ -167,6 +167,7 @@
 
     
     <site-header></site-header>
+    <main id="main-content" tabindex="-1">
 
     <!-- Hero Section -->
     <section class="hero">
@@ -234,15 +235,15 @@
                 <p>מלאו את הפרטים והצרכים שלכם (קופסאות משלוחים, שקיות נייר, כוסות לשתייה חמה/קרה, סכו"ם, חומרי ניקוי למטבח תעשייתי, נייר תעשייתי לניגוב וכו'), ונציגנו יחזור אליכם עם הצעת מחיר סיטונאית אטרקטיבית ואפשרות לאספקה שוטפת.</p>
                 <div class="lead-benefits">
                     <div class="benefit-item">
-                        <span class="benefit-icon">📦</span>
+                        <span class="benefit-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span>
                         <span>מגוון רחב של אריזות טייק-אווי וכלים חד-פעמיים</span>
                     </div>
                     <div class="benefit-item">
-                        <span class="benefit-icon">🧼</span>
+                        <span class="benefit-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg></span>
                         <span>חומרי ניקוי וחיטוי מקצועיים ברישיון למטבחים</span>
                     </div>
                     <div class="benefit-item">
-                        <span class="benefit-icon">⚡</span>
+                        <span class="benefit-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>
                         <span>מענה מהיר ואספקה גמישה כדי שלא תיתקעו בשעות הלחץ</span>
                     </div>
                 </div>
@@ -260,12 +261,12 @@
                     <input type="hidden" name="_subject" value="בקשת הצעת מחיר - מסעדות">
                     
                     <div class="form-group">
-                        <label for="rest-name">שם מלא / שם המסעדה או הקייטרינג <span style="color: red;">*</span></label>
+                        <label for="rest-name">שם מלא / שם המסעדה או הקייטרינג <span class="req" aria-hidden="true">*</span></label>
                         <input type="text" id="rest-name" name="name" required placeholder="שם העסק או שם איש קשר">
                     </div>
                     
                     <div class="form-group">
-                        <label for="rest-phone">טלפון ליצירת קשר <span style="color: red;">*</span></label>
+                        <label for="rest-phone">טלפון ליצירת קשר <span class="req" aria-hidden="true">*</span></label>
                         <input type="tel" id="rest-phone" name="phone" required placeholder="050-1234567">
                     </div>
                     
@@ -304,10 +305,10 @@
             <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">מסעדה, בית קפה או עסק משלוחים צורכים <strong>חד פעמי למסעדות</strong> בכמויות גדולות ובקצב קבוע – ולכן חשוב לעבוד עם ספק שמחזיק מלאי, מספק בזמן ונותן מחיר סיטונאי. אנחנו מרכזים תחת קורת גג אחת את כל מה שמטבח מקצועי צריך לתפעול יומיומי: כלים חד פעמיים, אריזות מזון למשלוחים, מוצרי נייר, חומרי ניקוי לרמת מטבח, שקיות אשפה ואביזרי ניקיון.</p>
 
             <h3 style="font-size:1.12rem;color:var(--secondary-color);margin:24px 0 8px;">אריזות מזון וכלים חד פעמיים למשלוחים</h3>
-            <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">קופסאות אוכל אטומות לנוזלים, מגשי הגשה, כוסות לשתייה חמה וקרה, סכו"ם קשיח, צלחות וקערות – <a href="/catalog/disposables/" style="color:var(--primary-color);">כלים חד פעמיים ואריזות</a> שמחזיקים את המנה יפה ובטמפרטורה גם בדרך ללקוח. לצידם <a href="/catalog/bags/" style="color:var(--primary-color);">שקיות הובלה ושקיות אשפה</a> בעובי מתאים למטבח עמוס.</p>
+            <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">קופסאות אוכל אטומות לנוזלים, מגשי הגשה, כוסות לשתייה חמה וקרה, סכו"ם קשיח, צלחות וקערות – <a href="/catalog/disposables/" style="color:var(--link-color);">כלים חד פעמיים ואריזות</a> שמחזיקים את המנה יפה ובטמפרטורה גם בדרך ללקוח. לצידם <a href="/catalog/bags/" style="color:var(--link-color);">שקיות הובלה ושקיות אשפה</a> בעובי מתאים למטבח עמוס.</p>
 
             <h3 style="font-size:1.12rem;color:var(--secondary-color);margin:24px 0 8px;">חומרי ניקוי והיגיינה למטבח מקצועי</h3>
-            <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">מטבח מסחרי חייב לעמוד בתקני ניקיון קפדניים. אנו מספקים <a href="/catalog/cleaning/" style="color:var(--primary-color);">חומרי ניקוי</a> מקצועיים – מסירי שומן חזקים, חומרי חיטוי, נוזלי כלים וטבליות מדיח תעשייתי – לצד <a href="/catalog/paper/" style="color:var(--primary-color);">מוצרי נייר</a> להיגיינת ידיים וניגוב משטחים.</p>
+            <p style="line-height:1.8;color:var(--text-light);margin-bottom:14px;">מטבח מסחרי חייב לעמוד בתקני ניקיון קפדניים. אנו מספקים <a href="/catalog/cleaning/" style="color:var(--link-color);">חומרי ניקוי</a> מקצועיים – מסירי שומן חזקים, חומרי חיטוי, נוזלי כלים וטבליות מדיח תעשייתי – לצד <a href="/catalog/paper/" style="color:var(--link-color);">מוצרי נייר</a> להיגיינת ידיים וניגוב משטחים.</p>
 
             <h3 style="font-size:1.12rem;color:var(--secondary-color);margin:24px 0 8px;">אספקה שוטפת וגמישה</h3>
             <p style="line-height:1.8;color:var(--text-light);margin-bottom:26px;">אפשר לקבוע רשימת מוצרים קבועה ואספקה מחזורית כדי שלא תיתקעו בלי מלאי בשיא השירות, עם משלוח עד דלת המסעדה באזור אור יהודה, בקעת אונו וגוש דן. הזמנה חוזרת אורכת פחות מדקה – בוחרים כמות בקטלוג ושולחים בוואטסאפ.</p>
@@ -341,9 +342,11 @@
             </div>
         </div>
     </section>
+    </main>
+
     <site-footer></site-footer>
 
-    <script src="/js/components.js?v=1"></script>
+    <script src="/js/components.js?v=2"></script>
 </body>
 
 </html>

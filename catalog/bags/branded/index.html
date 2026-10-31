@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="/css/site.css">
     <style>
         .bb-hero { background: linear-gradient(135deg, #1A4231 0%, #2C5C46 60%, #39705A 100%); color: #fff; padding: 56px 0; }
-        .bb-hero .breadcrumbs { font-size: 0.85rem; opacity: 0.8; margin-bottom: 14px; }
+        .bb-hero .breadcrumbs { font-size: 0.85rem; opacity: 0.9; margin-bottom: 14px; }
         .bb-hero .breadcrumbs a { color: #fff; text-decoration: none; }
         .bb-grid { display: grid; grid-template-columns: 1fr 440px; gap: 40px; align-items: start; }
         .bb-hero h1 { font-size: 2.4rem; color: #fff; line-height: 1.15; margin-bottom: 16px; }
@@ -56,14 +56,15 @@
         .bb-block p, .bb-block li { font-size: 1.04rem; line-height: 1.8; color: var(--text-color); }
         .bb-block p { margin-bottom: 14px; }
         .bb-block ul, .bb-block ol { margin: 0 22px 16px; }
-        .bb-block a { color: var(--primary-color); }
+        .bb-block a { color: var(--link-color); }
         .bb-table-wrap { overflow-x: auto; margin: 10px 0 18px; }
         .bb-table { width: 100%; border-collapse: collapse; background: var(--white); }
         .bb-table th, .bb-table td { border: 1px solid rgba(0,0,0,0.08); padding: 10px 12px; text-align: right; vertical-align: top; }
         .bb-table th { background: var(--primary-light, #EAF3EE); color: var(--secondary-color); }
+        [data-theme="dark"] .bb-table th { background: #1A4231; }
         .cat-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
         .cat-links a { background: var(--white); border: 1px solid rgba(0,0,0,0.08); border-radius: 50px; padding: 6px 16px; font-size: 0.9rem; color: var(--text-color); text-decoration: none; }
-        .cat-links a:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .cat-links a:hover { border-color: var(--primary-color); color: var(--link-color); }
         @media (max-width: 900px) { .bb-grid { grid-template-columns: 1fr; } .bb-hero h1 { font-size: 1.8rem; } .bb-hero { padding: 40px 0; } }
     </style>
 
@@ -139,6 +140,7 @@
 
 
     <site-header></site-header>
+    <main id="main-content" tabindex="-1">
 
     <section class="bb-hero">
         <div class="container bb-grid">
@@ -165,11 +167,11 @@
                     <input type="text" name="_honey" style="display:none">
                     <input type="hidden" name="_subject" value="בקשת הצעת מחיר - שקיות גופייה ממותגות">
                     <div class="form-group">
-                        <label for="bb-name">שם העסק / איש קשר <span style="color: red;">*</span></label>
+                        <label for="bb-name">שם העסק / איש קשר <span class="req" aria-hidden="true">*</span></label>
                         <input type="text" id="bb-name" name="name" required placeholder="למשל: מאפיית השכונה / ישראל ישראלי">
                     </div>
                     <div class="form-group">
-                        <label for="bb-phone">טלפון <span style="color: red;">*</span></label>
+                        <label for="bb-phone">טלפון <span class="req" aria-hidden="true">*</span></label>
                         <input type="tel" id="bb-phone" name="phone" required placeholder="050-1234567">
                     </div>
                     <div class="form-group">
@@ -239,8 +241,10 @@
         </div>
     </section>
 
+    </main>
+
     <site-footer></site-footer>
-    <script src="/js/components.js?v=1"></script>
+    <script src="/js/components.js?v=2"></script>
 </body>
 
 </html>

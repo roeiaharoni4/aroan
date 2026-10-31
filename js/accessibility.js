@@ -218,6 +218,17 @@
         if (e.key === 'Tab') {
             document.body.classList.add('kbd-nav');
         }
+        // Esc סוגר את תפריט הנגישות ומחזיר את הפוקוס לכפתור שפתח אותו
+        if (e.key === 'Escape') {
+            const menu = document.getElementById('a11y-menu');
+            if (menu && menu.classList.contains('visible')) {
+                // מסמנים שהאירוע טופל, כדי שחלון פתוח מתחת (הסל, תצוגה מהירה) לא ייסגר איתו
+                e.preventDefault();
+                menu.classList.remove('visible');
+                const toggleBtn = document.getElementById('a11y-toggle-btn');
+                if (toggleBtn) toggleBtn.focus();
+            }
+        }
     });
 
     document.addEventListener('mousedown', () => {

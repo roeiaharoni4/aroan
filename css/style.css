@@ -347,8 +347,8 @@ button {
 
 .sub-chip-count {
     font-size: 0.75rem;
+    /* בלי שקיפות: עם opacity 0.8 המספר ירד ל-3.2–3.5 */
     color: var(--text-secondary);
-    opacity: 0.8;
 }
 
 /* במצב כהה --primary-light הופך ל-‎#1A4231, אותו צבע כמו --primary-dark (סבב 54) */
@@ -1571,13 +1571,21 @@ body:has(.fab-container) .scroll-top-btn {
     transition: all 0.2s;
 }
 
+/* ירוק כהה (11.2). על ירוק המותג הטקסט הלבן היה 3.19 — "הוסף להזמנה"
+   בתצוגה המהירה ו"הוסף הכל לסל" בהזמנות האחרונות */
 .btn-primary {
-    background: var(--primary);
+    background: var(--primary-dark);
     color: white;
 }
 
 .btn-primary:hover {
     background: var(--primary-dark);
+    filter: brightness(1.25);
+}
+
+[data-theme="dark"] .btn-primary {
+    background: var(--primary-pastel);
+    color: var(--primary-dark);
 }
 
 /* כפתור השליחה בעמוד הסל. היה לבן על ירוק הוואטסאפ (#25D366) — יחס ניגודיות
@@ -1978,7 +1986,8 @@ body:has(.fab-container) .scroll-top-btn {
         width: 100%;
     }
 
-    .app-container.with-sidebar main {
+    .app-container.with-sidebar main,
+    .app-container.with-sidebar .catalog-main {
         min-width: 0;
     }
 }

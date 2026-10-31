@@ -34,6 +34,7 @@
 
 
     <site-header></site-header>
+    <main id="main-content" tabindex="-1">
 
     <section class="lp-hero">
         <div class="container lp-hero-grid">
@@ -62,12 +63,12 @@
                     <input type="hidden" name="_subject" value="בקשת הצעת מחיר - חד פעמי (ממומן)">
 
                     <div class="form-group">
-                        <label for="lp-disp-name">שם העסק / איש קשר <span style="color: red;">*</span></label>
+                        <label for="lp-disp-name">שם העסק / איש קשר <span class="req" aria-hidden="true">*</span></label>
                         <input type="text" id="lp-disp-name" name="name" required placeholder="למשל: מסעדת השף / ישראל ישראלי">
                     </div>
 
                     <div class="form-group">
-                        <label for="lp-disp-phone">טלפון <span style="color: red;">*</span></label>
+                        <label for="lp-disp-phone">טלפון <span class="req" aria-hidden="true">*</span></label>
                         <input type="tel" id="lp-disp-phone" name="phone" required placeholder="050-1234567">
                     </div>
 
@@ -131,13 +132,15 @@
         <div class="container" style="max-width: 900px;">
             <h2>אזור החלוקה שלנו</h2>
             <p>אנחנו מחלקים מאור יהודה לכל אזור המרכז — מיבנה בדרום ועד רעננה בצפון, כולל תל אביב, רמת גן, בני ברק, פתח תקווה, קריית אונו, יהוד, חולון ובת ים. אם העסק שלכם באזור, נגיע אליו.</p>
-            <p style="margin-top: 18px;">רוצים לראות את המוצרים לפני שמדברים? <a href="/catalog/disposables/" style="color: var(--primary-color); font-weight: 600;">לקטלוג החד פעמי המלא</a> או <a href="/catalog/" style="color: var(--primary-color); font-weight: 600;">לקטלוג המוצרים המלא</a>.</p>
+            <p style="margin-top: 18px;">רוצים לראות את המוצרים לפני שמדברים? <a href="/catalog/disposables/" style="color: var(--link-color); font-weight: 600;">לקטלוג החד פעמי המלא</a> או <a href="/catalog/" style="color: var(--link-color); font-weight: 600;">לקטלוג המוצרים המלא</a>.</p>
         </div>
     </section>
 
+    </main>
+
     <site-footer></site-footer>
 
-    <script src="/js/components.js?v=1"></script>
+    <script src="/js/components.js?v=2"></script>
 </body>
 
 </html>

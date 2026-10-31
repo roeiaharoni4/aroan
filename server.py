@@ -1178,7 +1178,7 @@ CATALOG_WHATSAPP = '972526000158'
 # ו-components.js (הדר, פוטר, וואטסאפ צף) כמו בשאר הדפים. דפי /care/ לא משתמשים
 # בהם בכוונה: לקטלוג הטיפוח הדר ופוטר עצמאיים, בלי קישורים לאתר העסקי.
 # גרסת components.js כאן חייבת להתאים להפניות בדפים — להעלות יחד.
-SITE_COMPONENTS_JS = '/js/components.js?v=1'
+SITE_COMPONENTS_JS = '/js/components.js?v=2'
 SITE_HEAD_ASSETS = """    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
@@ -1442,7 +1442,7 @@ def generate_catalog_subcategory_pages():
         .sc-item:hover {{ border-color: var(--primary-color); }}
         /* רקע לבן גם במצב כהה: לתמונות המוצר יש רקע לבן משלהן */
         .sc-item .ph {{ aspect-ratio: 1; background: #fff; border-radius: 8px; display: grid; place-items: center;
-                       overflow: hidden; color: #6B7F75; font-size: .85rem; }}
+                       overflow: hidden; color: #5B6E64; font-size: .85rem; }}
         .sc-item .ph img {{ max-width: 88%; max-height: 88%; width: auto; height: auto; object-fit: contain; }}
         .sc-item h3 {{ font-size: 1rem; line-height: 1.35; margin: 0; }}
         .sc-item h3 a {{ color: var(--secondary-color); }}
@@ -1464,7 +1464,7 @@ def generate_catalog_subcategory_pages():
 <body>
     <site-header></site-header>
 
-    <main class="container sc-page">
+    <main id="main-content" class="container sc-page" tabindex="-1">
         <nav class="crumbs" aria-label="breadcrumb">
             <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
             <a href="/catalog/{parent}/">{escape(parent_name)}</a> &laquo; {escape(cfg['h1'])}
@@ -1746,7 +1746,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
         .p-photo {{ background: #fff; border: 1px solid rgba(0, 0, 0, .08); border-radius: 14px;
                    padding: 18px; aspect-ratio: 1; display: grid; place-items: center; }}
         .p-photo img {{ max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }}
-        .p-noimg {{ color: #6B7F75; }}
+        .p-noimg {{ color: #5B6E64; }}
         .p-info h1 {{ font-size: 2rem; line-height: 1.2; color: var(--secondary-color); margin: 0 0 12px; }}
         .p-desc {{ font-size: 1.08rem; line-height: 1.75; color: var(--text-color); }}
         dl.specs {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin: 22px 0; padding: 0; }}
@@ -1772,7 +1772,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
                     font-weight: 600; font-size: .92rem; line-height: 1.35; }}
         .rel-card:hover {{ border-color: var(--primary-color); }}
         .rel-card .ph {{ aspect-ratio: 1; background: #fff; border-radius: 8px; display: grid; place-items: center;
-                        overflow: hidden; color: #6B7F75; font-size: .8rem; }}
+                        overflow: hidden; color: #5B6E64; font-size: .8rem; }}
         .rel-card .ph img {{ max-width: 90%; max-height: 90%; width: auto; height: auto; object-fit: contain; }}
         .more {{ display: inline-block; margin-top: 18px; font-weight: 700; color: var(--secondary-color); }}
         @media (max-width: 820px) {{
@@ -1790,7 +1790,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
 <body>
     <site-header></site-header>
 
-    <main class="container pp">
+    <main id="main-content" class="container pp" tabindex="-1">
         <nav class="crumbs" aria-label="breadcrumb">
             <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
             <a href="{escape(cat_url)}">{escape(cat or 'מוצרים')}</a> &laquo; {escape(name)}

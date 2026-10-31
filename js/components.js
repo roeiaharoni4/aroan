@@ -197,7 +197,7 @@ class LeadForm extends HTMLElement {
                             <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
                             <input type="hidden" name="_subject" value="${esc(subject)}">
                             <div class="form-group">
-                                <label for="lf${n}-name">שם מלא <span style="color: red;">*</span></label>
+                                <label for="lf${n}-name">שם מלא <span class="req" aria-hidden="true">*</span></label>
                                 <input type="text" id="lf${n}-name" name="name" required autocomplete="name">
                             </div>
                             <div class="form-group">
@@ -205,7 +205,7 @@ class LeadForm extends HTMLElement {
                                 <input type="text" id="lf${n}-business" name="business" autocomplete="organization">
                             </div>
                             <div class="form-group">
-                                <label for="lf${n}-phone">טלפון <span style="color: red;">*</span></label>
+                                <label for="lf${n}-phone">טלפון <span class="req" aria-hidden="true">*</span></label>
                                 <input type="tel" id="lf${n}-phone" name="phone" required autocomplete="tel" placeholder="050-1234567">
                             </div>
                             <div class="form-group">
@@ -261,6 +261,16 @@ function captureAttribution() {
 }
 
 // מחרוזת קריאה לאדם, לעמודת "מקור" בגיליון הלידים
+// טלפון ישראלי: נייד ו-07X — 10 ספרות, קווי — 9, וגם 1-599/1-700/1-800.
+// תופס ספרה חסרה או מיותרת בלי לחסום צורות כתיבה: רווחים, מקפים, סוגריים
+// ו-+972 מנוקים לפני הבדיקה. עותק זהה ב-js/app.js (דף הסוכן לא טוען קובץ זה).
+function isValidIsraeliPhone(raw) {
+    let d = String(raw || '').replace(/\D/g, '');
+    if (d.startsWith('00972')) d = d.slice(2);
+    if (d.startsWith('972')) { d = d.slice(3); if (!d.startsWith('0')) d = '0' + d; }
+    return /^(0[57]\d{8}|0[2-489]\d{7}|1(?:599|700|800|801)\d{6})$/.test(d);
+}
+
 function attributionLabel(attr) {
     const parts = [attr.utm_campaign, attr.utm_term, attr.utm_source].filter(Boolean);
     return parts.length ? parts.join(' | ') : 'אורגני / ישיר';
@@ -270,6 +280,23 @@ captureAttribution();
 
 // Auto-inject components
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- קישור "דילוג לתוכן הראשי" (ת"י 5568, סעיף 2.4.1) ---
+    // הדבר הראשון שהמקלדת פוגשת בעמוד, וגלוי רק כשהוא בפוקוס. מוזרק רק כשיש
+    // בעמוד יעד — עמודים בלי <main id="main-content"> לא מקבלים אותו.
+    // בלי שינוי בכתובת (#main-content) — בקטלוג ה-hash היה מתערבב בהיסטוריה של הסל.
+    const mainTarget = document.getElementById('main-content');
+    if (mainTarget && !document.querySelector('.skip-link')) {
+        const skip = document.createElement('a');
+        skip.className = 'skip-link';
+        skip.href = '#main-content';
+        skip.textContent = 'דילוג לתוכן הראשי';
+        skip.addEventListener('click', (e) => {
+            e.preventDefault();
+            mainTarget.focus();
+        });
+        document.body.prepend(skip);
+    }
 
     // --- Conversion Tracking: דיווח לחיצות טלפון/וואטסאפ ל-GTM ול-GA4 ---
     document.addEventListener('click', (e) => {
@@ -297,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('aroam-a11y-js')) {
         const script = document.createElement('script');
         script.id = 'aroam-a11y-js';
-        script.src = '/js/accessibility.js?v=3';
+        script.src = '/js/accessibility.js?v=4';
         document.body.appendChild(script);
     }
 
@@ -331,7 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
         waBtn.className = 'floating-whatsapp';
         waBtn.href = 'https://wa.me/972526000158'; // User's phone
         waBtn.target = '_blank';
-        waBtn.setAttribute('aria-label', 'WhatsApp');
+        waBtn.rel = 'noopener';
+        waBtn.setAttribute('aria-label', "צ'אט בוואטסאפ");
         waBtn.innerHTML = '<svg width="35" height="35" viewBox="0 0 32 32" fill="#fff" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7zm5.7-7.7c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.6-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1.1-1.1 2.6s1.1 3 1.3 3.2c.2.2 2.2 3.4 5.4 4.8.8.3 1.3.5 1.8.7.8.2 1.5.2 2 .1.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>';
         waBtn.title = "צ'אט בוואטסאפ";
         document.body.appendChild(waBtn);
@@ -407,6 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // שורת פרטיות מתחת לכל טופס ליד (חובת יידוע — תיקון 13 לחוק הגנת הפרטיות).
     // מוזרקת כאן כדי לא לשכפל אותה ב-9 דפים; טופס שכבר יש בו שורה כזו מדולג.
     document.querySelectorAll('.contact-form-ajax').forEach(form => {
+        const alertBox = form.querySelector('.form-status-alert');
+        if (alertBox) alertBox.setAttribute('aria-live', 'polite');
         if (form.querySelector('.form-privacy')) return;
         const btn = form.querySelector('.btn-form-submit');
         if (!btn) return;
@@ -447,6 +477,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 alertBox.textContent = 'אנא מלאו את שדות החובה (שם וטלפון)';
                 alertBox.style.display = 'block';
             }
+            return;
+        }
+
+        // ליד עם מספר שגוי הוא ליד אבוד — האימייל אופציונלי, ואין דרך אחרת לחזור לפונה
+        if (!isValidIsraeliPhone(phone)) {
+            if (alertBox) {
+                alertBox.className = 'form-status-alert error';
+                alertBox.textContent = 'מספר הטלפון לא תקין — בדקו שהוקלד במלואו (למשל 050-1234567)';
+                alertBox.style.display = 'block';
+            }
+            if (phoneInput) phoneInput.focus();
             return;
         }
         

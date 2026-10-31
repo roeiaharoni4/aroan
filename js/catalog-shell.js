@@ -11,8 +11,7 @@ class CatalogShell extends HTMLElement {
             <div class="header-content" style="display:none;"></div>
 
             <div class="search-container">
-                <input type="text" id="search-input" aria-label="חיפוש מוצר" class="search-input" placeholder="חיפוש מוצר..."
-                    aria-label="חיפוש בקטלוג">
+                <input type="text" id="search-input" aria-label="חיפוש מוצר" class="search-input" placeholder="חיפוש מוצר...">
             </div>
         </header>
 
@@ -25,11 +24,11 @@ class CatalogShell extends HTMLElement {
         </aside>
 
         <!-- Main Content -->
-        <main>
+        <div class="catalog-main">
             <div class="products-grid" id="products">
                 <!-- Products injected by JS -->
             </div>
-        </main>
+        </div>
 
         <!-- Floating Action Button (Cart) -->
         <div class="fab-container">
@@ -66,25 +65,26 @@ class CatalogShell extends HTMLElement {
                 <!-- Customer Details - פרטי הלקוח נשמרים במכשיר לביקור הבא -->
                 <div id="customer-details" style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(99,156,125,0.06); border-radius: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.6rem;">
                     <div>
-                        <label for="cust-business" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">שם העסק <span style="color:red;">*</span></label>
-                        <input type="text" id="cust-business" placeholder="שם העסק / המוסד" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        <label for="cust-business" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">שם העסק <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" id="cust-business" placeholder="שם העסק / המוסד" aria-required="true" autocomplete="organization" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
                     <div>
                         <label for="cust-contact" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">איש קשר</label>
-                        <input type="text" id="cust-contact" placeholder="שם מלא" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        <input type="text" id="cust-contact" placeholder="שם מלא" autocomplete="name" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
                     <div>
-                        <label for="cust-phone" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">טלפון <span style="color:red;">*</span></label>
-                        <input type="tel" id="cust-phone" placeholder="050-1234567" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        <label for="cust-phone" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">טלפון <span class="req" aria-hidden="true">*</span></label>
+                        <input type="tel" id="cust-phone" placeholder="050-1234567" aria-required="true" autocomplete="tel" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
                     <div>
                         <label for="cust-address" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">כתובת למשלוח</label>
-                        <input type="text" id="cust-address" placeholder="רחוב, מספר, עיר" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
+                        <input type="text" id="cust-address" placeholder="רחוב, מספר, עיר" autocomplete="street-address" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
                     <div style="grid-column: 1 / -1;">
                         <label for="cust-notes" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">הערות להזמנה</label>
                         <input type="text" id="cust-notes" placeholder="אופציונלי" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
+                    <p class="order-privacy" style="grid-column: 1 / -1; margin: 0; font-size: 0.8rem; color: var(--text-secondary);">הפרטים משמשים לטיפול בהזמנה בלבד, ונשמרים גם במכשיר הזה כדי שלא תצטרכו להקליד אותם שוב בהזמנה הבאה. <a href="/privacy/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">מדיניות הפרטיות</a></p>
                 </div>
 
                 <div class="table-responsive" style="overflow-x: auto;">

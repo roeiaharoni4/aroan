@@ -12,8 +12,11 @@
     --accent-hover: #52856A;
     --text-color: #2F3E35;
     /* Dark Green/Gray */
-    --text-light: #6B7F75;
-    /* Slate 500 */
+    --text-light: #5B6E64;
+    /* טקסט משני. היה ‎#6B7F75 — יחס 3.8–4.27 על הרקעים הבהירים, מתחת ל-4.5
+       שתקן הנגישות דורש. הגוון נשמר, רק כהה יותר (4.81 גם על ‎#EAF3EE). */
+    --link-color: #2C5C46;
+    /* קישורים בתוך טקסט. ירוק המותג על לבן הוא 3.19 — כאן 7.7 */
     --bg-light: #F8FAFC;
     /* Slate 50 */
     --white: #ffffff;
@@ -36,6 +39,7 @@
     /* Pure White text */
     --text-light: #CCCCCC;
     /* Light gray */
+    --link-color: #8FD6A3;
 
     --bg-light: #121212;
     /* Almost Black */
@@ -148,41 +152,46 @@ ul {
     /* Context for absolute positioning of icons */
 }
 
+/* כפתור ראשי — ירוק כהה (11.2). על ירוק המותג הטקסט הלבן היה ביחס 3.19,
+   מתחת ל-4.5 שתקן הנגישות דורש. */
 .btn-primary {
-    background-color: var(--primary-color);
+    background-color: #1A4231;
     color: #ffffff;
     border: none;
 }
 
 .btn-primary:hover {
-    background-color: var(--accent-hover);
-}
-
-/* כפתור הוואטסאפ בראש דפי הקטגוריה — ירוק כהה (11.2 במקום 3.19).
-   מגודר ל-.cat-hero: בשאר האתר יש כפתורי btn-primary על רקע כהה. */
-.cat-hero .btn-primary {
-    background-color: #1A4231;
-}
-
-.cat-hero .btn-primary:hover {
     background-color: #1A4231;
     filter: brightness(1.25);
 }
 
-[data-theme="dark"] .cat-hero .btn-primary {
+/* על הרקעים הכהים (ההירו של דפי הערים, המגזרים והשקיות הממותגות, ובמצב
+   כהה) הירוק הכהה נבלע ברקע — פסטל עם טקסט כהה (6.59) */
+.hero .btn-primary,
+.bb-hero .btn-primary,
+[data-theme="dark"] .btn-primary {
     background-color: #8FD6A3;
     color: #1A4231;
 }
 
+.hero .btn-primary:hover,
+.bb-hero .btn-primary:hover,
+[data-theme="dark"] .btn-primary:hover {
+    background-color: #8FD6A3;
+    filter: brightness(1.08);
+}
+
+/* כפתור מתאר — תמיד על רקע כהה. לבן קבוע ולא ‎--white, שבמצב כהה הוא
+   ‎#1E1E1E: הכפתור היה נעלם על ההירו הכהה (1.48). */
 .btn-outline {
     background-color: transparent;
-    border: 2px solid var(--white);
-    color: var(--white);
+    border: 2px solid #ffffff;
+    color: #ffffff;
 }
 
 .btn-outline:hover {
-    background-color: var(--white);
-    color: var(--primary-color);
+    background-color: #ffffff;
+    color: #1A4231;
 }
 
 /* Utility Bar (above header) */
@@ -322,7 +331,8 @@ ul {
 }
 
 .footer-col h4 {
-    color: var(--white);
+    /* לבן קבוע: במצב כהה ‎--white הוא ‎#1E1E1E — בדיוק צבע הפוטר, והכותרות נעלמו */
+    color: #ffffff;
     margin-bottom: 20px;
     font-size: 1.3rem;
     border-bottom: 2px solid var(--accent-color);
@@ -978,8 +988,9 @@ ul {
     display: block;
 }
 
+/* כפתור שליחת הטופס — ירוק כהה (11.2 במקום 3.19), ובמצב כהה פסטל */
 .btn-form-submit {
-    background-color: var(--primary-color);
+    background-color: #1A4231;
     color: white;
     border: none;
     padding: 14px 28px;
@@ -995,7 +1006,49 @@ ul {
 }
 
 .btn-form-submit:hover {
-    background-color: var(--accent-hover);
+    filter: brightness(1.25);
+}
+
+[data-theme="dark"] .btn-form-submit {
+    background-color: #8FD6A3;
+    color: #1A4231;
+}
+
+[data-theme="dark"] .btn-form-submit:hover {
+    filter: brightness(1.08);
+}
+
+/* קישור "דילוג לתוכן הראשי" — מחוץ למסך עד שמגיעים אליו ב-Tab */
+.skip-link {
+    position: absolute;
+    top: -120px;
+    right: 16px;
+    z-index: 100000;
+    background-color: #1A4231;
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 0 0 8px 8px;
+    font-weight: 700;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid #8FD6A3;
+    outline-offset: 2px;
+}
+
+/* היעד של הקישור מקבל פוקוס מהקוד בלבד — בלי מסגרת סביב כל העמוד */
+#main-content:focus {
+    outline: none;
+}
+
+/* כוכבית "שדה חובה". האדום הטהור (‎#FF0000) הוא 4.0 על לבן */
+.req {
+    color: #C62828;
+}
+
+[data-theme="dark"] .req {
+    color: #FF8A80;
 }
 
 .btn-form-submit:active {
@@ -1165,7 +1218,8 @@ ul {
 /* --- דפי נחיתה ממומנים (/lp/*) --- */
 /* הירו בגרדיאנט המותג במקום תמונה: טעינה מיידית בלי בקשת רשת נוספת */
 .lp-hero {
-    background: linear-gradient(135deg, #1A4231 0%, #2F6B4F 55%, #639C7D 100%);
+    /* סוף הגרדיאנט ב-‎#39705A ולא בירוק המותג: הטקסט הלבן היה שם ביחס 3.19 */
+    background: linear-gradient(135deg, #1A4231 0%, #2F6B4F 55%, #39705A 100%);
     color: #ffffff;
     padding: 54px 0 60px;
 }
@@ -1235,9 +1289,10 @@ ul {
     color: #1A4231;
 }
 
+/* פסטל עם טקסט כהה (6.59). לבן על ירוק הוואטסאפ היה 1.98 */
 .lp-direct .lp-wa {
-    background-color: #25D366;
-    color: #ffffff;
+    background-color: #8FD6A3;
+    color: #1A4231;
 }
 
 .lp-form-card {
@@ -1385,8 +1440,10 @@ ul {
         background-color: #1A4231;
     }
 
-    .lp-cta-wa {
-        background-color: #25D366;
+    /* פסטל עם טקסט כהה (6.59). לבן על ירוק הוואטסאפ היה 1.98 */
+    .lp-cta-bar .lp-cta-wa {
+        background-color: #8FD6A3;
+        color: #1A4231;
     }
 
     /* הוואטסאפ הצף כפול לכפתור שבבר - מוסתר במובייל כשהבר קיים */
