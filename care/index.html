@@ -1369,7 +1369,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=44">
+    <link rel="stylesheet" href="/css/style.css?v=45">
     <style>
         /* Adjust catalog layout for site wrapper */
         body {
@@ -1500,6 +1500,13 @@
             white-space: nowrap;
         }
 
+        /* מצב כהה: ‎--primary-dark נשאר ירוק כהה גם על הרקע הכהה (1.5) — פסטל */
+        [data-theme="dark"] .care-phone,
+        [data-theme="dark"] .care-intro h1,
+        [data-theme="dark"] .care-cat-links a {
+            color: var(--primary-pastel, #8FD6A3);
+        }
+
         .care-phone:hover {
             color: var(--primary, #639C7D);
         }
@@ -1556,6 +1563,22 @@
             flex-wrap: wrap;
         }
 
+        /* דרכי ביטול עסקה — סעיף 14ט לחוק הגנת הצרכן: בהבלטה ובאותיות קריאות */
+        .care-footer-cancel {
+            margin: 6px auto 0;
+            max-width: 760px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .care-footer-cancel a {
+            text-decoration: underline;
+        }
+
+
         /* פתיח קצר לעמוד (SEO ללקוחות פרטיים) */
         .care-intro {
             max-width: 1200px;
@@ -1596,7 +1619,7 @@
         }
 
         .care-cat-links a:hover {
-            background: var(--primary, #639C7D);
+            background: var(--primary-dark, #1A4231);
             color: #fff;
         }
 
@@ -1663,7 +1686,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=69" defer></script>
+    <script src="/js/app.js?v=70" defer></script>
 </head>
 
 <body>
@@ -1840,7 +1863,7 @@
             <li><strong>תשלום</strong> מזומן או אשראי במסירה, או ביט/פייבוקס מראש</li>
             <li><strong>אספקה</strong> משלוח באזור, איסוף עצמי או לוקר — העלות מוצגת לפני השליחה</li>
             <li><strong>מחירים</strong> כוללים מע״מ</li>
-            <li><strong>החזרות</strong> לפי חוק הגנת הצרכן — <a href="/terms/">פירוט בתקנון</a></li>
+            <li><strong>ביטול עסקה</strong> עד 14 יום מקבלת המוצרים — <a href="/cancel/">איך מבטלים</a></li>
             <li><strong>שאלות?</strong> <a href="tel:036346236">03-6346236</a></li>
         </ul>
     </section>
@@ -1866,7 +1889,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main>
+        <main id="main-content" tabindex="-1">
             <div class="products-grid" id="products">
                 <!-- CARE_PRODUCTS_START -->
                 <div class="product-card"><a href="/care/product/%D7%A4%D7%9C%D7%9E%D7%95%D7%9C%D7%99%D7%91-%D7%A7%D7%A8%D7%9D-%D7%A8%D7%97%D7%A6%D7%94-%D7%9C%D7%92%D7%95%D7%A3-%D7%91%D7%A0%D7%99%D7%97%D7%95%D7%97-%D7%97%D7%9C%D7%91-%D7%95%D7%93%D7%91%D7%A9-750-%D7%9E%D7%9C/"><img src="https://aroam.co.il/images/%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F/%D7%A4%D7%9C%D7%9E%D7%95%D7%9C%D7%99%D7%91%20%D7%A7%D7%A8%D7%9D%20%D7%A8%D7%97%D7%A6%D7%94%20%D7%9C%D7%92%D7%95%D7%A3%20%D7%91%D7%A0%D7%99%D7%97%D7%95%D7%97%20%D7%97%D7%9C%D7%91%20%D7%95%D7%93%D7%91%D7%A9%20750%20%D7%9E%22%D7%9C.jpg" alt="פלמוליב קרם רחצה לגוף בניחוח חלב ודבש 750 מ"ל" loading="lazy" width="200" height="200"><h2 class="product-title">פלמוליב קרם רחצה לגוף בניחוח חלב ודבש 750 מ"ל</h2></a><div class="product-brand">פלמוליב</div><span class="product-price">19.90 ₪</span></div>
@@ -2082,8 +2105,6 @@
             <div class="care-footer-contact">
                 <a href="tel:036346236">03-6346236</a>
                 <span>·</span>
-                <a href="tel:036346236">03-6346236</a>
-                <span>·</span>
                 <a href="https://wa.me/972526000158" target="_blank" rel="noopener">WhatsApp</a>
             </div>
             <div class="care-footer-area">משלוחים באזור אור יהודה, בקעת אונו וגוש דן</div>
@@ -2093,10 +2114,13 @@
                 <a href="/privacy/">מדיניות פרטיות</a>
                 <span>·</span>
                 <a href="/terms/">תקנון ותנאי שימוש</a>
+                <span>·</span>
+                <a href="/cancel/">ביטול עסקה</a>
             </div>
+            <p class="care-footer-cancel"><strong>ביטול עסקה:</strong> בטלפון <a href="tel:036346236">03-6346236</a> · בדוא״ל <a href="mailto:meiraroam@gmail.com">meiraroam@gmail.com</a> · בדואר רשום: היצירה 16, אור יהודה · או <a href="/cancel/">בטופס ביטול עסקה</a>. בהודעה יש לציין שם מלא ומספר תעודת זהות.</p>
         </div>
     </footer>
-    <script src="/js/components.js?v=2" defer></script>
+    <script src="/js/components.js?v=3" defer></script>
 </body>
 
 </html>

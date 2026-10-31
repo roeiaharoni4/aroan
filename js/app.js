@@ -1949,6 +1949,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // החלונות הקבועים — תפקיד dialog וכותרת, ושם לכפתורי ה-× (בלי שם קורא
         // המסך מקריא "כפול")
         [orderModal, quickViewModal, document.getElementById("history-modal")].forEach(m => markDialog(m));
+        renderOrderNotices();
         if (qvMinus) qvMinus.setAttribute('aria-label', 'הורדת יחידה');
         if (qvPlus) qvPlus.setAttribute('aria-label', 'הוספת יחידה');
         if (qvInput) qvInput.setAttribute('aria-label', 'כמות');
@@ -2346,6 +2347,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             methodText = 'ההזמנה נפתחה במייל - ודאו שלחצתם על כפתור השליחה בחלון שנפתח.<br>נחזור אליכם בהקדם עם אישור והצעת מחיר.';
         }
+        // צרכן: מסמך פרטי העסקה חייב להגיע אליו בכתב עד האספקה (סעיף 14ג(ב))
+        if (CONFIG.customerMode === 'b2c') {
+            methodText += '<br><br>את פרטי העסקה ותנאי הביטול נשלח אליכם בכתב לפני האספקה. <a href="/cancel/" style="color:#1A4231; text-decoration:underline;">ביטול עסקה</a>';
+        }
 
         const box = document.createElement("div");
         box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:2rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
@@ -2473,6 +2478,47 @@ document.addEventListener("DOMContentLoaded", async () => {
             try { localStorage.setItem('aroam_customer_details', JSON.stringify(customer)); } catch (e) { }
         }
         return true;
+    }
+
+    // --- הודעות חובה בטופס ההזמנה ---
+    // (א) הודעת יידוע — סעיף 11 לחוק הגנת הפרטיות (אחרי תיקון 13): האם חובה
+    // למסור ומה קורה בלי, למה, מי מחזיק במידע ולמי הוא מועבר, וזכות העיון.
+    // (ב) לצרכן בלבד: הגילוי שלפני העסקה — סעיף 14ג(א) לחוק הגנת הצרכן: פרטי
+    // העוסק, המחיר, מועד האספקה, תוקף ההצעה, האחריות וזכות הביטול. תנאי
+    // התשלום ודמי המשלוח כבר מוצגים בבוררים שמעל.
+    function renderOrderNotices() {
+        const form = document.getElementById("customer-details");
+        if (!form || CONFIG.agentMode) return;
+
+        if (!form.querySelector(".order-privacy")) {
+            const note = document.createElement("p");
+            note.className = "order-privacy";
+            note.innerHTML =
+                "מסירת הפרטים אינה חובה, אבל בלעדיהם לא נוכל לטפל בהזמנה. " +
+                "הם נשמרים אצל אהרוני שיווק והפצה (בשירותי Google) ומשמשים לטיפול בהזמנה ובאספקה" +
+                (CONFIG.allowShare ? "; בשליחה בוואטסאפ הם עוברים גם דרך WhatsApp. " : ". ") +
+                (CONFIG.customerMode === "branch" ? "ההזמנה עוברת קודם לאישור הרכש ברשת. " : "") +
+                "הם נשמרים גם במכשיר הזה, כדי שלא תצטרכו להקליד אותם שוב. " +
+                'על זכותכם לעיין במידע ולתקנו — ב<a href="/privacy/" target="_blank" rel="noopener">מדיניות הפרטיות</a>.';
+            form.appendChild(note);
+        }
+
+        if (CONFIG.customerMode === "b2c" && !document.querySelector(".consumer-disclosure")) {
+            const box = document.createElement("section");
+            box.className = "consumer-disclosure";
+            box.setAttribute("aria-labelledby", "consumer-disclosure-title");
+            box.innerHTML = `
+                <h3 id="consumer-disclosure-title">פרטי העסקה — לפני ששולחים</h3>
+                <ul>
+                    <li><strong>המוכר:</strong> אהרוני שיווק והפצה, עוסק מורשה 059291906, היצירה 16, אור יהודה · 03-6346236 · meiraroam@gmail.com</li>
+                    <li><strong>מחיר:</strong> המחירים כוללים מע״מ, ודמי המשלוח לפי שיטת האספקה שבחרתם. המחירים בתוקף כל עוד הם מופיעים באתר, ומבצע — עד התאריך שליד המוצר.</li>
+                    <li><strong>אספקה:</strong> מועד האספקה נקבע איתכם כשנאשר את ההזמנה.</li>
+                    <li><strong>אחריות:</strong> אחריות היצרן או היבואן כמפורט על המוצר; מוצר פגום או שונה מההזמנה — נחליף או נזכה.</li>
+                    <li><strong>ביטול:</strong> עד 14 יום מקבלת המוצרים (אזרח ותיק, אדם עם מוגבלות ועולה חדש — עד 4 חודשים), בדמי ביטול של עד 5% או 100 ₪. <a href="/terms/#cancel" target="_blank" rel="noopener">כל התנאים ודרכי הביטול</a></li>
+                </ul>
+            `;
+            form.after(box);
+        }
     }
 
     function prefillCustomerDetails() {

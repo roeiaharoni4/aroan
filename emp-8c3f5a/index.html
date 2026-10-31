@@ -28,7 +28,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=44">
+    <link rel="stylesheet" href="/css/style.css?v=45">
     <style>
         /* Adjust catalog layout for site wrapper */
         body {
@@ -159,6 +159,13 @@
             white-space: nowrap;
         }
 
+        /* מצב כהה: ‎--primary-dark נשאר ירוק כהה גם על הרקע הכהה (1.5) — פסטל */
+        [data-theme="dark"] .care-phone,
+        [data-theme="dark"] .care-intro h1,
+        [data-theme="dark"] .care-cat-links a {
+            color: var(--primary-pastel, #8FD6A3);
+        }
+
         .care-phone:hover {
             color: var(--primary, #639C7D);
         }
@@ -215,6 +222,22 @@
             flex-wrap: wrap;
         }
 
+        /* דרכי ביטול עסקה — סעיף 14ט לחוק הגנת הצרכן: בהבלטה ובאותיות קריאות */
+        .care-footer-cancel {
+            margin: 6px auto 0;
+            max-width: 760px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .care-footer-cancel a {
+            text-decoration: underline;
+        }
+
+
         /* פתיח קצר לעמוד (SEO ללקוחות פרטיים) */
         .care-intro {
             max-width: 1200px;
@@ -255,7 +278,7 @@
         }
 
         .care-cat-links a:hover {
-            background: var(--primary, #639C7D);
+            background: var(--primary-dark, #1A4231);
             color: #fff;
         }
 
@@ -433,7 +456,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=69" defer></script>
+    <script src="/js/app.js?v=70" defer></script>
 </head>
 
 <body>
@@ -679,7 +702,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main>
+        <main id="main-content" tabindex="-1">
             <div class="products-grid" id="products">
                 <!-- המוצרים נטענים ע"י app.js מ-/data/committee.csv (אין הזרקה סטטית — העמוד noindex) -->
             </div>
@@ -704,7 +727,7 @@
             <li><strong>תשלום</strong> באשראי או בביט/פייבוקס — נגבה טלפונית לאחר ההזמנה</li>
             <li><strong>משלוח</strong> עד הבית ₪30 · לוקר ₪20 · <strong>חינם בהזמנה מעל ₪300</strong></li>
             <li><strong>מחירים</strong> כוללים מע״מ</li>
-            <li><strong>החזרות</strong> לפי חוק הגנת הצרכן — <a href="/terms/">פירוט בתקנון</a></li>
+            <li><strong>ביטול עסקה</strong> עד 14 יום מקבלת המוצרים — <a href="/cancel/">איך מבטלים</a></li>
             <li><strong>שאלות?</strong> <a href="tel:036346236">03-6346236</a></li>
         </ul>
 
@@ -857,10 +880,13 @@
                 <a href="/privacy/">מדיניות פרטיות</a>
                 <span>·</span>
                 <a href="/terms/">תקנון ותנאי שימוש</a>
+                <span>·</span>
+                <a href="/cancel/">ביטול עסקה</a>
             </div>
+            <p class="care-footer-cancel"><strong>ביטול עסקה:</strong> בטלפון <a href="tel:036346236">03-6346236</a> · בדוא״ל <a href="mailto:meiraroam@gmail.com">meiraroam@gmail.com</a> · בדואר רשום: היצירה 16, אור יהודה · או <a href="/cancel/">בטופס ביטול עסקה</a>. בהודעה יש לציין שם מלא ומספר תעודת זהות.</p>
         </div>
     </footer>
-    <script src="/js/components.js?v=2" defer></script>
+    <script src="/js/components.js?v=3" defer></script>
 </body>
 
 </html>

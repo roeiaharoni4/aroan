@@ -2742,3 +2742,61 @@ body.agent-gate-open {
     background: #fff;
     border-color: #fff;
 }
+
+/* --- הודעות חובה בטופס ההזמנה (renderOrderNotices ב-app.js) --- */
+/* הודעת היידוע — סעיף 11 לחוק הגנת הפרטיות */
+.order-privacy {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.order-privacy a,
+.consumer-disclosure a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+/* לצרכן: הגילוי שלפני העסקה — סעיף 14ג(א) לחוק הגנת הצרכן */
+.consumer-disclosure {
+    margin: 0 0 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-inline-start: 4px solid var(--primary-dark);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.consumer-disclosure h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    color: var(--primary-dark);
+}
+
+.consumer-disclosure ul {
+    margin: 0;
+    padding-inline-start: 1.1rem;
+    list-style: disc;
+}
+
+.consumer-disclosure li {
+    margin-bottom: 0.25rem;
+}
+
+[data-theme="dark"] .consumer-disclosure {
+    border-inline-start-color: var(--primary-pastel);
+}
+
+[data-theme="dark"] .consumer-disclosure h3 {
+    color: var(--primary-pastel);
+}
+
+/* מחיר בכרטיס מוצר במצב כהה: ‎--primary-dark על רקע הכרטיס הכהה היה 1.5 */
+[data-theme="dark"] .product-price {
+    color: var(--primary-pastel);
+}

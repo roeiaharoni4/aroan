@@ -97,6 +97,13 @@ class SiteHeader extends HTMLElement {
     }
 }
 
+// הודעת היידוע בטפסי הפנייה — סעיף 11 לחוק הגנת הפרטיות (אחרי תיקון 13):
+// האם חובה למסור ומה קורה בלי, למה, מי מחזיק במידע, למי הוא מועבר, וזכות
+// העיון והתיקון. הפירוט המלא — במדיניות הפרטיות שבקישור.
+const PRIVACY_NOTE = 'מסירת הפרטים אינה חובה, אבל בלעדיהם לא נוכל לחזור אליכם. ' +
+    'הם נשמרים אצל אהרוני שיווק והפצה (בשירותי Google) ומשמשים רק לטיפול בפנייה. ' +
+    'למי עוד הם מועברים, ואיך מעיינים בהם או מתקנים אותם — ב<a href="/privacy/">מדיניות הפרטיות</a>.';
+
 class SiteFooter extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
@@ -124,6 +131,7 @@ class SiteFooter extends HTMLElement {
                                 <li><a href="/accessibility/">הצהרת נגישות</a></li>
                                 <li><a href="/terms/">תנאי שימוש</a></li>
                                 <li><a href="/privacy/">מדיניות פרטיות</a></li>
+                                <li><a href="/cancel/">ביטול עסקה</a></li>
                             </ul>
                         </div>
                         <div class="footer-col">
@@ -149,6 +157,14 @@ class SiteFooter extends HTMLElement {
                             </ul>
                         </div>
                     </div>
+                    <p class="footer-cancel">
+                        <strong>ביטול עסקה (לצרכנים):</strong>
+                        בטלפון <a href="tel:036346236">03-6346236</a> ·
+                        בדוא״ל <a href="mailto:meiraroam@gmail.com">meiraroam@gmail.com</a> ·
+                        בדואר רשום: היצירה 16, אור יהודה ·
+                        או <a href="/cancel/">בטופס ביטול עסקה</a>.
+                        בהודעה יש לציין שם מלא ומספר תעודת זהות.
+                    </p>
                     <div class="footer-bottom">
                         <p>&copy; ${new Date().getFullYear()} אהרוני שיווק. כל הזכויות שמורות.</p>
                     </div>
@@ -213,7 +229,7 @@ class LeadForm extends HTMLElement {
                                 <textarea id="lf${n}-message" name="message" rows="3" placeholder="סוג העסק והמוצרים שאתם צריכים"></textarea>
                             </div>
                             <div class="form-status-alert"></div>
-                            <p class="form-privacy">בשליחת הטופס אתם מאשרים את <a href="/privacy/">מדיניות הפרטיות</a>. הפרטים משמשים רק כדי לחזור אליכם.</p>
+                            <p class="form-privacy">${PRIVACY_NOTE}</p>
                             <button type="submit" class="btn-form-submit">שלחו לי הצעת מחיר</button>
                         </form>
                     </div>
@@ -442,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!btn) return;
         const p = document.createElement('p');
         p.className = 'form-privacy';
-        p.innerHTML = 'בשליחת הטופס אתם מאשרים את <a href="/privacy/">מדיניות הפרטיות</a>. הפרטים משמשים רק כדי לחזור אליכם.';
+        p.innerHTML = PRIVACY_NOTE;
         btn.before(p);
     });
 
@@ -467,7 +483,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const business = businessInput ? businessInput.value.trim() : '';
         const phone = phoneInput ? phoneInput.value.trim() : '';
         const email = emailInput ? emailInput.value.trim() : '';
-        const message = messageInput ? messageInput.value.trim() : '';
+        // שדות נוספים (למשל בטופס ביטול עסקה: תעודת זהות, מספר הזמנה) נכנסים
+        // לגוף ההודעה עם התווית שלהם — סקריפט הלידים בענן אינו בריפו, ולא
+        // ידוע אם הוא שומר מפתחות חדשים
+        const extra = Array.from(form.querySelectorAll('[data-field-label]'))
+            .map(el => [el.dataset.fieldLabel, el.value.trim()])
+            .filter(([, v]) => v)
+            .map(([label, v]) => `${label}: ${v}`);
+        const message = [...extra, messageInput ? messageInput.value.trim() : ''].filter(Boolean).join('\n');
         const subject = form.querySelector('[name="_subject"]')?.value || 'פנייה חדשה מאתר אהרוני שיווק';
         
         // Simple validation
@@ -477,6 +500,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 alertBox.textContent = 'אנא מלאו את שדות החובה (שם וטלפון)';
                 alertBox.style.display = 'block';
             }
+            return;
+        }
+
+        // הודעת ביטול עסקה חייבת לכלול מספר זהות (סעיף 14ט(ג) לחוק הגנת הצרכן)
+        const idInput = form.querySelector('[name="id_number"]');
+        if (idInput && !/^\d{5,9}$/.test(idInput.value.replace(/\D/g, '') || '')) {
+            if (alertBox) {
+                alertBox.className = 'form-status-alert error';
+                alertBox.textContent = 'נא למלא מספר תעודת זהות (ספרות בלבד)';
+                alertBox.style.display = 'block';
+            }
+            idInput.focus();
             return;
         }
 
@@ -533,10 +568,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Since mode is no-cors, we assume success if no exception is thrown
             if (alertBox) {
                 alertBox.className = 'form-status-alert success';
-                alertBox.textContent = 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
+                alertBox.textContent = form.dataset.success || 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';
                 alertBox.style.display = 'block';
             }
             form.reset();
+
+            // טופס ביטול עסקה אינו ליד — בלי זה הוא היה נספר כהמרה ב-GA4
+            if (form.hasAttribute('data-no-conversion')) return;
 
             // Conversion Tracking: דיווח שליחת טופס ליד ל-GTM ול-GA4
             window.dataLayer = window.dataLayer || [];

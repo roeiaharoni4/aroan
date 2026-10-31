@@ -705,8 +705,8 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         .cc-breadcrumb a {{ text-decoration: none; }}
         h1 {{ font-size: 1.7rem; color: var(--primary-dark); margin: 0 0 10px; }}
         .cc-intro {{ color: #555; max-width: 720px; margin-bottom: 18px; }}
-        .cc-cta {{ display: inline-block; background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; padding: 12px 22px; border-radius: 10px; margin-bottom: 26px; }}
-        .cc-cta:hover {{ background: var(--primary-dark); }}
+        .cc-cta {{ display: inline-block; background: var(--primary-dark); color: #fff; text-decoration: none; font-weight: 700; padding: 12px 22px; border-radius: 10px; margin-bottom: 26px; }}
+        .cc-cta:hover {{ filter: brightness(1.25); }}
         .cc-nav {{ font-size: 0.95rem; margin-bottom: 22px; }}
         .cc-nav a {{ text-decoration: none; color: var(--primary-dark); font-weight: 600; }}
         .cp-list {{ list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }}
@@ -718,7 +718,7 @@ def _render_care_category_html(cfg, cat, page_url, catalog_url, nav_links, cards
         .cp-desc {{ font-size: 0.85rem; color: #616161; margin-bottom: 6px; }}
         .cp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.05rem; }}
         .cp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 0.9rem; }}
-        .cp-bundle {{ background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-inline-start: 4px; }}
+        .cp-bundle {{ background: var(--primary-dark); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-inline-start: 4px; }}
         .cp-validity {{ font-size: 0.72rem; color: #6B6B6B; margin-inline-start: 4px; white-space: nowrap; }}
         .cc-footer {{ background: var(--primary-dark); color: #fff; text-align: center; padding: 20px 16px; margin-top: 30px; }}
         .cc-footer a {{ color: #fff; }}
@@ -1008,12 +1008,12 @@ def _render_care_product_html(r, price, regular, on_sale, img, cat, cat_slug, pa
         .pp-price {{ font-weight: 700; color: var(--primary-dark); font-size: 1.5rem; }}
         .pp-old {{ text-decoration: line-through; color: #6b6b6b; font-weight: 400; font-size: 1.05rem; }}
         .pp-sale {{ background: #d32f2f; color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
-        .pp-bundle {{ background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
+        .pp-bundle {{ background: var(--primary-dark); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-inline-start: 4px; }}
         .pp-validity {{ font-size: 0.78rem; color: #6B6B6B; margin-inline-start: 6px; white-space: nowrap; }}
         .pp-unit {{ font-size: 0.9rem; color: #616161; margin-bottom: 10px; }}
         .pp-desc {{ color: #444; margin-bottom: 20px; }}
-        .cc-cta {{ display: inline-block; background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; padding: 13px 26px; border-radius: 10px; }}
-        .cc-cta:hover {{ background: var(--primary-dark); }}
+        .cc-cta {{ display: inline-block; background: var(--primary-dark); color: #fff; text-decoration: none; font-weight: 700; padding: 13px 26px; border-radius: 10px; }}
+        .cc-cta:hover {{ filter: brightness(1.25); }}
         .pp-related {{ margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
         .pp-related h2 {{ font-size: 1.15rem; color: var(--primary-dark); }}
         .pp-related ul {{ list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }}
@@ -1178,7 +1178,7 @@ CATALOG_WHATSAPP = '972526000158'
 # ו-components.js (הדר, פוטר, וואטסאפ צף) כמו בשאר הדפים. דפי /care/ לא משתמשים
 # בהם בכוונה: לקטלוג הטיפוח הדר ופוטר עצמאיים, בלי קישורים לאתר העסקי.
 # גרסת components.js כאן חייבת להתאים להפניות בדפים — להעלות יחד.
-SITE_COMPONENTS_JS = '/js/components.js?v=2'
+SITE_COMPONENTS_JS = '/js/components.js?v=3'
 SITE_HEAD_ASSETS = """    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap" media="print" onload="this.media='all'">

@@ -1,9 +1,9 @@
-const CACHE_NAME = 'aroam-cache-v64';
+const CACHE_NAME = 'aroam-cache-v65';
 const urlsToCache = [
     '/',
     '/catalog/',
     '/css/site.css',
-    '/js/components.js?v=2',
+    '/js/components.js?v=3',
     '/js/app.js',
     '/images/logo.png',
     '/js/lib/papaparse.min.js'

@@ -28,7 +28,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="/css/style.css?v=44">
+    <link rel="stylesheet" href="/css/style.css?v=45">
     <style>
         body {
             padding-top: 0;
@@ -64,6 +64,13 @@
             text-decoration: none;
             font-size: 1.05rem;
             white-space: nowrap;
+        }
+
+        /* מצב כהה: ‎--primary-dark נשאר ירוק כהה גם על הרקע הכהה (1.5) — פסטל */
+        [data-theme="dark"] .care-phone,
+        [data-theme="dark"] .care-intro h1,
+        [data-theme="dark"] .care-cat-links a {
+            color: var(--primary-pastel, #8FD6A3);
         }
 
         .care-phone:hover {
@@ -435,7 +442,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=69" defer></script>
+    <script src="/js/app.js?v=70" defer></script>
 </head>
 
 <body>
@@ -947,7 +954,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main>
+        <main id="main-content" tabindex="-1">
             <div class="products-grid" id="products">
                 <!-- המוצרים נטענים ע"י app.js מ-/data/products.csv ומסוננים לפי
                      data/chain.json (אין הזרקה סטטית — העמוד noindex) -->
@@ -1117,7 +1124,7 @@
     <!-- חוסם את כפתור הוואטסאפ הצף של components.js: בעמוד הרשת אין ערוץ
          קשר ישיר, וההזמנה נשלחת דרך כפתור השליחה בסיכום ההזמנה בלבד -->
     <span class="floating-whatsapp" hidden style="display:none" aria-hidden="true"></span>
-    <script src="/js/components.js?v=2" defer></script>
+    <script src="/js/components.js?v=3" defer></script>
 </body>
 
 </html>

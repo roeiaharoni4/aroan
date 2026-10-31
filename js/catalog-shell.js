@@ -84,7 +84,6 @@ class CatalogShell extends HTMLElement {
                         <label for="cust-notes" style="display:block; margin-bottom:0.3rem; font-size:0.9rem; color:var(--text-secondary);">הערות להזמנה</label>
                         <input type="text" id="cust-notes" placeholder="אופציונלי" style="padding:0.5rem; border:1px solid #ccc; border-radius:8px; width:100%;">
                     </div>
-                    <p class="order-privacy" style="grid-column: 1 / -1; margin: 0; font-size: 0.8rem; color: var(--text-secondary);">הפרטים משמשים לטיפול בהזמנה בלבד, ונשמרים גם במכשיר הזה כדי שלא תצטרכו להקליד אותם שוב בהזמנה הבאה. <a href="/privacy/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">מדיניות הפרטיות</a></p>
                 </div>
 
                 <div class="table-responsive" style="overflow-x: auto;">

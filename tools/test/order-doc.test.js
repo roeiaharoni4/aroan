@@ -23,7 +23,9 @@ function loadGs() {
     '; return { orderColumns_: orderColumns_, thumbUrl_: thumbUrl_,' +
     '   quoteLink_: quoteLink_, isBranchOrder_: isBranchOrder_,' +
     '   pdfName_: pdfName_, orderMonth_: orderMonth_,' +
-    '   priceSplit_: priceSplit_ };'
+    '   priceSplit_: priceSplit_, isConsumerOrder_: isConsumerOrder_,' +
+    '   waPhone_: waPhone_, consumerDoc_: consumerDoc_,' +
+    '   consumerDocLink_: consumerDocLink_ };'
   )();
 }
 
@@ -268,6 +270,57 @@ test('הזמנת רשת מאושרת (RA-) מזוהה כהזמנת סניף', ()
   // הבדיקה הישנה כיסתה רק RS- — קידומת שלא מגיעה לסקריפט הזה אף פעם.
   assert.strictEqual(gs.isBranchOrder_({ orderId: 'RA-20260826-299027' }), true,
     'RA- היא הזמנת רשת שאושרה — בלי זה רצועת הסניף לא מרונדרת');
+});
+
+// --- מסמך פרטי העסקה לצרכן (סעיף 14ג(ב) ו-14ט(ד) לחוק הגנת הצרכן) ---
+// הפיילוד כפי שהאתר שולח מקטלוג הטיפוח ומעמוד העובדים (showPrices: true).
+const CARE_SENT = Object.assign({}, CARE, {
+  showPrices: true,
+  customer: Object.assign({}, CARE.customer, {
+    shipping: 'משלוח עד הבית', payment: 'מזומן או אשראי במסירה'
+  })
+});
+
+test('מסמך לצרכן: רק בהזמנות טיפוח (AR) ועובדים (VD) עם מחירים', () => {
+  assert.strictEqual(gs.isConsumerOrder_(CARE_SENT), true, 'קטלוג הטיפוח');
+  assert.strictEqual(gs.isConsumerOrder_(Object.assign({}, CARE_SENT, { orderId: 'VD-20261031-123456' })), true, 'עמוד העובדים');
+  assert.strictEqual(gs.isConsumerOrder_(B2B_PRICED), false, 'הקטלוג העסקי — showPrices:false');
+  ['SL', 'RS', 'RA', 'HM'].forEach(p => {
+    assert.strictEqual(gs.isConsumerOrder_(Object.assign({}, CARE_SENT, { orderId: p + '-20261031-123456' })), false, p);
+  });
+  assert.strictEqual(gs.isConsumerOrder_(CARE), false, 'בלי showPrices (app.js ישן) — לא מנחשים');
+});
+
+test('מסמך לצרכן: טלפון נייד בלבד, בכל צורת כתיבה', () => {
+  assert.strictEqual(gs.waPhone_('052-7654321'), '972527654321');
+  assert.strictEqual(gs.waPhone_('+972 52 765 4321'), '972527654321');
+  assert.strictEqual(gs.waPhone_('00972527654321'), '972527654321');
+  assert.strictEqual(gs.waPhone_('03-6346236'), '', 'קווי — אין וואטסאפ');
+  assert.strictEqual(gs.waPhone_(''), '');
+});
+
+test('מסמך לצרכן: כל הפרטים שהחוק דורש', () => {
+  const doc = gs.consumerDoc_(CARE_SENT);
+  [
+    'אהרוני שיווק והפצה', '059291906', 'היצירה 16',           // שם, מספר זהות, כתובת
+    'ARGANIA מסיכה טיפולית', '79.80',                          // המוצר ומחירו
+    'משלוח עד הבית', '30.00', '239.97', 'כולל מע״מ',           // אספקה ומחיר כולל
+    'מזומן או אשראי במסירה',                                    // תנאי תשלום
+    'יצרן', 'אחריות',                                          // יצרן וארץ ייצור, אחריות
+    '14 יום', '4 חודשים', '5%', '100 ₪',                       // תנאי הביטול
+    '03-6346236', 'meiraroam@gmail.com', 'בדואר רשום',          // דרכי הביטול
+    'https://aroam.co.il/cancel/', 'תעודת זהות',
+    'https://aroam.co.il/terms/'
+  ].forEach(s => assert.ok(doc.indexOf(s) !== -1, 'חסר במסמך: ' + s));
+});
+
+test('מסמך לצרכן: קישור וואטסאפ ללקוח עם המסמך המלא', () => {
+  const link = gs.consumerDocLink_(CARE_SENT);
+  assert.ok(link.indexOf('https://wa.me/972527654321?text=') === 0, link.slice(0, 50));
+  assert.strictEqual(decodeURIComponent(link.split('?text=')[1]), gs.consumerDoc_(CARE_SENT));
+  assert.strictEqual(gs.consumerDocLink_(B2B_PRICED), '', 'לא בהזמנה עסקית');
+  const landline = Object.assign({}, CARE_SENT, { customer: Object.assign({}, CARE_SENT.customer, { phone: '03-5551234' }) });
+  assert.strictEqual(gs.consumerDocLink_(landline), '', 'טלפון קווי — בלי קישור');
 });
 
 let failed = 0;

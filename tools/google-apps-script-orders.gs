@@ -76,6 +76,77 @@ function quoteLink_(data) {
 }
 
 /**
+ * מסמך פרטי העסקה לצרכן — סעיף 14ג(ב) וסעיף 14ט(ד) לחוק הגנת הצרכן.
+ * בעסקת מכר מרחוק העוסק חייב למסור לצרכן בכתב, לא יאוחר ממועד האספקה,
+ * מסמך עם פרטי העוסק, המוצרים, המחיר ותנאי התשלום, דרכי הביטול, היצרן
+ * והאחריות. פרסום התקנון באתר לא מספיק — המסמך צריך להימסר ללקוח.
+ * הזמנות של צרכנים מגיעות בלי כתובת דוא״ל, ולכן המייל לרועי כולל את
+ * המסמך וקישור שפותח וואטסאפ ללקוח עם המסמך מוכן לשליחה.
+ */
+function isConsumerOrder_(data) {
+  var id = String((data && data.orderId) || '');
+  // AR = קטלוג הטיפוח (וגם הקטלוג העסקי, שבו showPrices:false), VD = עובדים.
+  // SL סוכן, RS/RA רשת חנויות ו-HM בקשת הצעת מחיר — לקוחות עסקיים.
+  if (!/^(AR|VD)-/.test(id)) return false;
+  // בלי השדה (app.js ישן בקאש) לא מנחשים: חוק הגנת הצרכן לא חל על לקוח עסקי
+  return data.showPrices === true;
+}
+
+// מספר וואטסאפ בפורמט בינלאומי — נייד ישראלי בלבד (לקווי אין וואטסאפ)
+function waPhone_(raw) {
+  var d = String(raw || '').replace(/\D/g, '');
+  if (d.indexOf('00972') === 0) d = d.slice(2);
+  if (d.indexOf('972') === 0) d = d.slice(3);
+  if (d.charAt(0) === '0') d = d.slice(1);
+  return /^5\d{8}$/.test(d) ? '972' + d : '';
+}
+
+function consumerDoc_(data) {
+  var c = data.customer || {};
+  var money = function (v) { return Number(v).toFixed(2) + ' ₪'; };
+  var lines = [
+    'פרטי העסקה — אהרוני שיווק והפצה',
+    'עוסק מורשה 059291906 · היצירה 16, אור יהודה',
+    'טלפון 03-6346236 · meiraroam@gmail.com',
+    '',
+    'הזמנה ' + clean_(data.orderId, 30) + (data.date ? ' (' + clean_(data.date, 20) + ')' : '')
+  ];
+  (data.items || []).slice(0, 200).forEach(function (it) {
+    var l = '• ' + clean_(it.name, 120) + ' × ' + clean_(it.qty, 10);
+    if (Number(it.total) > 0) l += ' — ' + money(it.total);
+    if (Number(it.free) > 0) l += ' (מבצע ' + clean_(it.bundle, 10) + ', ' + clean_(it.free, 10) + ' חינם)';
+    lines.push(l);
+  });
+  if (Number(data.discount) > 0) lines.push('הנחה: -' + money(data.discount));
+  if (c.shipping) {
+    lines.push('אספקה: ' + clean_(c.shipping, 60) + ' — ' +
+      (Number(data.shipping) > 0 ? money(data.shipping) : 'ללא עלות'));
+  }
+  if (Number(data.totalPrice) > 0) lines.push('סה״כ לתשלום, כולל מע״מ: ' + money(data.totalPrice));
+  if (c.payment) lines.push('תשלום: ' + clean_(c.payment, 80));
+  lines.push(
+    '',
+    'יצרן וארץ ייצור: מצוינים על אריזת כל מוצר.',
+    'אחריות: אחריות היצרן או היבואן כמפורט על המוצר. מוצר פגום או שונה מההזמנה — נחליף או נזכה במלואו.',
+    '',
+    'ביטול העסקה: אפשר לבטל עד 14 יום מקבלת המוצרים או מסמך זה, לפי המאוחר; ' +
+    'אזרח ותיק (65 ומעלה), אדם עם מוגבלות או עולה חדש — עד 4 חודשים. ' +
+    'דמי ביטול: עד 5% או 100 ₪, הנמוך מביניהם; בביטול בגלל פגם, אי-התאמה או איחור באספקה — בלי דמי ביטול. ' +
+    'ההחזר — תוך 14 יום מקבלת הודעת הביטול. אי אפשר לבטל מוצרים שיוצרו במיוחד בשבילך.',
+    'איך מבטלים: בטלפון 03-6346236, בדוא״ל meiraroam@gmail.com, בדואר רשום להיצירה 16 אור יהודה, ' +
+    'או בטופס https://aroam.co.il/cancel/ — עם שם מלא ומספר תעודת זהות.',
+    'התקנון המלא: https://aroam.co.il/terms/'
+  );
+  return lines.join('\n');
+}
+
+function consumerDocLink_(data) {
+  if (!isConsumerOrder_(data)) return '';
+  var phone = waPhone_((data.customer || {}).phone);
+  return phone ? 'https://wa.me/' + phone + '?text=' + encodeURIComponent(consumerDoc_(data)) : '';
+}
+
+/**
  * מבנה טבלת המוצרים.
  * ב-Docs עמודה 0 מרונדרת בצד שמאל, ולכן הסדר הפוך לסדר הקריאה:
  * העמודה הראשונה היא הכמות (שמאל) והאחרונה היא התמונה (ימין).
@@ -637,6 +708,15 @@ function doPost(e) {
       var qlink = quoteLink_(data);
       if (qlink) {
         body += '\n\nלהפיכת ההזמנה להצעת מחיר (נפתח בדף הסוכן עם המחירים):\n' + qlink + '\n';
+      }
+      // הזמנת צרכן: מסמך פרטי העסקה חייב להגיע ללקוח עד האספקה (סעיף 14ג(ב))
+      if (isConsumerOrder_(data)) {
+        var docLink = consumerDocLink_(data);
+        body += '\n\n— לפי חוק הגנת הצרכן: יש למסור ללקוח את פרטי העסקה עד מועד האספקה —\n' +
+          (docLink
+            ? 'לחיצה פותחת וואטסאפ ללקוח עם המסמך מוכן לשליחה:\n' + docLink + '\n'
+            : 'הטלפון של הלקוח אינו נייד — שלחו את המסמך שלמטה בדרך אחרת, או צרפו אותו מודפס למשלוח.\n') +
+          '\n' + consumerDoc_(data) + '\n';
       }
       var mailOpts = pdf ? { attachments: [pdf.blob] } : {};
       // ההזמנה כבר נכתבה לגיליון למעלה — כשל בשליחת המייל (מכסת שליחה,
