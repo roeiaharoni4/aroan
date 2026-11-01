@@ -1478,7 +1478,7 @@ git commit -m "ממיר ריווחית: רשימת פריטים, שיוך והצ
     var docLabel = C.DOC_TYPES.filter(function (d) { return d.code === state.docType; })[0].label;
     $('result').innerHTML =
       '<section class="card"><h2>הקובץ ירד: ' + esc(name) + '</h2>' +
-      '<p class="muted">' + summary.length + ' מסמכים (' + esc(docLabel) + ') · ' + lineCount + ' שורות · ' +
+      '<p class="muted">' + (summary.length === 1 ? 'מסמך אחד' : summary.length + ' מסמכים') + ' (' + esc(docLabel) + ') · ' + lineCount + ' שורות · ' +
       (state.encoding === 'utf8' ? 'UTF-8' : 'Windows-1255') + '</p>' +
       '<table><thead><tr><th>סניף</th><th>מספר פנימי</th><th>שורות</th></tr></thead><tbody>' +
       summary.map(function (s) {
@@ -1534,14 +1534,16 @@ git commit -m "ממיר ריווחית: רשימת פריטים, שיוך והצ
     var prev = r.lines.length ? state.history[C.orderFingerprint(r)] : null;
     var total = 0;
     var rows = r.lines.map(function (l, i) {
-      var good = l.code && typeof l.qty === 'number' && l.qty > 0 && typeof l.price === 'number' && l.price >= 0;
-      if (good) total += l.qty * l.price;
+      // הסה"כ לפי הטופס נספר גם לפני השיוך, כדי שאפשר יהיה להשוות לסה"כ בגיליון של הלקוח
+      var priced = typeof l.qty === 'number' && l.qty > 0 && typeof l.price === 'number' && l.price >= 0;
+      var good = l.code && priced;
+      if (priced) total += l.qty * l.price;
       return '<tr class="' + (good ? '' : 'bad') + '">' +
         '<td>' + esc(l.desc) + (l.note ? '<div class="muted">הערה: ' + esc(l.note) + '</div>' : '') + '</td>' +
         '<td>' + codeCell(o, i, l) + '</td>' +
         '<td class="num">' + numCell(o, i, l, 'qty') + '</td>' +
         '<td class="num">' + numCell(o, i, l, 'price') + '</td>' +
-        '<td class="num">' + (good ? money(l.qty * l.price) : '') + '</td></tr>';
+        '<td class="num">' + (priced ? money(l.qty * l.price) : '') + '</td></tr>';
     }).join('');
     return '<section class="card">' +
       '<div class="order-head">' +
@@ -1592,7 +1594,7 @@ git commit -m "ממיר ריווחית: רשימת פריטים, שיוך והצ
     if (!ready.length) st = 'גוררים קובץ הזמנה כדי להתחיל';
     else if (sp.length) st = sp[0] + ' (בהגדרות למעלה)';
     else if (bad) st = bad === 1 ? 'הזמנה אחת צריכה תיקון (מסומן באדום)' : bad + ' הזמנות צריכות תיקון (מסומן באדום)';
-    else st = ready.length + ' הזמנות · ' + lines + ' שורות מוכנות';
+    else st = (ready.length === 1 ? 'הזמנה אחת' : ready.length + ' הזמנות') + ' · ' + lines + ' שורות מוכנות';
     if (failedFiles) st += ' · ' + failedFiles + ' קבצים לא נקראו';
     $('generate-status').textContent = st;
     $('generate').disabled = !ready.length || sp.length > 0 || bad > 0;

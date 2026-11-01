@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ממיר הזמנות לריווחית</title>
+<style>
+  :root {
+    --primary: #639C7D;
+    --primary-dark: #1A4231;
+    --primary-light: #EAF3EE;
+    --text: #1F2A24;
+    --muted: #5B6E64;
+    --border: #D5E3DA;
+    --bg: #F5F8F6;
+    --card: #FFFFFF;
+    --danger: #B3261E;
+    --danger-bg: #FDECEA;
+    --warn: #7A4A00;
+    --warn-bg: #FFF4E0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Assistant", "Segoe UI", Arial, sans-serif; font-size: 15px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  header.top { background: var(--primary-dark); color: #fff; padding: 14px 24px; }
+  header.top h1 { margin: 0; font-size: 1.35rem; }
+  header.top p { margin: 2px 0 0; color: #DFE9E3; font-size: .92rem; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 130px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 10px; font-size: 1.1rem; color: var(--primary-dark); }
+  .card h3 { margin: 18px 0 6px; font-size: 1rem; color: var(--primary-dark); }
+  details.card > summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; color: var(--primary-dark); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 16px; margin-top: 12px; }
+  label.field { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: var(--muted); }
+  input[type=text], input[type=date], select { font: inherit; color: var(--text); background: #fff; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; }
+  input:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .btn { font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--primary-dark); background: var(--primary-dark); color: #fff; cursor: pointer; }
+  .btn.secondary { background: #fff; color: var(--primary-dark); }
+  .btn.big { font-size: 1.05rem; padding: 11px 22px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .steps { margin: 6px 0 0; padding-inline-start: 20px; color: var(--muted); font-size: .92rem; }
+  .drop { border: 2px dashed var(--primary); border-radius: 8px; padding: 26px; text-align: center; background: var(--primary-light); cursor: pointer; }
+  .drop strong { display: block; font-size: 1.1rem; color: var(--primary-dark); }
+  body.dragging .drop { background: #D7EADF; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: .93rem; }
+  th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--primary-light); color: var(--primary-dark); }
+  td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr.bad td { background: var(--danger-bg); }
+  td input[type=text] { width: 100%; min-width: 120px; }
+  td.num input[type=text] { width: 90px; min-width: 0; border-color: var(--danger); }
+  .code { font-weight: 700; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { font: inherit; font-size: .85rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--primary); background: #fff; color: var(--primary-dark); cursor: pointer; }
+  .link { font: inherit; font-size: .85rem; background: none; border: none; padding: 0; color: var(--primary-dark); text-decoration: underline; cursor: pointer; }
+  .order-head { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .order-head .file { font-weight: 700; color: var(--primary-dark); }
+  .order-head .spacer { flex: 1; }
+  .notice { padding: 9px 12px; border-radius: 6px; margin-top: 10px; font-size: .92rem; }
+  .notice.warn { background: var(--warn-bg); color: var(--warn); }
+  .notice.bad { background: var(--danger-bg); color: var(--danger); }
+  .notice.ok { background: var(--primary-light); color: var(--primary-dark); }
+  .notice ul { margin: 4px 0 0; padding-inline-start: 18px; }
+  .total { text-align: left; font-weight: 700; margin-top: 8px; }
+  footer.bar { position: fixed; inset-inline: 0; bottom: 0; background: #fff; border-top: 1px solid var(--border); padding: 12px 16px; }
+  footer.bar .inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  footer.bar label { flex-direction: row; align-items: center; gap: 8px; }
+  #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--primary-dark); color: #fff; padding: 10px 18px; border-radius: 6px; max-width: 90vw; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ממיר הזמנות לריווחית</h1>
+  <p>אהרוני שיווק והפצה · טופס הזמנה באקסל ⇐ קובץ קליטה לריווחית</p>
+</header>
+
+<main>
+  <details class="card" id="settings">
+    <summary>הגדרות</summary>
+    <div class="grid">
+      <label class="field">מספר הלקוח של הרשת בריווחית
+        <input type="text" id="set-customer-no" inputmode="numeric" autocomplete="off"></label>
+      <label class="field">שם כרטיס הלקוח
+        <input type="text" id="set-customer-name" maxlength="30" autocomplete="off"></label>
+      <label class="field">קידוד הקובץ
+        <select id="set-encoding">
+          <option value="cp1255">Windows-1255 (ברירת מחדל)</option>
+          <option value="utf8">UTF-8 (אם העברית יוצאת ג׳יבריש)</option>
+        </select></label>
+    </div>
+    <h3>רשימת הפריטים מריווחית</h3>
+    <p class="muted" id="items-status"></p>
+    <div class="actions">
+      <button class="btn secondary" type="button" id="items-load">טעינת רשימת פריטים (אקסל / CSV)</button>
+      <input type="file" id="items-file" accept=".xlsx,.xls,.csv,.txt" hidden>
+    </div>
+    <h3>שיוכים</h3>
+    <p class="muted" id="map-status"></p>
+    <div class="actions">
+      <button class="btn secondary" type="button" id="backup-save">שמירת גיבוי</button>
+      <button class="btn secondary" type="button" id="backup-load">שחזור מגיבוי</button>
+      <input type="file" id="backup-file" accept=".json" hidden>
+    </div>
+  </details>
+
+  <section class="card">
+    <h2>הזמנות</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="בחירת קובצי הזמנה">
+      <strong>גוררים לכאן קובצי הזמנה</strong>
+      <span class="muted">או לוחצים לבחירה · אפשר כמה קבצים בבת אחת</span>
+    </div>
+    <input type="file" id="order-files" accept=".xlsx,.xls" multiple hidden>
+    <ol class="steps">
+      <li>שורה באדום = תיאור שעדיין לא שויך למק״ט בריווחית. בוחרים פעם אחת, והשיוך נשמר.</li>
+      <li>מורידים את הקובץ, ובריווחית: תחזוקה ← יבוא מסמכים/קבלות מתוכנה זרה.</li>
+    </ol>
+  </section>
+
+  <div id="orders"></div>
+  <div id="result"></div>
+  <datalist id="items-list"></datalist>
+</main>
+
+<footer class="bar"><div class="inner">
+  <label class="field">סוג מסמך <select id="doc-type"></select></label>
+  <button class="btn big" type="button" id="generate">הורדת קובץ לריווחית</button>
+  <span class="muted" id="generate-status" aria-live="polite"></span>
+</div></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!--INLINE:xlsx-->
+<!--INLINE:mapping-->
+<!--INLINE:core-->
+<!--INLINE:ui-->
+</body>
+</html>
