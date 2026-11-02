@@ -1,0 +1,35 @@
+{
+  "orderId": "SL-20261102-799035",
+  "date": "2026-11-02",
+  "items": [
+    {
+      "id": "חדפ003",
+      "name": "כוס בירה 330 40 יח׳",
+      "category": "חד פעמי ואריזות",
+      "qty": 2,
+      "unit": "יחידה",
+      "image": "images/חד פעמי ואריזות/כוס בירה 330 40 יח׳.webp",
+      "price": 200,
+      "total": 400,
+      "bundle": "",
+      "free": 0
+    }
+  ],
+  "totalPrice": "400.00",
+  "subtotal": "400.00",
+  "discount": "0.00",
+  "shipping": "0.00",
+  "totalItems": 2,
+  "showPrices": true,
+  "pendingId": "",
+  "originalBranch": "",
+  "customer": {
+    "business": "מסעדת בדיקה",
+    "contact": "דנה",
+    "phone": "050-1234567",
+    "address": "",
+    "notes": "",
+    "shipping": "",
+    "payment": ""
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "orderId": "HM-20261102-806601",
+  "date": "2026-11-02",
+  "items": [
+    {
+      "id": "חדפ003",
+      "name": "כוס בירה 330 40 יח׳",
+      "category": "חד פעמי ואריזות",
+      "qty": 2,
+      "unit": "יחידה",
+      "image": "images/חד פעמי ואריזות/כוס בירה 330 40 יח׳.webp",
+      "price": 200,
+      "total": 400,
+      "bundle": "",
+      "free": 0
+    },
+    {
+      "id": "מוצ001",
+      "name": "גליל נייר תעשייתי 5004",
+      "category": "מוצרי נייר",
+      "qty": 1,
+      "unit": "יחידה",
+      "image": "images/מוצרי נייר/גליל נייר תעשייתי 5004.webp",
+      "price": 60,
+      "total": 60,
+      "bundle": "",
+      "free": 0
+    }
+  ],
+  "totalPrice": "460.00",
+  "subtotal": "460.00",
+  "discount": "0.00",
+  "shipping": "0.00",
+  "totalItems": 3,
+  "showPrices": false,
+  "pendingId": "",
+  "originalBranch": "",
+  "customer": {
+    "business": "מסעדת בדיקה",
+    "contact": "דנה",
+    "phone": "050-1234567",
+    "address": "",
+    "notes": "בקשת הצעת מחיר (לא הזמנה)",
+    "shipping": "",
+    "payment": ""
+  }
+}

@@ -25,7 +25,7 @@ function loadGs() {
     '   pdfName_: pdfName_, orderMonth_: orderMonth_,' +
     '   priceSplit_: priceSplit_, isConsumerOrder_: isConsumerOrder_,' +
     '   waPhone_: waPhone_, consumerDoc_: consumerDoc_,' +
-    '   consumerDocLink_: consumerDocLink_ };'
+    '   consumerDocLink_: consumerDocLink_, crmEventFor_: crmEventFor_ };'
   )();
 }
 
@@ -321,6 +321,54 @@ test('מסמך לצרכן: קישור וואטסאפ ללקוח עם המסמך 
   assert.strictEqual(gs.consumerDocLink_(B2B_PRICED), '', 'לא בהזמנה עסקית');
   const landline = Object.assign({}, CARE_SENT, { customer: Object.assign({}, CARE_SENT.customer, { phone: '03-5551234' }) });
   assert.strictEqual(gs.consumerDocLink_(landline), '', 'טלפון קווי — בלי קישור');
+});
+
+test('CRM: בקשת הצעת מחיר (HM) — עם PDF וקישור הצעה', () => {
+  const ev = gs.crmEventFor_(Object.assign({}, B2B, { orderId: 'HM-20261101-482911', showPrices: false }),
+    { url: 'https://drive/x' });
+  assert.strictEqual(ev.type, 'quote_request');
+  assert.strictEqual(ev.via, 'אתר');
+  assert.strictEqual(ev.business, 'מסעדת הגן הירוק בע״מ');
+  assert.strictEqual(ev.phone, '054-1234567');
+  assert.strictEqual(ev.pdfUrl, 'https://drive/x');
+  assert.ok(ev.quoteLink.indexOf('https://aroam.co.il/agent/?cart=') === 0, ev.quoteLink);
+});
+
+test('CRM: הזמנה עסקית עם סכום מחירון, והזמנה מדף הסוכן', () => {
+  const ar = gs.crmEventFor_(B2B_PRICED, null);
+  assert.strictEqual(ar.type, 'order');
+  assert.strictEqual(ar.via, 'אתר');
+  assert.strictEqual(ar.totalPrice, '345.00');
+  assert.strictEqual(ar.pdfUrl, '');
+  const sl = gs.crmEventFor_(Object.assign({}, B2B, { orderId: 'SL-20261101-111111', showPrices: true,
+    totalPrice: '120.00' }), null);
+  assert.strictEqual(sl.type, 'order');
+  assert.strictEqual(sl.via, 'דף הסוכן');
+  assert.strictEqual(sl.quoteLink, '');
+});
+
+test('CRM: רשת, ועד, צרכן ושליחה מרוכזת — לא נשלחים', () => {
+  const k = (o) => gs.crmEventFor_(Object.assign({}, B2B, o), null);
+  assert.strictEqual(k({ orderId: 'RA-20261101-1' }), null);
+  assert.strictEqual(k({ orderId: 'RS-20261101-1' }), null);
+  assert.strictEqual(k({ orderId: 'VD-20261101-1' }), null);
+  assert.strictEqual(k({ suppressEmail: true }), null);
+  assert.strictEqual(gs.crmEventFor_(CARE, null), null);
+  assert.strictEqual(gs.crmEventFor_(Object.assign({}, CARE, { showPrices: true }), null), null);
+  assert.strictEqual(gs.crmEventFor_({}, null), null);
+});
+
+test('CRM: הפיילוד שהאתר שולח בפועל (נלכד בדפדפן)', () => {
+  const ar = gs.crmEventFor_(require('./fixtures/crm-order-ar.json'), null);
+  const hm = gs.crmEventFor_(require('./fixtures/crm-order-hm.json'), null);
+  const sl = gs.crmEventFor_(require('./fixtures/crm-order-sl.json'), null);
+  assert.strictEqual(ar.type, 'order');
+  assert.strictEqual(ar.business, 'מסעדת בדיקה');
+  assert.ok(ar.phone);
+  assert.strictEqual(hm.type, 'quote_request');
+  assert.ok(hm.quoteLink.indexOf('https://aroam.co.il/agent/?cart=') === 0, hm.quoteLink);
+  assert.strictEqual(sl.via, 'דף הסוכן');
+  assert.strictEqual(sl.business, 'מסעדת בדיקה');
 });
 
 let failed = 0;

@@ -614,6 +614,60 @@ function savePdf_(data) {
 // והתקרה הישנה דחתה בשקט את כל מה שמעבר ל-30 — 33 הזמנות אבדו בגל אחד.
 // המפתח כולל את מספר השעה כדי שהחלון יהיה קבוע ולא מתגלגל: cache.put
 // מרענן את ה-TTL בכל פגיעה, ולכן הצפה יכלה להחזיק את הדלת נעולה שעות.
+// ===== CRM-START =====
+// בקשות הצעת מחיר והזמנות עסקיות עוברות ל-CRM (tools/google-apps-script-crm.gs).
+// הריפו פומבי: כאן מצייני מקום, והערכים האמיתיים רק בעותק שבענן.
+var CRM_URL = 'PUT_CRM_URL_HERE';
+var CRM_SECRET = 'PUT_CRM_SECRET_HERE';
+var CRM_PAGE_URL = 'https://aroam.co.il/crm-f428d7/';
+
+// מה עובר ל-CRM: HM (בקשת הצעת מחיר), AR מהקטלוג העסקי ו-SL מדף הסוכן.
+// לא: רשת החנויות, ועד העובדים, הזמנות צרכן מ-/care/, והשליחה המרוכזת של הרשת.
+function crmEventFor_(data, pdf) {
+  var id = String((data && data.orderId) || '');
+  var prefix = id.slice(0, 3);
+  if (['HM-', 'AR-', 'SL-'].indexOf(prefix) < 0) return null;
+  if (data.suppressEmail || isBranchOrder_(data) || isConsumerOrder_(data)) return null;
+  var c = data.customer || {};
+  // הזמנת צרכן בלי השדה showPrices (app.js ישן בקאש): יש לה שיטת אספקה ואין לה שם עסק
+  if (prefix === 'AR-' && (c.shipping || !c.business)) return null;
+  return {
+    type: prefix === 'HM-' ? 'quote_request' : 'order',
+    via: prefix === 'SL-' ? 'דף הסוכן' : 'אתר',
+    orderId: id,
+    business: String(c.business || ''),
+    contact: String(c.contact || ''),
+    phone: String(c.phone || ''),
+    address: String(c.address || ''),
+    totalItems: data.totalItems || '',
+    totalPrice: Number(data.totalPrice) > 0 ? Number(data.totalPrice).toFixed(2) : '',
+    pdfUrl: pdf && pdf.url ? pdf.url : '',
+    quoteLink: quoteLink_(data) || ''
+  };
+}
+
+// בודק ok בגוף התשובה ולא רק HTTP 200 (הלקח מסבב 62). כשל לא מפיל את ההזמנה.
+// null = ההזמנה לא שייכת ל-CRM (ואז גם אין קריאה לרשת — השליחה המרוכזת של הרשת לא מואטת).
+function notifyCrm_(event) {
+  if (!event) return null;
+  if (CRM_URL.indexOf('PUT_') === 0) return { ok: false };
+  try {
+    var res = UrlFetchApp.fetch(CRM_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      muteHttpExceptions: true,
+      payload: JSON.stringify({ action: 'event', secret: CRM_SECRET, event: event })
+    });
+    var parsed = JSON.parse(res.getContentText());
+    if (parsed && parsed.ok === true && parsed.id) return { ok: true, id: parsed.id };
+    Logger.log('CRM: ' + res.getContentText().slice(0, 200));
+  } catch (e) {
+    Logger.log('CRM: ' + e);
+  }
+  return { ok: false };
+}
+// ===== CRM-END =====
+
 function rateLimitOk_() {
   var cache = CacheService.getScriptCache();
   var key = 'order_count_' + Math.floor(Date.now() / 3600000);
@@ -678,6 +732,9 @@ function doPost(e) {
       pdf ? pdf.url : ''                   // קובץ PDF
     ]);
 
+    // CRM — אחרי שההזמנה כבר בגיליון. כשל כאן לא מפיל אותה.
+    var crm = notifyCrm_(crmEventFor_(data, pdf));
+
     // מייל התראה.
     // suppressEmail נשלח רק מסקריפט "ההזמנות הממתינות" של רשת החנויות, שאוסף
     // את כל התעודות של הגל ושולח מייל אחד במקום עשרות. כל שאר ההזמנות באתר
@@ -705,6 +762,11 @@ function doPost(e) {
         })() +
         (totalPriceText ? 'סה"כ לתשלום: ' + totalPriceText + ' ש"ח\n' : '') + '\n' +
         'הגיליון המלא: https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID;
+      if (crm) {
+        body += crm.ok
+          ? '\n\nפתח בכרטיס ב-CRM: ' + CRM_PAGE_URL + '#c=' + crm.id + '\n'
+          : '\n\n(לא נשמר ב-CRM — "סנכרון מגיליון ההזמנות" בעמוד ה-CRM ישלים אותו)\n';
+      }
       var qlink = quoteLink_(data);
       if (qlink) {
         body += '\n\nלהפיכת ההזמנה להצעת מחיר (נפתח בדף הסוכן עם המחירים):\n' + qlink + '\n';
