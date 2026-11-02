@@ -571,8 +571,27 @@
 
         hookOrderModalHistory();
 
-        const savedName = readJson(ACTIVE_KEY, null);
-        const rec = savedName ? findCustomer(savedName) : null;
+        // ?customer= (מכרטיס ב-CRM, או מקישור "פתח כהצעת מחיר" במייל) בוחר את
+        // הלקוח הזה. בלי זה הדף נפתח על הלקוח שהיה פעיל אחרון — עם השם, הטלפון
+        // והמחירים שלו — גם כשההצעה היא ללקוח אחר. לקוח חדש נוצר עם הטלפון
+        // ואיש הקשר מהכתובת; ללקוח קיים משלימים רק פרטים חסרים.
+        const params = new URLSearchParams(location.search);
+        const urlName = (params.get('customer') || '').trim();
+        let rec = null;
+        if (urlName) {
+            const existing = findCustomer(urlName);
+            const patch = {};
+            const urlPhone = (params.get('phone') || '').trim();
+            const urlContact = (params.get('contact') || '').trim();
+            if (urlPhone && !(existing && existing.phone)) patch.phone = urlPhone;
+            if (urlContact && !(existing && existing.contact)) patch.contact = urlContact;
+            rec = existing && !Object.keys(patch).length
+                ? existing
+                : upsertCustomer(existing ? existing.name : urlName, patch);
+        } else {
+            const savedName = readJson(ACTIVE_KEY, null);
+            rec = savedName ? findCustomer(savedName) : null;
+        }
         if (rec) setActiveCustomer(rec);
 
         // הבורר נפתח רק אחרי שעברו את קוד הגישה, כדי שלא יוצג מעל מסך ה-PIN
