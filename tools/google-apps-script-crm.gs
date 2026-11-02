@@ -289,3 +289,278 @@ function orderRowsFromValues_(values) {
   }
   return out;
 }
+
+// ---------- גיליון ----------
+
+function book_() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+// לשונית עם כותרות, נוצרת בפעם הראשונה. כל הכתיבה בפורמט טקסט ('@'):
+// אחרת גוגל שיטס מוחק את ה-0 בטלפון והופך תאריכים למספרים.
+function sheet_(book, name, headers) {
+  var sh = book.getSheetByName(name) || book.insertSheet(name);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, headers.length).setNumberFormat('@').setValues([headers]);
+    sh.setFrozenRows(1);
+    sh.setRightToLeft(true);
+  }
+  return sh;
+}
+
+function readRows_(sh, keys) {
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  return sh.getRange(2, 1, last - 1, keys.length).getValues().map(function (row, i) {
+    var o = { _row: i + 2 };
+    keys.forEach(function (k, j) { o[k] = unescape_(String(row[j] == null ? '' : row[j])); });
+    return o;
+  });
+}
+
+function readModel_(book) {
+  var cs = sheet_(book, CONTACTS_SHEET, CONTACT_HEADERS);
+  var as = sheet_(book, ACTIVITIES_SHEET, ACTIVITY_HEADERS);
+  return { cs: cs, as: as, contacts: readRows_(cs, CONTACT_KEYS), activities: readRows_(as, ACTIVITY_KEYS) };
+}
+
+function rowOf_(o, keys) {
+  return keys.map(function (k) {
+    return sanitize_(o[k], k === 'quoteLink' ? 5000 : k === 'text' ? 2000 : 300);
+  });
+}
+
+function writeRows_(sh, startRow, rows, width) {
+  if (!rows.length) return;
+  sh.getRange(startRow, 1, rows.length, width).setNumberFormat('@').setValues(rows);
+}
+
+// אנשי קשר עם _row נכתבים במקומם; חדשים ופעולות חדשות — בסוף הלשונית
+function save_(model, changedContacts, newActivities) {
+  var fresh = [];
+  changedContacts.forEach(function (c) {
+    if (c._row) writeRows_(model.cs, c._row, [rowOf_(c, CONTACT_KEYS)], CONTACT_KEYS.length);
+    else fresh.push(c);
+  });
+  var next = model.cs.getLastRow() + 1;
+  fresh.forEach(function (c, i) { c._row = next + i; });
+  writeRows_(model.cs, next, fresh.map(function (c) { return rowOf_(c, CONTACT_KEYS); }), CONTACT_KEYS.length);
+  writeRows_(model.as, model.as.getLastRow() + 1,
+    newActivities.map(function (a) { return rowOf_(a, ACTIVITY_KEYS); }), ACTIVITY_KEYS.length);
+}
+
+function publicOf_(o, keys) {
+  var out = {};
+  keys.forEach(function (k) { out[k] = o[k] == null ? '' : String(o[k]); });
+  return out;
+}
+
+// ---------- פעולות ----------
+
+function handleEvent_(ev) {
+  if (['lead', 'quote_request', 'order'].indexOf(ev.type) < 0) return { ok: false, error: 'bad event' };
+  var model = readModel_(book_());
+  var res = applyEvent_(model, ev, now_());
+  if (res.skipped) return { ok: true, id: res.contact ? res.contact.id : '', duplicate: true };
+  save_(model, [res.contact], [res.activity]);
+  return { ok: true, id: res.contact.id };
+}
+
+function handleList_() {
+  var model = readModel_(book_());
+  return {
+    ok: true,
+    today: now_().date,
+    contacts: model.contacts.map(function (c) { return publicOf_(c, CONTACT_KEYS); }),
+    activities: model.activities.map(function (a) { return publicOf_(a, ACTIVITY_KEYS); })
+  };
+}
+
+function handleAdd_(input) {
+  var phone = normalizePhone_(input.phone);
+  if (!phone) return { ok: false, error: 'bad phone' };
+  var name = trim_(input.name).slice(0, 200);
+  var business = trim_(input.business).slice(0, 200);
+  if (!name && !business) return { ok: false, error: 'name required' };
+  var followUp = trim_(input.followUp);
+  if (followUp && !/^\d{4}-\d{2}-\d{2}$/.test(followUp)) return { ok: false, error: 'bad date' };
+  var model = readModel_(book_());
+  var dup = findContact_(model.contacts, phone, '');
+  if (dup) return { ok: false, error: 'duplicate', id: dup.id };
+  var now = now_();
+  var c = blankContact_(now.stamp);
+  c.name = name;
+  c.business = business;
+  c.phone = phone;
+  c.email = trim_(input.email).slice(0, 200);
+  c.source = MANUAL_SOURCES.indexOf(trim_(input.source)) >= 0 ? trim_(input.source) : 'אחר';
+  c.followUp = followUp;
+  model.contacts.push(c);
+  var a = {
+    id: newId_('A'), contactId: c.id, at: now.stamp, type: 'נוצר ידנית',
+    text: trim_(input.note).slice(0, 2000), orderId: '', pdf: '', quoteLink: '', by: 'עמוד'
+  };
+  save_(model, [c], [a]);
+  return { ok: true, contact: publicOf_(c, CONTACT_KEYS), activity: publicOf_(a, ACTIVITY_KEYS) };
+}
+
+// בודק את כל השדות לפני שמשנה משהו — שגיאה אחת משאירה את איש הקשר כמו שהיה
+function applyFields_(model, c, f) {
+  var next = {};
+  if ('stage' in f) {
+    if (STAGES.indexOf(f.stage) < 0) return { ok: false, error: 'bad stage' };
+    next.stage = f.stage;
+  }
+  if ('followUp' in f) {
+    var d = trim_(f.followUp);
+    if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: 'bad date' };
+    next.followUp = d;
+  }
+  if ('phone' in f) {
+    var p = normalizePhone_(f.phone);
+    if (!p && trim_(f.phone)) return { ok: false, error: 'bad phone' };
+    if (p) {
+      var other = findContact_(model.contacts, p, '');
+      if (other && other.id !== c.id) return { ok: false, error: 'duplicate', id: other.id };
+    }
+    next.phone = p;
+  }
+  ['name', 'business', 'email', 'address'].forEach(function (k) {
+    if (k in f) next[k] = trim_(f[k]).slice(0, 200);
+  });
+  if ('name' in next || 'business' in next) {
+    var name = 'name' in next ? next.name : c.name;
+    var business = 'business' in next ? next.business : c.business;
+    if (!name && !business) return { ok: false, error: 'name required' };
+  }
+  Object.keys(next).forEach(function (k) { c[k] = next[k]; });
+  return { ok: true };
+}
+
+function handleUpdate_(id, fields, activity) {
+  var model = readModel_(book_());
+  var c = contactById_(model, id);
+  if (!c) return { ok: false, error: 'not found' };
+  if (activity && PAGE_ACTIVITY_TYPES.indexOf(trim_(activity.type)) < 0) {
+    return { ok: false, error: 'bad activity' };
+  }
+  var check = applyFields_(model, c, fields || {});
+  if (!check.ok) return check;
+  var added = [];
+  if (activity) {
+    var now = now_();
+    added.push({
+      id: newId_('A'), contactId: c.id, at: now.stamp, type: trim_(activity.type),
+      text: trim_(activity.text).slice(0, 2000), orderId: '', pdf: '', quoteLink: '', by: 'עמוד'
+    });
+    c.lastActivity = now.stamp;
+  }
+  save_(model, [c], added);
+  return {
+    ok: true,
+    contact: publicOf_(c, CONTACT_KEYS),
+    activity: added.length ? publicOf_(added[0], ACTIVITY_KEYS) : null
+  };
+}
+
+function handleDelete_(id) {
+  var model = readModel_(book_());
+  var c = contactById_(model, id);
+  if (!c) return { ok: false, error: 'not found' };
+  // מלמטה למעלה, כדי שמחיקת שורה לא תזיז את השורות שעוד לא נמחקו
+  var rows = model.activities
+    .filter(function (a) { return a.contactId === id; })
+    .map(function (a) { return a._row; })
+    .sort(function (a, b) { return b - a; });
+  rows.forEach(function (r) { model.as.deleteRow(r); });
+  model.cs.deleteRow(c._row);
+  return { ok: true, deleted: rows.length };
+}
+
+function readOrderRows_() {
+  var sh = SpreadsheetApp.openById(ORDERS_SPREADSHEET_ID).getSheetByName(ORDERS_SHEET);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return orderRowsFromValues_(sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues());
+}
+
+// ברירת המחדל היא הרצה יבשה — כתיבה רק כשהעמוד שולח dryRun: false במפורש
+function handleImport_(dryRun) {
+  var model = readModel_(book_());
+  var rows = readOrderRows_();
+  if (dryRun) {
+    var copy = {
+      contacts: JSON.parse(JSON.stringify(model.contacts)),
+      activities: JSON.parse(JSON.stringify(model.activities))
+    };
+    return { ok: true, dryRun: true, summary: buildImport_(copy, rows, now_()).summary };
+  }
+  var before = model.activities.length;
+  var res = buildImport_(model, rows, now_());
+  var changed = model.contacts.filter(function (c) { return res.touched[c.id]; });
+  save_(model, changed, model.activities.slice(before));
+  return { ok: true, dryRun: false, summary: res.summary };
+}
+
+// ---------- כניסה ----------
+
+// מציין מקום (PUT_...) או ערך קצר — חוסם הכל, כדי שהדבקת קובץ הריפו לענן
+// לא תפתח את הנתונים
+function authorized_(expected, given) {
+  if (typeof expected !== 'string' || expected.indexOf('PUT_') === 0 || expected.length < 12) return false;
+  return typeof given === 'string' && given === expected;
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function withLock_(fn) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return { ok: false, error: 'busy' };
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// בדיקת חיים בלבד, בלי נתונים
+function doGet() {
+  return ContentService.createTextOutput('CRM — פעיל');
+}
+
+function doPost(e) {
+  var raw = (e && e.postData && e.postData.contents) || '';
+  if (!raw || raw.length > 100000) return json_({ ok: false, error: 'bad request' });
+  var body;
+  try {
+    body = JSON.parse(raw);
+  } catch (err) {
+    return json_({ ok: false, error: 'bad request' });
+  }
+  try {
+    if (body.action === 'event') {
+      if (!authorized_(CRM_SECRET, body.secret)) return json_({ ok: false, error: 'unauthorized' });
+      return json_(withLock_(function () { return handleEvent_(body.event || {}); }));
+    }
+    if (!authorized_(CRM_PASSWORD, body.password)) return json_({ ok: false, error: 'unauthorized' });
+    switch (body.action) {
+      case 'list': return json_(handleList_());
+      case 'add': return json_(withLock_(function () { return handleAdd_(body.contact || {}); }));
+      case 'update': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, null); }));
+      case 'log': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, body.activity || null); }));
+      case 'delete': return json_(withLock_(function () { return handleDelete_(body.id); }));
+      case 'import': return json_(withLock_(function () { return handleImport_(body.dryRun !== false); }));
+    }
+    return json_({ ok: false, error: 'unknown action' });
+  } catch (err) {
+    Logger.log('CRM: ' + err);
+    return json_({ ok: false, error: 'server error' });
+  }
+}
+
+// הרצה ידנית אחת מהעורך (בחירת authorize ← הפעלה): מבקשת לאשר גישה לגיליונות
+function authorize() {
+  SpreadsheetApp.openById(SPREADSHEET_ID).getName();
+  SpreadsheetApp.openById(ORDERS_SPREADSHEET_ID).getName();
+}

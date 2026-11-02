@@ -267,6 +267,276 @@ test('ייבוא: מיפוי לפי שמות העמודות ופירמוט תא�
   assert.strictEqual(out[0].pdf, 'https://drive/x');
 });
 
+// ---------- API: גיליון מדומה ----------
+
+// גיליון בזיכרון — מספיק מה-API של SpreadsheetApp כדי להריץ את הסקריפט.
+// untyped נדלק כשכותבים בלי פורמט טקסט ('@') — אצל גוגל זה היה מוחק את ה-0 בטלפון.
+function fakeSheet() {
+  const rows = [];
+  const sh = {
+    rows,
+    untyped: false,
+    getLastRow() {
+      for (let i = rows.length; i > 0; i--) {
+        if ((rows[i - 1] || []).some(v => v !== '' && v != null)) return i;
+      }
+      return 0;
+    },
+    getLastColumn() { return rows.reduce((m, r) => Math.max(m, (r || []).length), 0); },
+    getRange(r, c, nr, nc) {
+      let fmt = null;
+      const range = {
+        setNumberFormat(f) { fmt = f; return range; },
+        setValues(vals) {
+          if (fmt !== '@') sh.untyped = true;
+          vals.forEach((v, i) => {
+            rows[r - 1 + i] = rows[r - 1 + i] || [];
+            v.forEach((x, j) => { rows[r - 1 + i][c - 1 + j] = x; });
+          });
+          return range;
+        },
+        getValues() {
+          return Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => {
+            const v = (rows[r - 1 + i] || [])[c - 1 + j];
+            return v == null ? '' : v;
+          }));
+        }
+      };
+      return range;
+    },
+    deleteRow(r) { rows.splice(r - 1, 1); },
+    setFrozenRows() {},
+    setRightToLeft() {}
+  };
+  return sh;
+}
+
+function fakeBook() {
+  const sheets = {};
+  return {
+    sheets,
+    getSheetByName(n) { return sheets[n] || null; },
+    insertSheet(n) { sheets[n] = fakeSheet(); return sheets[n]; }
+  };
+}
+
+const P = 'test-password-1234';
+const S = 'test-secret-abcdefgh';
+
+function loadApp(opts) {
+  opts = opts || {};
+  const src = fs.readFileSync(path.join(__dirname, '..', 'google-apps-script-crm.gs'), 'utf8');
+  const crm = opts.crm || fakeBook();
+  const orders = opts.orders || fakeBook();
+  const env = {
+    SpreadsheetApp: { openById(id) { return id === 'ORDERS-ID' ? orders : crm; } },
+    LockService: { getScriptLock() { return { tryLock() { return true; }, releaseLock() {} }; } },
+    ContentService: {
+      MimeType: { JSON: 'json' },
+      createTextOutput(s) { return { content: s, setMimeType() { return this; } }; }
+    },
+    Logger: { log() {} },
+    Utilities: {
+      formatDate(d) {
+        const p = n => (n < 10 ? '0' : '') + n;
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+          ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      }
+    }
+  };
+  const password = opts.password === undefined ? P : opts.password;
+  const secret = opts.secret === undefined ? S : opts.secret;
+  const gsApp = new Function('SpreadsheetApp', 'LockService', 'ContentService', 'Logger', 'Utilities',
+    src + '\n' +
+    "SPREADSHEET_ID = 'CRM-ID'; ORDERS_SPREADSHEET_ID = 'ORDERS-ID';\n" +
+    'CRM_PASSWORD = ' + JSON.stringify(password) + '; CRM_SECRET = ' + JSON.stringify(secret) + ';\n' +
+    "now_ = function () { return { date: '2026-11-02', stamp: '2026-11-02 10:42' }; };\n" +
+    'return { doPost: doPost, doGet: doGet };'
+  )(env.SpreadsheetApp, env.LockService, env.ContentService, env.Logger, env.Utilities);
+  gsApp.crm = crm;
+  gsApp.call = (body) => JSON.parse(gsApp.doPost({ postData: { contents: JSON.stringify(body) } }).content);
+  return gsApp;
+}
+
+const ORDERS_HEAD = ['תאריך קבלה', 'מספר הזמנה', 'תאריך אספקה מבוקש', 'שם העסק', 'איש קשר', 'טלפון',
+  'כתובת למשלוח', 'הערות', 'פירוט פריטים', 'סה"כ פריטים', 'סה"כ לתשלום', 'סטטוס',
+  'שיטת אספקה', 'דמי משלוח', 'אופן תשלום', 'קובץ PDF'];
+function ordersBookWith(rows) {
+  const b = fakeBook();
+  const sh = b.insertSheet('הזמנות');
+  sh.rows.push(ORDERS_HEAD.slice());
+  rows.forEach(r => sh.rows.push(r));
+  return b;
+}
+const ORDER_ROWS = [
+  [new Date(2026, 8, 1, 9, 0), 'AR-20260901-111111', '', 'מסעדת הגפן', 'דנה', 501234567,
+    'המלאכה 8', '', '...', 5, '120.00', 'חדשה', '', '', '', 'https://drive/a'],
+  [new Date(2026, 8, 2, 9, 0), 'RA-20260902-222222', '', 'גלילות — טומי', 'רונית', '0521111111',
+    '', '', '...', 3, '', 'חדשה', '', '', '', ''],
+  [new Date(2026, 8, 3, 9, 0), 'AR-20260903-333333', '', 'רועי בדיקה', 'בדיקה', '098',
+    '', '', '...', 1, '', 'חדשה', '', '', '', '']
+];
+
+// ---------- API ----------
+
+test('API: סיסמה שהיא עדיין מציין המקום חוסמת — גם כשהיא נשלחת', () => {
+  const app = loadApp({ password: 'PUT_CRM_PASSWORD_HERE' });
+  assert.strictEqual(app.call({ action: 'list', password: 'PUT_CRM_PASSWORD_HERE' }).error, 'unauthorized');
+});
+
+test('API: סיסמה קצרה מ-12 תווים חוסמת', () => {
+  const app = loadApp({ password: 'short-pass' });
+  assert.strictEqual(app.call({ action: 'list', password: 'short-pass' }).error, 'unauthorized');
+});
+
+test('API: סיסמה שגויה וסוד שגוי נדחים', () => {
+  const app = loadApp();
+  assert.strictEqual(app.call({ action: 'list', password: 'wrong' }).error, 'unauthorized');
+  assert.strictEqual(app.call({ action: 'event', secret: P, event: LEAD }).error, 'unauthorized');
+  assert.strictEqual(app.call({ action: 'list', secret: S }).error, 'unauthorized');
+});
+
+test('API: גוף לא תקין נדחה', () => {
+  const app = loadApp();
+  assert.strictEqual(JSON.parse(app.doPost({ postData: { contents: 'not json' } }).content).error, 'bad request');
+  assert.strictEqual(JSON.parse(app.doPost({}).content).error, 'bad request');
+});
+
+test('API: event יוצר איש קשר; list מחזיר אותו בלי _row; כתיבה בפורמט טקסט', () => {
+  const app = loadApp();
+  const r = app.call({ action: 'event', secret: S, event: LEAD });
+  assert.strictEqual(r.ok, true);
+  assert.ok(/^C/.test(r.id), r.id);
+  const list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.today, '2026-11-02');
+  assert.strictEqual(list.contacts.length, 1);
+  assert.strictEqual(list.contacts[0].id, r.id);
+  assert.strictEqual(list.contacts[0].phone, '0501234567');
+  assert.strictEqual('_row' in list.contacts[0], false);
+  assert.strictEqual(list.activities[0].contactId, r.id);
+  assert.strictEqual(app.crm.sheets['אנשי קשר'].rows[0][0], 'מזהה');
+  assert.strictEqual(app.crm.sheets['אנשי קשר'].untyped, false);
+  assert.strictEqual(app.crm.sheets['פעולות'].untyped, false);
+});
+
+test('API: אירוע עם מספר הזמנה שכבר רשום — אותו איש קשר, בלי כפילות', () => {
+  const app = loadApp();
+  const a = app.call({ action: 'event', secret: S, event: ORDER });
+  const b = app.call({ action: 'event', secret: S, event: ORDER });
+  assert.strictEqual(b.ok, true);
+  assert.strictEqual(b.id, a.id);
+  assert.strictEqual(b.duplicate, true);
+  assert.strictEqual(app.call({ action: 'list', password: P }).activities.length, 1);
+});
+
+test('API: add — טלפון קיים מחזיר duplicate עם המזהה; חדש נשמר עם המקור', () => {
+  const app = loadApp();
+  const first = app.call({ action: 'event', secret: S, event: LEAD });
+  const dup = app.call({ action: 'add', password: P, contact: { phone: '050 1234567', name: 'משה' } });
+  assert.strictEqual(dup.error, 'duplicate');
+  assert.strictEqual(dup.id, first.id);
+  const ok = app.call({ action: 'add', password: P, contact: { phone: '054-7781203', name: 'משה',
+    business: 'מוסך הגליל', source: 'מודעה בפייסבוק', followUp: '2026-11-02', note: 'מחפש ספק' } });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.contact.source, 'מודעה בפייסבוק');
+  assert.strictEqual(ok.contact.stage, 'חדש');
+  assert.strictEqual(ok.contact.phone, '0547781203');
+  assert.strictEqual(ok.activity.type, 'נוצר ידנית');
+  assert.strictEqual(ok.activity.text, 'מחפש ספק');
+});
+
+test('API: add — טלפון לא תקין, בלי שם, מקור לא מוכר', () => {
+  const app = loadApp();
+  assert.strictEqual(app.call({ action: 'add', password: P, contact: { phone: '123', name: 'א' } }).error, 'bad phone');
+  assert.strictEqual(app.call({ action: 'add', password: P, contact: { phone: '0547781203' } }).error, 'name required');
+  assert.strictEqual(app.call({ action: 'add', password: P,
+    contact: { phone: '0547781203', name: 'א', source: 'משהו' } }).contact.source, 'אחר');
+});
+
+test('API: log — פעולה, שלב ותאריך בבקשה אחת', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const r = app.call({ action: 'log', password: P, id,
+    fields: { stage: 'חזרתי', followUp: '2026-11-03' }, activity: { type: 'שיחה', text: 'לא ענה' } });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.contact.stage, 'חזרתי');
+  assert.strictEqual(r.contact.followUp, '2026-11-03');
+  assert.strictEqual(r.contact.lastActivity, '2026-11-02 10:42');
+  assert.strictEqual(r.activity.type, 'שיחה');
+  assert.strictEqual(r.activity.text, 'לא ענה');
+  assert.strictEqual(app.call({ action: 'list', password: P }).activities.length, 2);
+});
+
+test('API: שלב, תאריך וסוג פעולה לא חוקיים נדחים בלי לשנות', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { stage: 'משהו' } }).error, 'bad stage');
+  assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { followUp: '2.11.26' } }).error, 'bad date');
+  assert.strictEqual(app.call({ action: 'log', password: P, id, fields: { stage: 'לקוח' },
+    activity: { type: 'הזמנה', text: 'x' } }).error, 'bad activity');
+  const c = app.call({ action: 'list', password: P }).contacts[0];
+  assert.strictEqual(c.stage, 'חדש');
+  assert.strictEqual(c.followUp, '2026-11-02');
+});
+
+test('API: update — טלפון של איש קשר אחר נחסם; טלפון ועסק מתעדכנים', () => {
+  const app = loadApp();
+  const a = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const b = app.call({ action: 'add', password: P, contact: { phone: '0547781203', name: 'משה' } }).contact.id;
+  const r = app.call({ action: 'update', password: P, id: b, fields: { phone: '050-1234567' } });
+  assert.strictEqual(r.error, 'duplicate');
+  assert.strictEqual(r.id, a);
+  const ok = app.call({ action: 'update', password: P, id: b, fields: { phone: '052-1111111', business: 'מוסך הגליל' } });
+  assert.strictEqual(ok.contact.phone, '0521111111');
+  assert.strictEqual(ok.contact.business, 'מוסך הגליל');
+  assert.strictEqual(app.call({ action: 'update', password: P, id: 'C-none', fields: {} }).error, 'not found');
+});
+
+test('API: delete מוחק את איש הקשר ואת כל הפעולות שלו — רק שלו', () => {
+  const app = loadApp();
+  const a = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER, { phone: '0521111111', business: 'אחר' }) });
+  app.call({ action: 'log', password: P, id: a, fields: {}, activity: { type: 'הערה', text: 'x' } });
+  const r = app.call({ action: 'delete', password: P, id: a });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.deleted, 2);
+  const list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.contacts.length, 1);
+  assert.strictEqual(list.activities.length, 1);
+  assert.strictEqual(list.activities[0].contactId, list.contacts[0].id);
+});
+
+test('API: import — ברירת המחדל היא הרצה יבשה שלא כותבת', () => {
+  const app = loadApp({ orders: ordersBookWith(ORDER_ROWS) });
+  const r = app.call({ action: 'import', password: P });
+  assert.strictEqual(r.dryRun, true);
+  assert.strictEqual(r.summary.created, 1);
+  assert.strictEqual(r.summary.skipped.chain, 1);
+  assert.strictEqual(r.summary.skipped.test, 1);
+  assert.deepStrictEqual(r.summary.testRows, ['AR-20260903-333333 — רועי בדיקה']);
+  assert.strictEqual(app.call({ action: 'list', password: P }).contacts.length, 0);
+});
+
+test('API: import אמיתי כותב, ושני ייבואים לא משכפלים', () => {
+  const app = loadApp({ orders: ordersBookWith(ORDER_ROWS) });
+  assert.strictEqual(app.call({ action: 'import', password: P, dryRun: false }).dryRun, false);
+  let list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.contacts.length, 1);
+  assert.strictEqual(list.contacts[0].phone, '0501234567');
+  assert.strictEqual(list.contacts[0].stage, 'לקוח');
+  assert.strictEqual(list.contacts[0].lastOrder, '2026-09-01');
+  assert.strictEqual(list.activities[0].pdf, 'https://drive/a');
+  app.call({ action: 'import', password: P, dryRun: false });
+  list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.contacts.length, 1);
+  assert.strictEqual(list.activities.length, 1);
+  assert.strictEqual(app.crm.sheets['פעולות'].untyped, false);
+});
+
+test('API: doGet — בדיקת חיים בלי נתונים', () => {
+  assert.strictEqual(loadApp().doGet().content, 'CRM — פעיל');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
