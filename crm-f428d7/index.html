@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לידים ולקוחות | אהרוני</title>
+    <!-- עמוד סגור: ה-CRM של רועי. הנתונים נטענים רק אחרי שהסיסמה נבדקת בענן
+         (tools/google-apps-script-crm.gs). לא מאונדקס, לא ב-sitemap, ובכוונה
+         לא ב-robots.txt (חסימה שם הייתה חושפת את הכתובת). בלי gtag — כלי פנימי. -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <script>
+        // מצב כהה: הבחירה שנשמרה באתר (components.js שומר אותה ב-'theme'), ואם אין — הגדרת המכשיר
+        (function () {
+            var t = null;
+            try { t = localStorage.getItem('theme'); } catch (e) { }
+            if (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+            document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="crm.css?v=1">
+</head>
+
+<body class="crm-page">
+    <main id="main-content" tabindex="-1">
+
+        <section id="crm-login" class="crm-login" hidden>
+            <img src="/images/logo.png" alt="אהרוני שיווק והפצה" class="crm-login-logo">
+            <h1>לידים ולקוחות</h1>
+            <form id="crm-login-form" novalidate>
+                <label for="crm-password" class="crm-label">סיסמה</label>
+                <input type="password" id="crm-password" class="crm-input" autocomplete="current-password">
+                <p id="crm-login-error" class="crm-error" role="alert"></p>
+                <button type="submit" id="crm-login-btn" class="crm-btn crm-btn-primary">כניסה</button>
+            </form>
+        </section>
+
+        <section id="crm-list-view" hidden>
+            <header class="crm-bar">
+                <h1>לידים ולקוחות</h1>
+                <div class="crm-bar-actions">
+                    <button type="button" id="crm-add-btn" class="crm-bar-btn">+ ליד</button>
+                    <button type="button" id="crm-menu-btn" class="crm-bar-btn crm-icon-btn" aria-label="תפריט"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="crm-menu">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                    <div id="crm-menu" class="crm-menu" hidden>
+                        <button type="button" data-menu="refresh">רענון</button>
+                        <button type="button" data-menu="import">סנכרון מגיליון ההזמנות</button>
+                        <a href="/agent/">דף הסוכן</a>
+                        <button type="button" data-menu="logout">יציאה</button>
+                    </div>
+                </div>
+            </header>
+            <div class="crm-wrap">
+                <div class="crm-tools">
+                    <input type="search" id="crm-search" class="crm-input" placeholder="שם, עסק או טלפון"
+                        aria-label="חיפוש לפי שם, עסק או טלפון">
+                    <div id="crm-filters" class="crm-filters" role="group" aria-label="סינון לפי שלב"></div>
+                </div>
+                <p id="crm-banner" class="crm-banner" role="status" hidden></p>
+                <ul id="crm-list" class="crm-list"></ul>
+                <p id="crm-empty" class="crm-empty" hidden>אין כאן אף אחד כרגע.</p>
+            </div>
+        </section>
+
+        <section id="crm-card-view" hidden>
+            <header class="crm-bar">
+                <button type="button" id="crm-back" class="crm-bar-btn crm-icon-btn" aria-label="חזרה לרשימה">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </button>
+                <h1 id="crm-card-title" tabindex="-1"></h1>
+                <button type="button" id="crm-edit-btn" class="crm-bar-btn crm-icon-btn" aria-label="עריכת פרטים">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+            </header>
+            <div class="crm-wrap"><div id="crm-card" class="crm-card"></div></div>
+        </section>
+    </main>
+
+    <div id="crm-outcome" class="crm-overlay" hidden>
+        <div class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-outcome-title">
+            <h2 id="crm-outcome-title" tabindex="-1"></h2>
+            <div id="crm-outcome-options" class="crm-options"></div>
+            <div id="crm-outcome-follow" hidden>
+                <p class="crm-label">מתי לחזור?</p>
+                <div id="crm-outcome-follow-chips" class="crm-chips"></div>
+            </div>
+            <label for="crm-outcome-note" class="crm-label">הערה (לא חובה)</label>
+            <input type="text" id="crm-outcome-note" class="crm-input">
+            <div class="crm-form-actions">
+                <button type="button" id="crm-outcome-skip" class="crm-btn">דלג</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="crm-form-wrap" class="crm-overlay" hidden>
+        <form id="crm-form" class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-form-title" novalidate>
+            <h2 id="crm-form-title" tabindex="-1"></h2>
+            <label for="f-phone" id="f-phone-label" class="crm-label">טלפון</label>
+            <input type="tel" id="f-phone" class="crm-input" inputmode="tel" autocomplete="off">
+            <div id="f-dup" class="crm-dup" role="status" hidden></div>
+            <label for="f-name" class="crm-label">שם</label>
+            <input type="text" id="f-name" class="crm-input" autocomplete="off">
+            <label for="f-business" class="crm-label">עסק</label>
+            <input type="text" id="f-business" class="crm-input" autocomplete="off">
+            <div id="f-new-only">
+                <p class="crm-label" id="f-source-label">מאיפה הגיע?</p>
+                <div id="f-source" class="crm-chips" role="group" aria-labelledby="f-source-label"></div>
+                <label for="f-note" class="crm-label">הערה</label>
+                <textarea id="f-note" class="crm-input" rows="2"></textarea>
+                <p class="crm-label" id="f-follow-label">לחזור</p>
+                <div id="f-follow" class="crm-chips" role="group" aria-labelledby="f-follow-label"></div>
+            </div>
+            <div id="f-edit-only">
+                <label for="f-email" class="crm-label">אימייל</label>
+                <input type="email" id="f-email" class="crm-input" autocomplete="off">
+                <label for="f-address" class="crm-label">כתובת</label>
+                <input type="text" id="f-address" class="crm-input" autocomplete="off">
+                <button type="button" id="f-delete" class="crm-btn crm-btn-danger">מחיקת איש הקשר</button>
+            </div>
+            <p id="f-error" class="crm-error" role="alert"></p>
+            <div class="crm-form-actions">
+                <button type="submit" id="f-submit" class="crm-btn crm-btn-primary">שמירה</button>
+                <button type="button" id="f-cancel" class="crm-btn">ביטול</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="crm-import" class="crm-overlay" hidden>
+        <div class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-import-title">
+            <h2 id="crm-import-title" tabindex="-1">סנכרון מגיליון ההזמנות</h2>
+            <div id="crm-import-body" aria-live="polite"></div>
+            <div class="crm-form-actions">
+                <button type="button" id="crm-import-run" class="crm-btn crm-btn-primary" hidden>ייבוא</button>
+                <button type="button" id="crm-import-close" class="crm-btn">סגירה</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="crm-toast" class="crm-toast" role="status" aria-live="polite"></div>
+
+    <script src="crm-core.js?v=1"></script>
+    <script src="crm.js?v=1"></script>
+</body>
+
+</html>

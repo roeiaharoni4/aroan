@@ -1,0 +1,231 @@
+/* CRM — אהרוני (עמוד סגור). טוקנים מקומיים מעל site.css, כולל מצב כהה
+   ([data-theme="dark"] נקבע בראש index.html). */
+:root {
+    --crm-bg: #EAF3EE;
+    --crm-surface: #FFFFFF;
+    --crm-border: #CFDDD4;
+    --crm-text: #2F3E35;
+    --crm-muted: #5B6E64;
+    --crm-bar: #1A4231;
+    --crm-bar-text: #FFFFFF;
+    --crm-primary: #1A4231;
+    --crm-on-primary: #FFFFFF;
+    --crm-link: #2C5C46;
+    --crm-late: #B3261E;
+    --crm-overlay: rgba(10, 25, 18, 0.55);
+}
+
+[data-theme="dark"] {
+    --crm-bg: #121A16;
+    --crm-surface: #1E2622;
+    --crm-border: #3A4A42;
+    --crm-text: #F1F5F2;
+    --crm-muted: #B9C7BF;
+    --crm-bar: #0E2219;
+    --crm-bar-text: #F1F5F2;
+    --crm-primary: #8FD6A3;
+    --crm-on-primary: #0E2219;
+    --crm-link: #8FD6A3;
+    --crm-late: #FF8A80;
+    --crm-overlay: rgba(0, 0, 0, 0.65);
+}
+
+body.crm-page {
+    background: var(--crm-bg);
+    color: var(--crm-text);
+    font-family: 'Assistant', 'Heebo', sans-serif;
+    line-height: 1.5;
+}
+
+body.crm-locked { overflow: hidden; }
+#main-content:focus { outline: none; }
+.crm-page [hidden] { display: none !important; }
+.crm-page :focus-visible { outline: 3px solid var(--crm-link); outline-offset: 2px; }
+
+/* --- כניסה --- */
+.crm-login { max-width: 360px; margin: 12vh auto 0; padding: 0 1rem; text-align: center; }
+.crm-login-logo { width: 96px; height: auto; }
+.crm-login h1 { font-size: 1.4rem; margin: 0.75rem 0 1.25rem; color: var(--crm-text); }
+.crm-login form { display: grid; gap: 0.5rem; text-align: right; }
+
+/* --- פס עליון --- */
+.crm-bar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1rem;
+    background: var(--crm-bar); color: var(--crm-bar-text);
+}
+.crm-bar h1 {
+    flex: 1; min-width: 0; margin: 0;
+    font-size: 1.15rem; font-weight: 700; color: var(--crm-bar-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.crm-bar h1:focus { outline: none; }
+.crm-bar-actions { display: flex; gap: 0.4rem; position: relative; }
+.crm-bar-btn {
+    background: transparent; color: var(--crm-bar-text);
+    border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 999px;
+    padding: 0.35rem 0.9rem; min-height: 40px;
+    font: inherit; font-size: 0.95rem; cursor: pointer;
+}
+.crm-icon-btn { width: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.crm-bar-btn svg { width: 20px; height: 20px; }
+
+.crm-menu {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 220px;
+    background: var(--crm-surface); border: 1px solid var(--crm-border); border-radius: 10px;
+    padding: 0.3rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.crm-menu button, .crm-menu a {
+    display: block; width: 100%; text-align: right; padding: 0.65rem 0.8rem;
+    border: 0; border-radius: 6px; background: transparent; color: var(--crm-text);
+    font: inherit; text-decoration: none; cursor: pointer;
+}
+.crm-menu button:hover, .crm-menu a:hover { background: var(--crm-bg); }
+
+/* --- חיפוש וסינון --- */
+.crm-wrap { max-width: 760px; margin: 0 auto; }
+.crm-tools { padding: 0.75rem 1rem 0.25rem; }
+.crm-page .crm-input {
+    width: 100%; padding: 0.65rem 0.8rem;
+    font: inherit; font-size: 16px; color: var(--crm-text);
+    background: var(--crm-surface); border: 1px solid var(--crm-border); border-radius: 8px;
+}
+.crm-page .crm-input::placeholder { color: var(--crm-muted); opacity: 1; }
+.crm-filters { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.7rem 0 0.4rem; scrollbar-width: none; }
+.crm-filters::-webkit-scrollbar { display: none; }
+.crm-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.crm-chip {
+    flex: none; min-height: 36px; padding: 0.4rem 0.85rem;
+    border-radius: 999px; border: 1px solid var(--crm-border);
+    background: var(--crm-surface); color: var(--crm-text);
+    font: inherit; font-size: 0.92rem; white-space: nowrap; cursor: pointer;
+}
+.crm-chip.is-on { background: var(--crm-primary); border-color: var(--crm-primary); color: var(--crm-on-primary); }
+.crm-banner { margin: 0.5rem 1rem 0; padding: 0.6rem 0.8rem; border-radius: 8px; background: #FDF0D5; color: #7A4A00; }
+[data-theme="dark"] .crm-banner { background: #4A3200; color: #FAD89A; }
+
+/* --- רשימה --- */
+.crm-list { margin: 0.5rem 0 2rem; }
+.crm-row {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 1rem;
+    background: var(--crm-surface); border-bottom: 1px solid var(--crm-border);
+}
+.crm-row-main {
+    flex: 1; min-width: 0; display: grid; gap: 0.15rem; padding: 0.45rem 0;
+    background: transparent; border: 0; color: inherit; font: inherit; text-align: right; cursor: pointer;
+}
+.crm-row-top { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.crm-row-title { font-weight: 700; font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crm-row-sub { font-size: 0.88rem; color: var(--crm-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crm-row-due { font-size: 0.88rem; color: var(--crm-muted); }
+.crm-row-due.is-late { color: var(--crm-late); font-weight: 600; }
+.crm-row-actions { display: flex; gap: 0.4rem; flex: none; }
+.crm-empty { text-align: center; color: var(--crm-muted); padding: 2rem 1rem; }
+
+.crm-badge { flex: none; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.55rem; border-radius: 999px; }
+.crm-stage-new { background: #E3F0FB; color: #0C447C; }
+.crm-stage-back { background: #EEF1EF; color: #3D4A43; }
+.crm-stage-quote { background: #FDF0D5; color: #7A4A00; }
+.crm-stage-customer { background: #E3F4E8; color: #1A4231; }
+.crm-stage-closed { background: #F1F1F1; color: #5B5B5B; }
+[data-theme="dark"] .crm-stage-new { background: #0C2E4F; color: #B5D4F4; }
+[data-theme="dark"] .crm-stage-back { background: #2C302E; color: #D6DCD8; }
+[data-theme="dark"] .crm-stage-quote { background: #4A3200; color: #FAD89A; }
+[data-theme="dark"] .crm-stage-customer { background: #183A2A; color: #A8E2BB; }
+[data-theme="dark"] .crm-stage-closed { background: #2A2A2A; color: #BDBDBD; }
+
+/* --- כפתורי פעולה --- */
+.crm-act {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+    min-height: 44px; padding: 0.6rem 0.5rem; border-radius: 8px;
+    border: 1px solid var(--crm-border); background: var(--crm-surface); color: var(--crm-text);
+    font: inherit; text-decoration: none;
+}
+.crm-act svg { width: 18px; height: 18px; flex: none; }
+.crm-act-icon { width: 42px; height: 42px; padding: 0; border-radius: 50%; }
+.crm-card-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 1rem 0 0.25rem; }
+.crm-card-actions .crm-act-call { background: var(--crm-primary); border-color: var(--crm-primary); color: var(--crm-on-primary); }
+
+/* --- כרטיס --- */
+.crm-card { padding: 1rem 1rem 3rem; }
+.crm-card-who { font-size: 1rem; }
+.crm-card-meta { margin-top: 0.15rem; font-size: 0.88rem; color: var(--crm-muted); }
+h2.crm-label, p.crm-label, label.crm-label {
+    display: block; margin: 1.1rem 0 0.45rem;
+    font-size: 0.85rem; font-weight: 600; color: var(--crm-muted); font-family: inherit;
+}
+.crm-date { margin-top: 0.5rem; max-width: 12rem; }
+.crm-note { display: flex; gap: 0.5rem; }
+.crm-history { margin-top: 0.8rem; }
+.crm-history-item {
+    display: grid; gap: 0.1rem; margin-bottom: 0.5rem; padding: 0.55rem 0.75rem;
+    background: var(--crm-surface); border-inline-start: 3px solid #639C7D; border-radius: 0;
+}
+.crm-history-when { font-size: 0.8rem; color: var(--crm-muted); }
+.crm-history-what { font-weight: 600; }
+.crm-history-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.crm-history-links { display: flex; gap: 0.9rem; font-size: 0.9rem; }
+.crm-link { color: var(--crm-link); }
+
+/* --- כפתורים --- */
+.crm-btn {
+    min-height: 44px; padding: 0.6rem 1rem; border-radius: 8px;
+    border: 1px solid var(--crm-border); background: var(--crm-surface); color: var(--crm-text);
+    font: inherit; cursor: pointer;
+}
+.crm-btn-primary { background: var(--crm-primary); border-color: var(--crm-primary); color: var(--crm-on-primary); font-weight: 700; }
+.crm-btn:disabled { opacity: 0.6; cursor: default; }
+.crm-btn-danger { margin-top: 1rem; background: transparent; color: var(--crm-late); border-color: var(--crm-late); }
+.crm-link-btn {
+    background: none; border: 0; padding: 0.5rem; color: var(--crm-link);
+    text-decoration: underline; font: inherit; cursor: pointer;
+}
+.crm-error { color: var(--crm-late); min-height: 1.2em; margin: 0.25rem 0; }
+.crm-dup { margin-top: 0.35rem; padding: 0.5rem 0.7rem; border-radius: 8px; background: #FDF0D5; color: #7A4A00; }
+[data-theme="dark"] .crm-dup { background: #4A3200; color: #FAD89A; }
+.crm-dup .crm-link-btn { color: inherit; }
+
+/* --- חלונות --- */
+.crm-overlay {
+    position: fixed; inset: 0; z-index: 50; background: var(--crm-overlay);
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.crm-sheet {
+    width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+    background: var(--crm-surface); color: var(--crm-text);
+    border-radius: 16px 16px 0 0; padding: 1rem 1rem 1.25rem;
+}
+.crm-sheet h2 { margin: 0 0 0.8rem; font-size: 1.1rem; color: var(--crm-text); }
+.crm-sheet h2:focus { outline: none; }
+.crm-options { display: grid; gap: 0.5rem; }
+.crm-option {
+    display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+    min-height: 48px; padding: 0.75rem 0.9rem; border-radius: 10px;
+    border: 1px solid var(--crm-border); background: var(--crm-surface); color: var(--crm-text);
+    font: inherit; text-align: right; cursor: pointer;
+}
+.crm-option-hint { font-size: 0.85rem; color: var(--crm-muted); }
+.crm-form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.crm-form-actions .crm-btn { flex: 1; }
+.crm-import-tests { margin-top: 0.25rem; padding-inline-start: 1.2rem; list-style: disc; font-size: 0.9rem; }
+#crm-import-body p { margin-bottom: 0.5rem; }
+
+@media (max-width: 400px) {
+    .crm-card-actions .crm-act { font-size: 0.9rem; padding-inline: 0.25rem; gap: 0.3rem; white-space: nowrap; }
+}
+
+@media (min-width: 700px) {
+    .crm-overlay { align-items: center; }
+    .crm-sheet { border-radius: 16px; }
+}
+
+/* --- הודעה צפה --- */
+.crm-toast {
+    position: fixed; bottom: 1.25rem; left: 50%; z-index: 60;
+    transform: translateX(-50%) translateY(200%);
+    max-width: calc(100vw - 2rem); padding: 0.7rem 1.1rem; border-radius: 10px;
+    background: var(--crm-bar); color: var(--crm-bar-text);
+    transition: transform 0.2s ease;
+}
+.crm-toast.is-on { transform: translateX(-50%) translateY(0); }
