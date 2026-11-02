@@ -6,7 +6,7 @@
     'use strict';
 
     // כתובת ה-Web app של סקריפט ה-CRM. אינה סוד: בלי הסיסמה היא לא מחזירה נתונים.
-    const API_URL = 'PUT_CRM_URL_HERE';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzs-jtpiy0yH6MnGjy_B2wULKZ56fpQ67UgtCDDPe9o0IZH_gjYb36RBqW7vVt8wGRcbw/exec';
     const KEY_STORE = 'aroam_crm_key';
     const REFRESH_AFTER_MS = 5 * 60 * 1000;
     const C = window.CrmCore;
