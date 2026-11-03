@@ -125,12 +125,16 @@
     return { bytes: bytes, unknown: 0 };
   }
 
-  // מספר פעולה פנימי: YYMMDD + מונה יומי בן 4 ספרות (עד 10 ספרות לפי המדריך)
+  // מספר פעולה פנימי בן 6 ספרות: ספרת השנה + היום בשנה (001–366) + מונה יומי (01–99).
+  // 630701 = 2026, יום 307, הזמנה ראשונה. לא חוזר על עצמו 10 שנים.
+  // (בפורמט הקודם, YYMMDDNNNN, המספר עבר את 2,147,483,647 — ייתכן שריווחית לא קיבלה אותו)
   function nextInternalNo(counter, today) {
-    var day = String(today.getFullYear()).slice(2) + T.pad2(today.getMonth() + 1) + T.pad2(today.getDate());
+    var y = today.getFullYear();
+    var dayOfYear = Math.round((Date.UTC(y, today.getMonth(), today.getDate()) - Date.UTC(y, 0, 1)) / 86400000) + 1;
+    var day = String(y).slice(-1) + ('00' + dayOfYear).slice(-3);
     var n = counter && counter.day === day ? counter.n + 1 : 1;
-    if (n > 9999) throw new Error('הופקו היום 9,999 הזמנות — אין מספר פנימי פנוי עד מחר');
-    return { no: day + ('000' + n).slice(-4), counter: { day: day, n: n } };
+    if (n > 99) throw new Error('הופקו היום 99 הזמנות — אין מספר פנימי פנוי עד מחר');
+    return { no: day + T.pad2(n), counter: { day: day, n: n } };
   }
 
   // טביעת תוכן להזמנה (סניף + שורות, בלי תאריך) — לאזהרה על הפקה כפולה

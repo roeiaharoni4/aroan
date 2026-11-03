@@ -113,14 +113,20 @@ test('UTF-8 עם BOM', () => {
   assert.deepStrictEqual(Array.from(R.encodeText('א', 'cp1255').bytes), [0xE0]);
 });
 
-test('מספר פנימי: מונה יומי YYMMDDNNNN', () => {
+test('מספר פנימי: 6 ספרות — ספרת שנה, יום בשנה, מונה יומי', () => {
   const d1 = new Date(2026, 10, 1), d2 = new Date(2026, 10, 2);
   const a = R.nextInternalNo(null, d1);
-  assert.strictEqual(a.no, '2611010001');
+  assert.strictEqual(a.no, '630501');          // 2026, יום 305 בשנה, הזמנה 1
   const b = R.nextInternalNo(a.counter, d1);
-  assert.strictEqual(b.no, '2611010002');
-  assert.strictEqual(R.nextInternalNo(b.counter, d2).no, '2611020001');
-  assert.throws(() => R.nextInternalNo({ day: '261101', n: 9999 }, d1));
+  assert.strictEqual(b.no, '630502');
+  assert.strictEqual(R.nextInternalNo(b.counter, d2).no, '630601');
+  assert.strictEqual(R.nextInternalNo(null, new Date(2027, 0, 1)).no, '700101');
+  assert.strictEqual(R.nextInternalNo(null, new Date(2028, 11, 31)).no, '836601'); // שנה מעוברת
+  assert.throws(() => R.nextInternalNo({ day: '6305', n: 99 }, d1));
+});
+
+test('מספר פנימי: מונה בפורמט הישן מתאפס', () => {
+  assert.strictEqual(R.nextInternalNo({ day: '261103', n: 4 }, new Date(2026, 10, 3)).no, '630701');
 });
 
 test('הגדרות: מספר לקוח עד 5 ספרות ושם כרטיס', () => {
