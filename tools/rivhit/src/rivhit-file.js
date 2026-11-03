@@ -151,7 +151,26 @@
     return ('00000000' + h.toString(16)).slice(-8);
   }
 
+  // שם הקובץ שיורד: שמות החנויות ("פולו גלילות + טומי רמת אביב.txt"), בלי תווים שאסורים
+  // בשמות קבצים ב-Windows. הרבה חנויות ⇒ הראשונות + "ועוד N". בלי שם ⇒ fallback.
+  function outputFileName(branches, fallback) {
+    var MAX = 100, names = [];
+    (branches || []).forEach(function (b) {
+      var n = T.normalizeText(String(b || '').replace(/[\\/:*?"<>|]/g, ' ')).replace(/[. ]+$/, '');
+      if (n && names.indexOf(n) === -1) names.push(n);
+    });
+    if (!names.length) return fallback + '.txt';
+    var out = names[0];
+    for (var i = 1; i < names.length; i++) {
+      var rest = names.length - i;
+      if ((out + ' + ' + names[i]).length > MAX - 10) return out + ' ועוד ' + rest + '.txt';
+      out += ' + ' + names[i];
+    }
+    return out + '.txt';
+  }
+
   return {
+    outputFileName: outputFileName,
     DOC_TYPES: DOC_TYPES,
     validateSettings: validateSettings,
     validateOrder: validateOrder,

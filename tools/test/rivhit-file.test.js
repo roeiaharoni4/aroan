@@ -177,6 +177,22 @@ test('טביעת תוכן: סדר השורות לא משנה, כמות כן', ()
   assert.notStrictEqual(R.orderFingerprint(changed), a);
 });
 
+test('שם הקובץ: שמות החנויות', () => {
+  assert.strictEqual(R.outputFileName(['נורט פייס גלילות'], 'rivhit-x'), 'נורט פייס גלילות.txt');
+  assert.strictEqual(R.outputFileName(['פולו גלילות', 'טומי רמת אביב', 'פולו גלילות'], 'rivhit-x'),
+    'פולו גלילות + טומי רמת אביב.txt');
+});
+
+test('שם הקובץ: תווים אסורים ב-Windows, ריק, והרבה חנויות', () => {
+  assert.strictEqual(R.outputFileName(['בוס/זהב: "קומה 2"?'], 'rivhit-x'), 'בוס זהב קומה 2.txt');
+  assert.strictEqual(R.outputFileName(['', ' . '], 'rivhit-x'), 'rivhit-x.txt');
+  const many = ['פקטורי רמת אביב', 'לקוסט רמת אביב', 'ליוויס רמת אביב', 'טומי רמת אביב', 'סקימס רמת אביב',
+    'באלר רמת אביב', 'פולו רמת אביב', 'קפה רמת אביב'];
+  const name = R.outputFileName(many, 'rivhit-x');
+  assert.ok(name.length <= 110, name.length + ' ' + name);
+  assert.ok(/^פקטורי רמת אביב \+ .* ועוד \d+\.txt$/.test(name), name);
+});
+
 test('סוגי מסמך: הזמנה ראשונה', () => {
   assert.deepStrictEqual(R.DOC_TYPES.map(d => d.code), [7, 4, 1, 6]);
 });

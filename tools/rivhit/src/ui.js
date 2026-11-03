@@ -216,7 +216,7 @@
     } catch (e) { toast(e.message); return; }
 
     var enc = C.encodeText(C.serialize(records), state.encoding);
-    var name = 'rivhit-' + stamp(today) + '.txt';
+    var name = C.outputFileName(summary.map(function (s) { return s.branch; }), 'rivhit-' + stamp(today));
     download(enc.bytes, name);
 
     state.counter = counter;

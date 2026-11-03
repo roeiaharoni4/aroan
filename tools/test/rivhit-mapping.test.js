@@ -103,7 +103,7 @@ test('הצעות: אין חפיפה ⇒ ריק', () => {
 });
 
 // השיוך המובנה מול טופס הרשת האמיתי: כל רשומה תואמת שורה קיימת בטופס
-test('השיוך המובנה מכסה את טופס הרשת (35 מתוך 39, הביוטי והמיקרופייבר בלי שיוך)', () => {
+test('השיוך המובנה מכסה את טופס הרשת (33 מתוך 39 — רועי משייך בעצמו את השאר)', () => {
   const fs = require('fs');
   const path = require('path');
   const XLSX = require('../rivhit/vendor/xlsx.full.min.js');
@@ -126,9 +126,9 @@ test('השיוך המובנה מכסה את טופס הרשת (35 מתוך 39, �
   const formKeys = new Set(formLines.map(l => T.descKey(l.desc)));
   mapping.map.forEach(e => assert.ok(formKeys.has(T.descKey(e.desc)), 'לא בטופס: ' + e.desc));
   const unmapped = M.resolveLines(formLines, map, {}).filter(l => !l.code).map(l => l.desc);
-  assert.strictEqual(unmapped.length, 4, unmapped.join(' | '));
+  assert.strictEqual(unmapped.length, 6, unmapped.join(' | '));
   const ordered = M.resolveLines(F.parseWorkbook([{ name: 's', rows, firstRow: 1 }]), map, {});
-  assert.deepStrictEqual(ordered.map(l => l.code), ['693', '851', '172', '295', '1305', '944']);
+  assert.deepStrictEqual(ordered.map(l => l.code), ['693', '851', '', '295', '1305', '944']);
 });
 
 let failed = 0;
