@@ -11,9 +11,10 @@
 })(this, function (T) {
   'use strict';
 
-  // לפי סדר עדיפות: "מק"ט"/"מספר קטלוגי" לפני "קוד" (שעלול להיות "קוד מיון")
-  var CODE_HEADERS = [/מק"?ט/, /קטלוג/, /^קוד/, /^(sku|catalog|item ?code|code)\b/i];
-  var NAME_HEADERS = [/^שם/, /תי?אור/, /שם/, /^(name|description|desc)\b/i];
+  // לפי סדר עדיפות: "מק"ט"/"מספר קטלוגי" לפני "קוד" (שעלול להיות "קוד מיון").
+  // item_num/item_name — הכותרות בייצוא רשימת הפריטים של ריווחית השולחנית
+  var CODE_HEADERS = [/מק"?ט/, /קטלוג/, /^קוד/, /^item_?num$/i, /^(sku|catalog|item ?code|code)\b/i];
+  var NAME_HEADERS = [/^שם/, /תי?אור/, /שם/, /^item_?name$/i, /^(name|description|desc)\b/i];
 
   function headerText(v) { return typeof v === 'string' ? T.normalizeText(v) : ''; }
 

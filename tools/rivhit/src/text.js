@@ -63,6 +63,14 @@
     return (Math.round(n * 10000) / 10000).toFixed(4).replace(/\.?0+$/, '');
   }
 
+  // טקסט מקובץ CSV: לפי ה-BOM (ריווחית מייצאת UTF-16), אחרת UTF-8, ואם אינו תקין — Windows-1255
+  function decodeText(bytes) {
+    if (bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes.subarray(2));
+    if (bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, ''); }
+    catch (e) { return new TextDecoder('windows-1255').decode(bytes); }
+  }
+
   return {
     normalizeText: normalizeText,
     descKey: descKey,
@@ -71,6 +79,7 @@
     parseIsoDate: parseIsoDate,
     isoDate: isoDate,
     rivhitDate: rivhitDate,
-    formatNumber: formatNumber
+    formatNumber: formatNumber,
+    decodeText: decodeText
   };
 });

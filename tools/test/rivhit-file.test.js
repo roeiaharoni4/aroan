@@ -56,6 +56,11 @@ test('בלי שם בריווחית: תיאור הלקוח, והערה מצורפ
   assert.strictEqual(r[25], '2');
 });
 
+test("גרש (') נשאר כמו בריווחית, מירכאות הופכות לגרשיים", () => {
+  const o = Object.assign({}, ORDER, { lines: [Object.assign({}, ORDER.lines[0], { name: "כוס נייר 50 יח' 8B", note: '' })] });
+  assert.strictEqual(R.buildRecords(o, OPTS)[0][5], "כוס נייר 50 יח' 8B");
+});
+
 test('תאריך ההזמנה שונה מתאריך היצירה', () => {
   const r = R.buildRecords(Object.assign({}, ORDER, { date: '2026-10-28' }), OPTS)[0];
   assert.strictEqual(r[1], '01/11/2026');

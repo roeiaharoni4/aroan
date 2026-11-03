@@ -35,6 +35,18 @@ test('רשימת פריטים: "מק״ט" גובר על "קוד מיון"', () =
   assert.deepStrictEqual(res.items, [{ code: 'Z9', name: 'ספוג' }]);
 });
 
+test('רשימת פריטים: הייצוא של ריווחית (item_num, item_name, item_part_num)', () => {
+  const res = M.parseItemList([
+    ['item_num', 'item_name', 'item_part_num', 'sapak', 'item_cost_nis'],
+    [1, "צץ רץ 4000 יח'", 'P101', 0, 30],
+    [693, 'מים מזוקקים 4 ליטר', '', 0, 0]
+  ]);
+  assert.deepStrictEqual(res.items, [
+    { code: '1', name: "צץ רץ 4000 יח'" },
+    { code: '693', name: 'מים מזוקקים 4 ליטר' }
+  ]);
+});
+
 test('רשימת פריטים בלי כותרת ⇒ שגיאה', () => {
   const res = M.parseItemList([[1, 'א'], [2, 'ב']]);
   assert.deepStrictEqual(res.items, []);
@@ -88,6 +100,35 @@ test('הצעות: גליל טואלט 50 מול 32', () => {
 test('הצעות: אין חפיפה ⇒ ריק', () => {
   assert.deepStrictEqual(M.suggest('אבגד', [{ code: '1', name: 'הוזח' }], 3), []);
   assert.deepStrictEqual(M.suggest('אבגד', [], 3), []);
+});
+
+// השיוך המובנה מול טופס הרשת האמיתי: כל רשומה תואמת שורה קיימת בטופס
+test('השיוך המובנה מכסה את טופס הרשת (35 מתוך 39, הביוטי והמיקרופייבר בלי שיוך)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const XLSX = require('../rivhit/vendor/xlsx.full.min.js');
+  const F = require('../rivhit/src/order-form.js');
+  const T = require('../rivhit/src/text.js');
+  const mapping = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'rivhit', 'src', 'mapping.json'), 'utf8'));
+  const map = M.indexMap(mapping.map);
+  const wb = XLSX.read(fs.readFileSync(path.join(__dirname, 'fixtures', 'rivhit-north-face-glilot.xlsx')));
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
+  // כמות 1 בכל שורת נתונים — כדי לקבל את כל 39 השורות של הטופס, לא רק את המוזמנות
+  let cols = null;
+  const all = rows.map(r => {
+    const h = F.findHeader(r);
+    if (h) { cols = h; return r; }
+    if (!cols || !r || !r[cols.desc]) return r;
+    const copy = r.slice(); copy[cols.qty] = 1; return copy;
+  });
+  const formLines = F.parseSheetRows(all, '', 1);
+  assert.strictEqual(formLines.length, 39);
+  const formKeys = new Set(formLines.map(l => T.descKey(l.desc)));
+  mapping.map.forEach(e => assert.ok(formKeys.has(T.descKey(e.desc)), 'לא בטופס: ' + e.desc));
+  const unmapped = M.resolveLines(formLines, map, {}).filter(l => !l.code).map(l => l.desc);
+  assert.strictEqual(unmapped.length, 4, unmapped.join(' | '));
+  const ordered = M.resolveLines(F.parseWorkbook([{ name: 's', rows, firstRow: 1 }]), map, {});
+  assert.deepStrictEqual(ordered.map(l => l.code), ['693', '851', '172', '295', '1305', '944']);
 });
 
 let failed = 0;

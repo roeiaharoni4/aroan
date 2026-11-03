@@ -85,16 +85,10 @@
 
   // ---------- קריאת קבצים ----------
 
-  function decodeText(buf) {
-    var bytes = new Uint8Array(buf);
-    try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^﻿/, ''); }
-    catch (e) { return new TextDecoder('windows-1255').decode(bytes); }
-  }
-
   function readWorkbook(file) {
     return file.arrayBuffer().then(function (buf) {
       var wb = /\.(csv|txt)$/i.test(file.name)
-        ? XLSX.read(decodeText(buf), { type: 'string' })
+        ? XLSX.read(C.decodeText(new Uint8Array(buf)), { type: 'string' })
         : XLSX.read(buf, { type: 'array' });
       return wb.SheetNames.map(function (name) {
         var ws = wb.Sheets[name];

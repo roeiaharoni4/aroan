@@ -132,6 +132,17 @@ test('תאריכים', () => {
   assert.strictEqual(T.rivhitDate(T.parseIsoDate('2026-10-28')), '28/10/2026');
 });
 
+test('decodeText: UTF-16 (הייצוא של ריווחית), UTF-8 ו-Windows-1255', () => {
+  const text = 'item_num,item_name\r\n1,צץ רץ';
+  const le = Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(text, 'utf16le')]);
+  assert.strictEqual(T.decodeText(new Uint8Array(le)), text);
+  const be = Buffer.from(le).swap16();
+  assert.strictEqual(T.decodeText(new Uint8Array(be)), text);
+  const u8 = Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(text, 'utf8')]);
+  assert.strictEqual(T.decodeText(new Uint8Array(u8)), text);
+  assert.strictEqual(T.decodeText(new Uint8Array([0xF6, 0xF5])), 'צץ');
+});
+
 test('formatNumber: עד 4 ספרות, בלי אפסים מיותרים', () => {
   assert.strictEqual(T.formatNumber(12), '12');
   assert.strictEqual(T.formatNumber(13.2), '13.2');
