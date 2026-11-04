@@ -7,7 +7,7 @@
   var api = factory();
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
   // מאחד סוגי מירכאות, גרשיים ומקפים, ומכווץ רווחים (כולל טאבים וירידות שורה)

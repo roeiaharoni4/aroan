@@ -371,6 +371,166 @@ test('CRM: הפיילוד שהאתר שולח בפועל (נלכד בדפדפן)
   assert.strictEqual(sl.business, 'מסעדת בדיקה');
 });
 
+// ---------- ריווחית (סבב 88) ----------
+// הסקריפט טוען את RivhitCore מקובץ שני בפרויקט (ריווחית.js = js/rivhit-core.js).
+// כאן נטענים שניהם יחד, עם דמויות לרשת, למטמון, לגיליון ולמייל.
+
+const PRODUCTS_CSV = 'id,name,category,rivhit\n' +
+  'חדפ003,כוס בירה 330 40 יח׳,חד פעמי ואריזות,1415\n' +
+  'ניק001,אקונומיקה 4 ליטר,ניקיון,56\n' +
+  'חדפ002,גביע 150 מ״ל - 100 יח׳,חד פעמי ואריזות,1148\n' +
+  'טיפ001,DOVE סבון,טיפוח,\n';
+
+function loadOrdersApp(opts) {
+  opts = opts || {};
+  const core = fs.readFileSync(path.join(__dirname, '..', '..', 'js', 'rivhit-core.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'google-apps-script-orders.gs'), 'utf8');
+  const sent = { mails: [], fetches: [], rows: [] };
+  const cache = {};
+  const env = {
+    SpreadsheetApp: { openById() { return {
+      getSheetByName() { return {
+        getLastRow() { return 1; }, getLastColumn() { return 16; },
+        appendRow(r) { sent.rows.push(r); }
+      }; }
+    }; } },
+    MailApp: { sendEmail(to, subject, body, o) { sent.mails.push({ to, subject, body, o: o || {} }); } },
+    CacheService: { getScriptCache() { return {
+      get(k) { return cache[k] == null ? null : cache[k]; },
+      put(k, v) { cache[k] = String(v); }
+    }; } },
+    UrlFetchApp: { fetch(url, o) {
+      sent.fetches.push(url);
+      if (url.indexOf('products.csv') >= 0) {
+        if (opts.csvDown) return { getResponseCode() { return 500; }, getContentText() { return ''; } };
+        return { getResponseCode() { return 200; }, getContentText() { return PRODUCTS_CSV; } };
+      }
+      const body = opts.crmDown ? { ok: false } : { ok: true, id: 'C1', rivhitNo: opts.rivhitNo || '' };
+      return { getResponseCode() { return 200; }, getContentText() { return JSON.stringify(body); } };
+    } },
+    Utilities: {
+      newBlob(bytes, type, name) { return { bytes, type, name, getName() { return name; } }; }
+    },
+    ContentService: { MimeType: { JSON: 'json' },
+      createTextOutput(s) { return { content: s, setMimeType() { return this; } }; } },
+    DriveApp: {}, MimeType: {}, DocumentApp: { HorizontalAlignment: {} },
+    Logger: { log() {} }
+  };
+  const names = Object.keys(env);
+  const app = new Function(...names, core + '\n' + src + '\n' +
+    "SPREADSHEET_ID = 'X'; CRM_URL = 'https://crm.example/exec'; CRM_SECRET = 's';\n" +
+    'return { doPost: doPost, rivhitAttachments_: rivhitAttachments_, rivhitMailText_: rivhitMailText_,' +
+    ' rivhitCodes_: rivhitCodes_, notifyCrm_: notifyCrm_, crmEventFor_: crmEventFor_ };'
+  )(...names.map(n => env[n]));
+  app.sent = sent;
+  app.cache = cache;
+  app.post = (data) => JSON.parse(app.doPost({ postData: { contents: JSON.stringify(data) } }).content);
+  return app;
+}
+
+const AR_ORDER = {
+  orderId: 'AR-20261104-123456', date: '04.11.2026', totalItems: 9, totalPrice: '230.00',
+  showPrices: false,
+  customer: { business: 'מסעדת הגן הירוק בע"מ', contact: 'דנה לוי', phone: '054-1234567',
+              address: 'המלאכה 8, אור יהודה' },
+  items: [
+    { id: 'חדפ003', name: 'כוס בירה 330 40 יח׳', category: 'חד פעמי ואריזות', qty: 1, unit: 'יחידה',
+      image: '', price: 200, total: 200 },
+    { id: 'ניק001', name: 'אקונומיקה 4 ליטר', category: 'ניקיון', qty: 6, unit: 'יחידה',
+      image: '', price: 5, total: 30 },
+    { id: 'טיפ001', name: 'DOVE סבון', category: 'טיפוח', qty: 2, unit: 'יחידה', image: '', price: 12, total: 24 }
+  ]
+};
+const TODAY = new Date(2026, 10, 4);
+
+test('ריווחית: הזמנה ⇒ שלושה קבצים (הזמנה, תעודת משלוח, חשבונית) בבייטים חתומים', () => {
+  const app = loadOrdersApp();
+  const r = app.rivhitAttachments_(AR_ORDER, '1234', null, TODAY);
+  assert.deepStrictEqual(r.files.map(f => f.name), [
+    'מסעדת הגן הירוק בע״מ - הזמנה.txt',
+    'מסעדת הגן הירוק בע״מ - תעודת משלוח.txt',
+    'מסעדת הגן הירוק בע״מ - חשבונית מס.txt'
+  ]);
+  const b = r.files[0].bytes;
+  assert.ok(b.every(x => x >= -128 && x <= 127), 'בייטים חתומים כמו ש-Utilities.newBlob מצפה');
+  const text = Buffer.from(b.map(x => x & 255)).toString('latin1');
+  assert.strictEqual(text.split('\r\n').length, 2, 'שני פריטים משויכים');
+  assert.strictEqual(text.split('\r\n')[0].split('\t')[9], '1234');
+  assert.deepStrictEqual(r.missing, ['DOVE סבון']);
+  assert.strictEqual(r.error, '');
+});
+
+test('ריווחית: בקשת הצעת מחיר ⇒ קובץ אחד מסוג הצעת מחיר', () => {
+  const app = loadOrdersApp();
+  const r = app.rivhitAttachments_(Object.assign({}, AR_ORDER, { orderId: 'HM-20261104-654321' }), '', null, TODAY);
+  assert.deepStrictEqual(r.files.map(f => f.name), ['מסעדת הגן הירוק בע״מ - הצעת מחיר.txt']);
+  const text = Buffer.from(r.files[0].bytes.map(x => x & 255)).toString('latin1');
+  assert.strictEqual(text.split('\t')[3], '6');
+  assert.strictEqual(text.split('\t')[9], '118', 'בלי מספר בכרטיס ⇒ לקוח מזדמן');
+});
+
+test('ריווחית: מק"טים נשמרים במטמון — הורדה אחת של products.csv לשתי הזמנות', () => {
+  const app = loadOrdersApp();
+  app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
+  app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
+  assert.strictEqual(app.sent.fetches.filter(u => u.indexOf('products.csv') >= 0).length, 1);
+});
+
+test('ריווחית: products.csv לא נטען ⇒ אין קבצים, אין חריגה, וההסבר מפנה ל-CRM', () => {
+  const app = loadOrdersApp({ csvDown: true });
+  const r = app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
+  assert.strictEqual(r.files.length, 0);
+  assert.ok(r.error);
+  assert.ok(/CRM/.test(app.rivhitMailText_(r, { ok: true })));
+});
+
+test('ריווחית: אף פריט לא משויך ⇒ בלי קבצים, והמייל מסביר למה', () => {
+  const app = loadOrdersApp();
+  const o = Object.assign({}, AR_ORDER, { items: [AR_ORDER.items[2]] });
+  const r = app.rivhitAttachments_(o, '', null, TODAY);
+  assert.strictEqual(r.files.length, 0);
+  const t = app.rivhitMailText_(r, { ok: true });
+  assert.ok(/לא נוצר קובץ/.test(t), t);
+  assert.ok(/DOVE סבון/.test(t), t);
+});
+
+test('ריווחית: שורת המייל — מספר מהכרטיס, לקוח מזדמן, CRM לא ענה', () => {
+  const app = loadOrdersApp();
+  const r = app.rivhitAttachments_(AR_ORDER, '1234', null, TODAY);
+  assert.ok(/לקוח 1234/.test(app.rivhitMailText_(r, { ok: true, rivhitNo: '1234' })));
+  const occ = app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
+  assert.ok(/118/.test(app.rivhitMailText_(occ, { ok: true, rivhitNo: '' })));
+  assert.ok(/ה-CRM לא ענה/.test(app.rivhitMailText_(occ, { ok: false })));
+});
+
+test('ריווחית: האירוע ל-CRM נושא את פריטי ההזמנה, ו-notifyCrm_ מחזיר את מספר הלקוח', () => {
+  const app = loadOrdersApp({ rivhitNo: '1234' });
+  const ev = app.crmEventFor_(AR_ORDER, null);
+  assert.deepStrictEqual(ev.items[1], { id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 6, price: 5 });
+  assert.deepStrictEqual(app.notifyCrm_(ev), { ok: true, id: 'C1', rivhitNo: '1234' });
+});
+
+test('ריווחית: doPost — המייל של הזמנה עסקית מגיע עם שלושת הקבצים ומספר הלקוח', () => {
+  const app = loadOrdersApp({ rivhitNo: '1234' });
+  assert.strictEqual(app.post(AR_ORDER).success, true);
+  const m = app.sent.mails[0];
+  assert.strictEqual(m.o.attachments.length, 3, 'ה-PDF נכשל בדמויות — רק קובצי ריווחית');
+  assert.ok(/לקוח 1234/.test(m.body), m.body);
+  assert.strictEqual(app.sent.rows.length, 1);
+});
+
+test('ריווחית: doPost — רשת החנויות והזמנת צרכן בלי קבצים', () => {
+  const app = loadOrdersApp();
+  app.post(Object.assign({}, AR_ORDER, { orderId: 'RA-20261104-111111' }));
+  app.post({ orderId: 'AR-20261104-222222', showPrices: true, totalPrice: '50.00',
+    customer: { business: '', contact: 'מיכל', phone: '0527654321', address: 'הרצל 1', shipping: 'משלוח' },
+    items: [{ id: '8400027', name: 'ARGANIA', qty: 1, price: 50, total: 50 }] });
+  app.sent.mails.forEach(m => {
+    assert.strictEqual((m.o.attachments || []).length, 0, m.subject);
+    assert.ok(!/ריווחית/.test(m.body), m.subject);
+  });
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

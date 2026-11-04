@@ -642,7 +642,12 @@ function crmEventFor_(data, pdf) {
     totalItems: data.totalItems || '',
     totalPrice: Number(data.totalPrice) > 0 ? Number(data.totalPrice).toFixed(2) : '',
     pdfUrl: pdf && pdf.url ? pdf.url : '',
-    quoteLink: quoteLink_(data) || ''
+    quoteLink: quoteLink_(data) || '',
+    // לכפתור "קובץ לריווחית" בכרטיס ב-CRM (סבב 88)
+    items: (data.items || []).slice(0, 200).map(function (it) {
+      return { id: String(it.id || ''), name: String(it.name || ''),
+        qty: Number(it.qty) || 0, price: Number(it.price) || 0 };
+    })
   };
 }
 
@@ -659,7 +664,9 @@ function notifyCrm_(event) {
       payload: JSON.stringify({ action: 'event', secret: CRM_SECRET, event: event })
     });
     var parsed = JSON.parse(res.getContentText());
-    if (parsed && parsed.ok === true && parsed.id) return { ok: true, id: parsed.id };
+    if (parsed && parsed.ok === true && parsed.id) {
+      return { ok: true, id: parsed.id, rivhitNo: String(parsed.rivhitNo || '') };
+    }
     Logger.log('CRM: ' + res.getContentText().slice(0, 200));
   } catch (e) {
     Logger.log('CRM: ' + e);
@@ -667,6 +674,76 @@ function notifyCrm_(event) {
   return { ok: false };
 }
 // ===== CRM-END =====
+
+// ===== RIVHIT-START =====
+// קובצי קליטה לריווחית למייל של הזמנה עסקית (סבב 88).
+// RivhitCore מגיע מהקובץ השני בפרויקט — ריווחית.js, עותק של js/rivhit-core.js מהריפו.
+// אפיון: docs/superpowers/specs/2026-11-04-rivhit-from-site-orders-design.md
+var PRODUCTS_CSV_URL = 'https://aroam.co.il/data/products.csv';
+
+// {מזהה באתר: מק"ט בריווחית} מ-products.csv החי. נשמר במטמון לשעה, כך שתיקון מק"ט
+// בעורך מגיע לקבצים תוך שעה, וגל הזמנות לא מוריד את הקובץ שוב ושוב.
+function rivhitCodes_() {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get('rivhit_codes');
+  if (hit) {
+    try { return JSON.parse(hit); } catch (e) { }
+  }
+  var res = UrlFetchApp.fetch(PRODUCTS_CSV_URL + '?t=' + Date.now(), { muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) throw new Error('products.csv: ' + res.getResponseCode());
+  var map = RivhitCore.rivhitCodeMap(RivhitCore.parseCsv(res.getContentText('UTF-8')));
+  var json = JSON.stringify(map);
+  if (json.length < 90000) cache.put('rivhit_codes', json, 3600);
+  return map;
+}
+
+// בקשת הצעת מחיר ⇒ הצעת מחיר; הזמנה ⇒ שלושה קבצים, ורועי מקליט את הסוג שהוא רוצה.
+// לעולם לא זורק: כשל כאן לא יכול להפיל את המייל או את ההזמנה.
+function rivhitAttachments_(data, customerNo, codes, today) {
+  var out = { files: [], missing: [], customerNo: customerNo || '', error: '' };
+  try {
+    var types = String(data.orderId || '').indexOf('HM-') === 0 ? [6] : [7, 4, 1];
+    var map = codes || rivhitCodes_();
+    types.forEach(function (t) {
+      var doc = RivhitCore.siteOrderDocument(data, map, {
+        docType: t, customerNo: customerNo || '', today: today || new Date()
+      });
+      out.missing = doc.missing;
+      if (doc.error) { out.error = doc.error; return; }
+      if (!doc.records.length) return;
+      var bytes = RivhitCore.encodeCp1255(doc.text).bytes;
+      var signed = [];
+      for (var i = 0; i < bytes.length; i++) signed.push(bytes[i] > 127 ? bytes[i] - 256 : bytes[i]);
+      out.files.push(Utilities.newBlob(signed, 'text/plain', doc.fileName));
+    });
+  } catch (e) {
+    out.error = String(e && e.message ? e.message : e);
+  }
+  return out;
+}
+
+// הפסקה במייל: איזה מספר לקוח בקבצים, ומה לא נכנס
+function rivhitMailText_(r, crm) {
+  var lines = ['', '— ריווחית —'];
+  if (r.files.length) {
+    if (r.customerNo) {
+      lines.push('מצורפים קבצים לקליטה בריווחית — לקוח ' + r.customerNo + '.');
+    } else {
+      lines.push('מצורפים קבצים לקליטה בריווחית — לקוח מזדמן (118).');
+      lines.push(crm && crm.ok
+        ? 'אין מספר לקוח בריווחית בכרטיס ב-CRM. אפשר לתקן במסך הקליטה, ולמלא את המספר בכרטיס להבא.'
+        : 'ה-CRM לא ענה, ולכן לא ידוע אם יש ללקוח מספר בריווחית — לבדוק במסך הקליטה.');
+    }
+    if (r.files.length > 1) lines.push('מקליטים את הקובץ של סוג המסמך הרצוי: הזמנה, תעודת משלוח או חשבונית מס.');
+  } else {
+    lines.push('לא נוצר קובץ לריווחית' + (r.error === 'bad order id' ? ' — מספר ההזמנה לא בפורמט הצפוי.'
+      : r.error ? ' (' + r.error + '). אפשר להוריד אותו מהכרטיס ב-CRM.'
+      : ' — לאף מוצר בהזמנה אין מק"ט בריווחית.'));
+  }
+  if (r.missing.length) lines.push('לא נכללו בקובץ (אין מק"ט בריווחית): ' + r.missing.join(', '));
+  return lines.join('\n') + '\n';
+}
+// ===== RIVHIT-END =====
 
 function rateLimitOk_() {
   var cache = CacheService.getScriptCache();
@@ -733,7 +810,8 @@ function doPost(e) {
     ]);
 
     // CRM — אחרי שההזמנה כבר בגיליון. כשל כאן לא מפיל אותה.
-    var crm = notifyCrm_(crmEventFor_(data, pdf));
+    var crmEvent = crmEventFor_(data, pdf);
+    var crm = notifyCrm_(crmEvent);
 
     // מייל התראה.
     // suppressEmail נשלח רק מסקריפט "ההזמנות הממתינות" של רשת החנויות, שאוסף
@@ -780,7 +858,11 @@ function doPost(e) {
             : 'הטלפון של הלקוח אינו נייד — שלחו את המסמך שלמטה בדרך אחרת, או צרפו אותו מודפס למשלוח.\n') +
           '\n' + consumerDoc_(data) + '\n';
       }
-      var mailOpts = pdf ? { attachments: [pdf.blob] } : {};
+      // קובצי קליטה לריווחית — רק להזמנות שנכנסות ל-CRM (עסקיות, בלי הרשת והצרכן)
+      var rivhit = crmEvent ? rivhitAttachments_(data, crm && crm.rivhitNo ? crm.rivhitNo : '') : null;
+      if (rivhit) body += rivhitMailText_(rivhit, crm);
+      var attachments = (pdf ? [pdf.blob] : []).concat(rivhit ? rivhit.files : []);
+      var mailOpts = attachments.length ? { attachments: attachments } : {};
       // ההזמנה כבר נכתבה לגיליון למעלה — כשל בשליחת המייל (מכסת שליחה,
       // גודל צרופה, תקלה זמנית) לא יכול להפיל את הבקשה כולה ולגרום ללקוח
       // לראות שגיאה על הזמנה שבפועל נקלטה. אם השליחה עם הצרופה נכשלת,

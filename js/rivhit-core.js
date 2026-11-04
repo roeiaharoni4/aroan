@@ -9,7 +9,7 @@
   var api = factory();
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
   // מאחד סוגי מירכאות, גרשיים ומקפים, ומכווץ רווחים (כולל טאבים וירידות שורה)
@@ -97,7 +97,7 @@
   var api = factory(node ? require('./text.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T) {
   'use strict';
 
   var FIELD_COUNT = 28;
@@ -305,7 +305,7 @@
                     node ? require('./rivhit-file.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T, F) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T, F) {
   'use strict';
 
   var OCCASIONAL_CUSTOMER = 118;

@@ -171,7 +171,7 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
   var api = factory();
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
   // מאחד סוגי מירכאות, גרשיים ומקפים, ומכווץ רווחים (כולל טאבים וירידות שורה)
@@ -261,7 +261,7 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
   var api = factory(node ? require('./text.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T) {
   'use strict';
 
   var TOTAL_RE = /^(סה"?כ|סך)/;
@@ -347,7 +347,7 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
   var api = factory(node ? require('./text.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T) {
   'use strict';
 
   // לפי סדר עדיפות: "מק"ט"/"מספר קטלוגי" לפני "קוד" (שעלול להיות "קוד מיון").
@@ -477,7 +477,7 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
   var api = factory(node ? require('./text.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T) {
   'use strict';
 
   var FIELD_COUNT = 28;

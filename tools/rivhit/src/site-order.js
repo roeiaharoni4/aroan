@@ -10,7 +10,7 @@
                     node ? require('./rivhit-file.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T, F) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T, F) {
   'use strict';
 
   var OCCASIONAL_CUSTOMER = 118;

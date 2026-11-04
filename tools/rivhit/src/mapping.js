@@ -8,7 +8,7 @@
   var api = factory(node ? require('./text.js') : root.RivhitCore);
   if (node) module.exports = api;
   else root.RivhitCore = Object.assign(root.RivhitCore || {}, api);
-})(this, function (T) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (T) {
   'use strict';
 
   // לפי סדר עדיפות: "מק"ט"/"מספר קטלוגי" לפני "קוד" (שעלול להיות "קוד מיון").
