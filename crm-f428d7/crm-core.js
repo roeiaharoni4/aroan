@@ -7,6 +7,8 @@
     var STAGE_SLUGS = { 'חדש': 'new', 'חזרתי': 'back', 'נשלחה הצעה': 'quote', 'לקוח': 'customer', 'לא רלוונטי': 'closed' };
     var FILTERS = [
         { key: 'todo', label: 'לטיפול' },
+        { key: 'tasks', label: 'משימות' },
+        { key: 'late', label: 'לא הזמינו' },
         { key: 'חדש', label: 'חדש' },
         { key: 'חזרתי', label: 'חזרתי' },
         { key: 'נשלחה הצעה', label: 'נשלחה הצעה' },
@@ -117,9 +119,11 @@
         return phone.indexOf(digits) >= 0 || phone.replace(/^0/, '').indexOf(digits) >= 0;
     }
     function cmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
-    // "לטיפול": חדשים (החדש למעלה), באיחור (הישן למעלה), של היום. אחרים: פעולה אחרונה
+    // "לטיפול": חדשים (החדש למעלה), באיחור (הישן למעלה), של היום. "לא הזמינו": המאחר ביותר
+    // למעלה. אחרים: פעולה אחרונה
     function sortContacts(list, filter, today) {
         return list.slice().sort(function (a, b) {
+            if (filter === 'late') return (Number(b.lateBy) || 0) - (Number(a.lateBy) || 0);
             if (filter === 'todo') {
                 var ga = todoGroup(a, today), gb = todoGroup(b, today);
                 if (ga !== gb) return ga - gb;
@@ -133,17 +137,22 @@
         var list = contacts.filter(function (c) {
             if (!matchesQuery(c, query)) return false;
             if (filter === 'todo') return isTodo(c, today);
+            if (filter === 'late') return !!c.isLate;
+            if (filter === 'tasks') return false;
             if (filter === 'all') return true;
             return c.stage === filter;
         });
         return sortContacts(list, filter, today);
     }
-    function counts(contacts, today) {
-        var r = { todo: 0, all: contacts.length };
+    // "לטיפול" סופר אנשי קשר ומשימות שהגיע זמנן
+    function counts(contacts, today, tasks) {
+        var open = tasks || [];
+        var r = { todo: dueTasks(open, today).length, all: contacts.length, tasks: open.length, late: 0 };
         STAGES.forEach(function (s) { r[s] = 0; });
         contacts.forEach(function (c) {
             if (r[c.stage] != null) r[c.stage]++;
             if (isTodo(c, today)) r.todo++;
+            if (c.isLate) r.late++;
         });
         return r;
     }
@@ -170,11 +179,13 @@
         if (!v) return '';
         return v.indexOf('באיחור') === 0 ? 'לחזור — ' + v : 'לחזור ' + v;
     }
-    function subLine(c, today) {
+    // ordersView ("לקוח" ו"לא הזמינו"): "הזמנה אחרונה לפני N ימים" במקום תאריך הפעולה האחרונה
+    function subLine(c, today, ordersView) {
         var parts = [];
         if (c.business && c.name) parts.push(c.name);
         if (c.source) parts.push(c.source);
-        var when = relativeDay(String(c.lastActivity || c.created || '').slice(0, 10), today);
+        var when = (ordersView && orderSubLine(c)) ||
+            relativeDay(String(c.lastActivity || c.created || '').slice(0, 10), today);
         if (when) parts.push(when);
         return parts.join(' · ');
     }
@@ -186,7 +197,7 @@
         var first = OUTCOMES.filter(function (o) { return o.key === 'quote_sent'; });
         return first.concat(OUTCOMES.filter(function (o) { return o.key !== 'quote_sent'; }));
     }
-    function applyOutcome(c, key, channel, today, follow, note) {
+    function applyOutcome(c, key, channel, today, follow, note, recordOrder) {
         var fields = {};
         var label = '';
         OUTCOMES.forEach(function (o) { if (o.key === key) label = o.label; });
@@ -202,6 +213,13 @@
         } else if (key === 'ordered') {
             fields.stage = 'לקוח';
             fields.followUp = '';
+            // "הזמין" — הזמנה לכל דבר; בלי רישום (כבר יש הזמנה היום) — רק הערוץ, כמו קודם
+            if (recordOrder !== false) {
+                return {
+                    fields: fields,
+                    activity: { type: 'הזמנה', text: 'דרך ' + (CHANNELS[channel] || 'שיחה') + (note ? ' — ' + note : '') }
+                };
+            }
         } else if (key === 'not_relevant') {
             fields.stage = 'לא רלוונטי';
             fields.followUp = '';
@@ -210,6 +228,81 @@
             fields: fields,
             activity: { type: CHANNELS[channel] || 'שיחה', text: label + (note ? ' — ' + note : '') }
         };
+    }
+
+    // ---------- הזמנות וקצב ----------
+
+    function sinceLabel(n) {
+        if (n === 0) return 'היום';
+        if (n === 1) return 'אתמול';
+        return 'לפני ' + n + ' ימים';
+    }
+    // "4 הזמנות · אחרונה לפני 52 ימים · בדרך כלל כל 30 יום"
+    function ordersLine(c) {
+        var n = Number(c.orders) || 0;
+        if (!n || c.daysSinceOrder == null || c.daysSinceOrder === '') return 'אין הזמנה רשומה';
+        var parts = [n === 1 ? 'הזמנה אחת' : n + ' הזמנות', 'אחרונה ' + sinceLabel(Number(c.daysSinceOrder))];
+        var r = Number(c.rhythm) || 0;
+        if (r) parts.push('בדרך כלל כל ' + r + (r <= 10 ? ' ימים' : ' יום'));
+        return parts.join(' · ');
+    }
+    function lateLabel(c) {
+        if (!c.isLate) return '';
+        var n = Number(c.lateBy) || 0;
+        return n === 1 ? 'מאחר ביום' : 'מאחר ב-' + n + ' ימים';
+    }
+    // בשורות של "לקוח" ו"לא הזמינו"
+    function orderSubLine(c) {
+        if (c.daysSinceOrder == null || c.daysSinceOrder === '') return '';
+        return 'הזמנה אחרונה ' + sinceLabel(Number(c.daysSinceOrder));
+    }
+    function orderOn(activities, contactId, day) {
+        return activities.some(function (a) {
+            return a.contactId === contactId && a.type === 'הזמנה' && String(a.at).slice(0, 10) === day;
+        });
+    }
+    // רק הזמנה שנרשמה מהעמוד ואין לה מספר אפשר לבטל
+    function isManualOrder(a) { return a.type === 'הזמנה' && a.by === 'עמוד' && !a.orderId; }
+
+    // ---------- משימות ----------
+
+    function isTaskDue(t, today) { return !t.done && t.due <= today; }
+    function isTaskLate(t, today) { return !t.done && t.due < today; }
+    // לפי תאריך; באותו יום — בלי שעה קודם, ואחריהן לפי השעה
+    function sortTasks(tasks) {
+        return tasks.slice().sort(function (a, b) {
+            if (a.due !== b.due) return cmp(a.due, b.due);
+            if (!a.time !== !b.time) return a.time ? 1 : -1;
+            return cmp(a.time, b.time);
+        });
+    }
+    function dueTasks(tasks, today) {
+        return sortTasks((tasks || []).filter(function (t) { return isTaskDue(t, today); }));
+    }
+    function openTasksOf(tasks, contactId) {
+        return sortTasks((tasks || []).filter(function (t) { return !t.done && t.contactId === contactId; }));
+    }
+    function taskDueLabel(t, today) {
+        var time = t.time ? ' ' + t.time : '';
+        if (t.due < today) {
+            var n = daysBetween(t.due, today);
+            return n === 1 ? 'באיחור יום' : 'באיחור ' + n + ' ימים';
+        }
+        if (t.due === today) return 'היום' + time;
+        if (t.due === addDays(today, 1)) return 'מחר' + time;
+        return formatDate(t.due) + time;
+    }
+    function validateTask(input) {
+        if (!String(input.text || '').trim()) return 'צריך לכתוב מה המשימה.';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.due || ''))) return 'צריך לבחור תאריך.';
+        if (input.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time)) return 'השעה לא תקינה.';
+        return '';
+    }
+    // חיפוש במשימות: הטקסט או שם הלקוח
+    function taskMatchesQuery(t, contact, query) {
+        var q = String(query || '').trim().toLowerCase();
+        if (!q) return true;
+        return (t.text + ' ' + (contact ? displayName(contact) : '')).toLowerCase().indexOf(q) >= 0;
     }
 
     // ---------- טופס ----------
@@ -257,7 +350,11 @@
         isTodo: isTodo, isOverdue: isOverdue, filterContacts: filterContacts, counts: counts,
         followUpFor: followUpFor, followUpValue: followUpValue, followUpLabel: followUpLabel,
         subLine: subLine, outcomesFor: outcomesFor, applyOutcome: applyOutcome,
-        findByPhone: findByPhone, validateNew: validateNew, importLines: importLines
+        findByPhone: findByPhone, validateNew: validateNew, importLines: importLines,
+        ordersLine: ordersLine, lateLabel: lateLabel, orderSubLine: orderSubLine, orderOn: orderOn,
+        isManualOrder: isManualOrder, isTaskDue: isTaskDue, isTaskLate: isTaskLate, sortTasks: sortTasks,
+        dueTasks: dueTasks, openTasksOf: openTasksOf, taskDueLabel: taskDueLabel, validateTask: validateTask,
+        taskMatchesQuery: taskMatchesQuery
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = CrmCore;
     else root.CrmCore = CrmCore;
