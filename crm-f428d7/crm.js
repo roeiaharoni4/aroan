@@ -1,7 +1,8 @@
 /* CRM — אהרוני: ממשק העמוד. הלוגיקה הטהורה ב-crm-core.js (נבדקת ב-Node).
    הנתונים מגיעים מסקריפט ה-CRM (tools/google-apps-script-crm.gs) — POST בלבד,
    והסיסמה בגוף הבקשה ולא בכתובת.
-   אפיון: docs/superpowers/specs/2026-11-02-crm-design.md */
+   אפיון: docs/superpowers/specs/2026-11-02-crm-design.md
+          docs/superpowers/specs/2026-11-03-crm-orders-tasks-notifications-design.md */
 (function () {
     'use strict';
 
@@ -15,7 +16,8 @@
     const ICONS = {
         call: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
         whatsapp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
-        quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>'
+        quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+        check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-11"/></svg>'
     };
     const ACTION_LABELS = { call: 'התקשר', whatsapp: 'וואטסאפ', quote: 'הצעת מחיר' };
     const ERRORS = {
@@ -24,14 +26,18 @@
         duplicate: 'המספר כבר קיים ב-CRM.',
         'bad phone': 'מספר הטלפון לא תקין.',
         'name required': 'צריך שם או שם עסק.',
-        'not found': 'איש הקשר כבר לא קיים — רעננו את הרשימה.'
+        'not found': 'איש הקשר כבר לא קיים — רעננו את הרשימה.',
+        'bad date': 'התאריך לא תקין.',
+        'bad time': 'השעה לא תקינה.',
+        'text required': 'צריך לכתוב מה המשימה.',
+        'not cancellable': 'אפשר לבטל רק הזמנה שנרשמה כאן ידנית.'
     };
     const FOLLOW_CHOICES = [['today', 'היום'], ['tomorrow', 'מחר'], ['three', '3 ימים'], ['week', 'שבוע']];
 
     const S = {
-        password: '', contacts: [], activities: [], filter: 'todo', query: '',
+        password: '', contacts: [], activities: [], tasks: [], filter: 'todo', query: '',
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
-        outcome: null, form: null, afterPop: null, lastFocus: null
+        outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -99,6 +105,7 @@
         S.password = '';
         S.contacts = [];
         S.activities = [];
+        S.tasks = [];
         S.openId = null;
         writeKey('');
         document.querySelectorAll('.crm-overlay').forEach(o => { o.hidden = true; });
@@ -136,6 +143,7 @@
     function applyList(data) {
         S.contacts = data.contacts || [];
         S.activities = data.activities || [];
+        S.tasks = data.tasks || [];
         if (data.today) S.today = data.today;
         S.loadedAt = Date.now();
     }
@@ -154,7 +162,7 @@
     // ---------- רשימה ----------
 
     function renderFilters() {
-        const counts = C.counts(S.contacts, S.today);
+        const counts = C.counts(S.contacts, S.today, S.tasks);
         const host = $('crm-filters');
         host.textContent = '';
         C.FILTERS.forEach(f => {
@@ -168,11 +176,23 @@
 
     function renderList() {
         renderFilters();
+        // משימות: ב"לטיפול" — אלה שהגיע זמנן, ב"משימות" — כל הפתוחות. החיפוש חל גם עליהן.
+        const base = S.filter === 'tasks' ? C.sortTasks(S.tasks)
+            : S.filter === 'todo' ? C.dueTasks(S.tasks, S.today) : [];
+        const tasks = base.filter(t => C.taskMatchesQuery(t, t.contactId ? byId(t.contactId) : null, S.query));
+        const tl = $('crm-task-list');
+        tl.textContent = '';
+        tasks.forEach(t => tl.appendChild(taskRow(t, false)));
+        $('crm-tasks-block').hidden = !tasks.length;
         const list = C.filterContacts(S.contacts, S.filter, S.query, S.today);
         const ul = $('crm-list');
         ul.textContent = '';
         list.forEach(c => ul.appendChild(rowFor(c)));
-        $('crm-empty').hidden = list.length > 0;
+        $('crm-contacts-head').hidden = !(tasks.length && list.length);
+        const empty = $('crm-empty');
+        empty.textContent = S.query.trim() ? 'לא נמצאו תוצאות לחיפוש.'
+            : S.filter === 'tasks' ? 'אין משימות פתוחות.' : 'אין כאן אף אחד כרגע.';
+        empty.hidden = list.length > 0 || tasks.length > 0;
     }
 
     function badge(stage) { return el('span', 'crm-badge crm-stage-' + C.stageSlug(stage), stage); }
@@ -185,10 +205,15 @@
         top.appendChild(el('span', 'crm-row-title', C.displayName(c)));
         top.appendChild(badge(c.stage));
         main.appendChild(top);
-        const sub = C.subLine(c, S.today);
+        // ב"לקוח" וב"לא הזמינו" — כמה זמן עבר מההזמנה האחרונה, ותג האיחור
+        const ordersView = S.filter === 'לקוח' || S.filter === 'late';
+        const sub = C.subLine(c, S.today, ordersView);
         if (sub) main.appendChild(el('span', 'crm-row-sub', sub));
-        const due = C.followUpLabel(c, S.today);
-        if (due) main.appendChild(el('span', 'crm-row-due' + (C.isOverdue(c, S.today) ? ' is-late' : ''), due));
+        const due = [C.followUpLabel(c, S.today), ordersView ? C.lateLabel(c) : ''].filter(Boolean).join(' · ');
+        if (due) {
+            const red = C.isOverdue(c, S.today) || (ordersView && c.isLate);
+            main.appendChild(el('span', 'crm-row-due' + (red ? ' is-late' : ''), due));
+        }
         main.addEventListener('click', () => openCard(c.id));
         li.appendChild(main);
         li.appendChild(actions(c, true));
@@ -260,9 +285,9 @@
         if (who) host.appendChild(el('p', 'crm-card-who', who));
         if (c.email) host.appendChild(el('p', 'crm-card-meta', c.email));
         if (c.address) host.appendChild(el('p', 'crm-card-meta', c.address));
-        const orders = Number(c.orders) > 0 ? ' · ' + c.orders + ' הזמנות' : '';
-        host.appendChild(el('p', 'crm-card-meta', 'מקור: ' + (c.source || '—') + orders));
+        host.appendChild(el('p', 'crm-card-meta', 'מקור: ' + (c.source || '—')));
         host.appendChild(actions(c, false));
+        host.appendChild(ordersBlock(c));
 
         host.appendChild(el('h2', 'crm-label', 'שלב'));
         const stages = el('div', 'crm-chips');
@@ -296,6 +321,8 @@
         date.setAttribute('aria-label', 'תאריך אחר לחזור');
         date.addEventListener('change', () => { if (date.value) save(c, { followUp: date.value }); });
         host.appendChild(date);
+
+        host.appendChild(cardTasks(c));
 
         host.appendChild(el('h2', 'crm-label', 'היסטוריה'));
         const form = el('form', 'crm-note');
@@ -335,6 +362,8 @@
         if (/^https:\/\//.test(a.pdf)) links.appendChild(link(a.pdf, 'PDF'));
         if (/^https:\/\//.test(a.quoteLink)) links.appendChild(link(a.quoteLink, 'פתח כהצעת מחיר'));
         if (links.childNodes.length) li.appendChild(links);
+        // לא על רישום זמני ששמירה אופטימית עוד לא אישרה (מזהה tmp-)
+        if (C.isManualOrder(a) && a.id.indexOf('tmp-') !== 0) li.appendChild(cancelOrderButton(a));
         return li;
     }
 
@@ -391,6 +420,263 @@
         }
     }
 
+    // ---------- הזמנות ----------
+
+    // "4 הזמנות · אחרונה לפני 52 ימים · בדרך כלל כל 30 יום", תג איחור, ורישום הזמנה
+    function ordersBlock(c) {
+        const wrap = el('div', 'crm-orders');
+        wrap.appendChild(el('h2', 'crm-label', 'הזמנות'));
+        wrap.appendChild(el('p', 'crm-orders-line', C.ordersLine(c)));
+        const late = C.lateLabel(c);
+        if (late) wrap.appendChild(el('span', 'crm-late-tag', late));
+        const rec = el('button', 'crm-btn crm-btn-small', 'רשום הזמנה');
+        rec.type = 'button';
+        rec.addEventListener('click', () => openOrderForm(c.id));
+        wrap.appendChild(rec);
+        return wrap;
+    }
+
+    function orderChips(current) {
+        chipGroup($('o-date-chips'), [[S.today, 'היום'], [C.addDays(S.today, -1), 'אתמול']], current, setOrderDate);
+    }
+
+    function openOrderForm(id) {
+        const c = byId(id);
+        if (!c) return;
+        S.orderForm = { id: id, date: S.today };
+        $('crm-order-title').textContent = 'רישום הזמנה — ' + C.displayName(c);
+        $('o-note').value = '';
+        $('o-error').textContent = '';
+        $('o-date').max = S.today;
+        orderChips(S.today);
+        setOrderDate(S.today);
+        openOverlay('crm-order-wrap', 'crm-order-title');
+    }
+
+    // כבר רשומה הזמנה באותו תאריך — לשאול לפני שנספרת עוד אחת
+    function setOrderDate(day) {
+        const f = S.orderForm;
+        if (!f) return;
+        f.date = day;
+        $('o-date').value = day;
+        const dup = C.orderOn(S.activities, f.id, day);
+        const box = $('o-dup');
+        box.hidden = !dup;
+        box.textContent = dup ? 'כבר רשומה הזמנה מ-' + C.formatDate(day) + ' — לרשום עוד אחת?' : '';
+        $('o-submit').textContent = dup ? 'לרשום עוד אחת' : 'רישום';
+    }
+
+    async function submitOrder(e) {
+        e.preventDefault();
+        const f = S.orderForm;
+        if (!f) return;
+        $('o-error').textContent = '';
+        if (!f.date || f.date > S.today) { $('o-error').textContent = 'אפשר לרשום הזמנה עד היום.'; return; }
+        if (offline()) { $('o-error').textContent = ERRORS.network; return; }
+        const btn = $('o-submit');
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'שומר…';
+        const res = await api('order', { id: f.id, order: { date: f.date, note: $('o-note').value.trim() } });
+        btn.disabled = false;
+        btn.textContent = label;
+        if (!res.ok) { $('o-error').textContent = errorText(res, 'לא נשמר — נסו שוב.'); return; }
+        Object.assign(byId(f.id), res.contact);
+        if (res.activity) S.activities.push(res.activity);
+        S.orderForm = null;
+        closeOverlay('crm-order-wrap', rerender);
+        toast('ההזמנה נרשמה.');
+    }
+
+    // ביטול בשתי לחיצות, כמו מחיקת איש קשר
+    function cancelOrderButton(a) {
+        const b = el('button', 'crm-link-btn crm-cancel-order', 'בטל');
+        b.type = 'button';
+        b.setAttribute('aria-label', 'ביטול ההזמנה מ-' + C.formatStamp(a.at));
+        let armed = false;
+        b.addEventListener('click', async () => {
+            if (!armed) {
+                armed = true;
+                b.textContent = 'בטוח? לחיצה נוספת מבטלת';
+                b.setAttribute('aria-label', 'בטוח? לחיצה נוספת מבטלת את ההזמנה');
+                setTimeout(() => {
+                    armed = false;
+                    if (!document.contains(b)) return;
+                    b.textContent = 'בטל';
+                    b.setAttribute('aria-label', 'ביטול ההזמנה מ-' + C.formatStamp(a.at));
+                }, 4000);
+                return;
+            }
+            if (offline()) { toast(ERRORS.network); return; }
+            b.disabled = true;
+            const res = await api('order_cancel', { activityId: a.id });
+            b.disabled = false;
+            if (!res.ok) { if (res.error !== 'unauthorized') toast(errorText(res, 'הביטול נכשל.')); return; }
+            S.activities = S.activities.filter(x => x.id !== a.id);
+            if (res.contact) Object.assign(byId(res.contact.id) || {}, res.contact);
+            rerender();
+            toast('ההזמנה בוטלה.');
+        });
+        return b;
+    }
+
+    // ---------- משימות ----------
+
+    function taskRow(t, inCard) {
+        const li = el('li', 'crm-row crm-task-row');
+        const check = el('button', 'crm-check');
+        check.type = 'button';
+        check.setAttribute('aria-label', 'סימון כבוצעה: ' + t.text);
+        check.innerHTML = ICONS.check;
+        check.addEventListener('click', () => completeTask(t));
+        li.appendChild(check);
+        const body = el('div', 'crm-task-body');
+        const main = el('button', 'crm-row-main');
+        main.type = 'button';
+        main.appendChild(el('span', 'crm-row-title crm-task-text', t.text));
+        main.appendChild(el('span', 'crm-row-due' + (C.isTaskLate(t, S.today) ? ' is-late' : ''),
+            C.taskDueLabel(t, S.today)));
+        main.addEventListener('click', () => openTaskForm(t.id, null));
+        body.appendChild(main);
+        const c = !inCard && t.contactId ? byId(t.contactId) : null;
+        if (c) {
+            const who = el('button', 'crm-link-btn crm-task-who', C.displayName(c));
+            who.type = 'button';
+            who.addEventListener('click', () => openCard(c.id));
+            body.appendChild(who);
+        }
+        li.appendChild(body);
+        return li;
+    }
+
+    function cardTasks(c) {
+        const wrap = el('div', 'crm-card-tasks');
+        wrap.appendChild(el('h2', 'crm-label', 'משימות'));
+        const mine = C.openTasksOf(S.tasks, c.id);
+        if (mine.length) {
+            const ul = el('ul', 'crm-task-list');
+            mine.forEach(t => ul.appendChild(taskRow(t, true)));
+            wrap.appendChild(ul);
+        }
+        const add = el('button', 'crm-btn crm-btn-small', '+ משימה');
+        add.type = 'button';
+        add.addEventListener('click', () => openTaskForm(null, c.id));
+        wrap.appendChild(add);
+        return wrap;
+    }
+
+    // הסימון מופיע מיד ונשמר ברקע; "בטל" בהודעה פותח את המשימה שוב
+    async function completeTask(t) {
+        if (offline()) { toast(ERRORS.network); return; }
+        const i = S.tasks.indexOf(t);
+        if (i >= 0) S.tasks.splice(i, 1);
+        rerender();
+        const res = await api('task_update', { id: t.id, fields: { done: true } });
+        if (!res.ok) {
+            S.tasks.push(t);
+            rerender();
+            if (res.error !== 'unauthorized') toast(errorText(res, 'לא נשמר — נסו שוב.'));
+            return;
+        }
+        if (res.activity) S.activities.push(res.activity);
+        if (res.contact) Object.assign(byId(res.contact.id) || {}, res.contact);
+        rerender();
+        toast('המשימה סומנה כבוצעה.', 'בטל', () => undoTask(t, res.activity ? res.activity.id : null));
+    }
+
+    async function undoTask(t, activityId) {
+        if (offline()) { toast(ERRORS.network); return; }
+        const res = await api('task_update', { id: t.id, fields: { done: false } });
+        if (!res.ok) { if (res.error !== 'unauthorized') toast(errorText(res, 'הביטול נכשל.')); return; }
+        S.tasks.push(res.task);
+        const gone = res.removedActivityId || activityId;
+        if (gone) S.activities = S.activities.filter(a => a.id !== gone);
+        if (res.contact) Object.assign(byId(res.contact.id) || {}, res.contact);
+        rerender();
+        toast('המשימה נפתחה שוב.');
+    }
+
+    // מפתח הקיצור שהתאריך שלו הוא day (היום, מחר, 3 ימים, שבוע), או null
+    function choiceFor(day) {
+        const hit = FOLLOW_CHOICES.find(([k]) => C.followUpFor(k, S.today) === day);
+        return hit ? hit[0] : null;
+    }
+
+    function taskChips(current) {
+        chipGroup($('t-date-chips'), FOLLOW_CHOICES, current, (k) => {
+            if (!S.taskForm) return;
+            S.taskForm.due = C.followUpFor(k, S.today);
+            $('t-date').value = S.taskForm.due;
+        });
+    }
+
+    function openTaskForm(taskId, contactId) {
+        const t = taskId ? S.tasks.find(x => x.id === taskId) : null;
+        const cid = t ? t.contactId : (contactId || '');
+        const c = cid ? byId(cid) : null;
+        S.taskForm = { id: t ? t.id : null, contactId: cid, due: t ? t.due : S.today, armed: false };
+        $('crm-task-title').textContent = t ? 'עריכת משימה' : 'משימה חדשה';
+        $('t-for').hidden = !c;
+        $('t-for').textContent = c ? 'על: ' + C.displayName(c) : '';
+        $('t-text').value = t ? t.text : '';
+        $('t-time').value = t ? t.time : '';
+        $('t-date').value = S.taskForm.due;
+        $('t-error').textContent = '';
+        $('t-delete').hidden = !t;
+        $('t-delete').textContent = 'מחיקת המשימה';
+        taskChips(choiceFor(S.taskForm.due));
+        openOverlay('crm-task-wrap', t ? 'crm-task-title' : 't-text');
+    }
+
+    async function submitTask(e) {
+        e.preventDefault();
+        const f = S.taskForm;
+        if (!f) return;
+        $('t-error').textContent = '';
+        const input = { text: $('t-text').value.trim(), due: f.due, time: $('t-time').value };
+        const problem = C.validateTask(input);
+        if (problem) { $('t-error').textContent = problem; return; }
+        if (offline()) { $('t-error').textContent = ERRORS.network; return; }
+        const btn = $('t-submit');
+        btn.disabled = true;
+        btn.textContent = 'שומר…';
+        const res = f.id
+            ? await api('task_update', { id: f.id, fields: input })
+            : await api('task_add', { task: Object.assign({ contactId: f.contactId }, input) });
+        btn.disabled = false;
+        btn.textContent = 'שמירה';
+        if (!res.ok) { $('t-error').textContent = errorText(res, 'לא נשמר — נסו שוב.'); return; }
+        const i = S.tasks.findIndex(x => x.id === res.task.id);
+        if (i >= 0) S.tasks[i] = res.task;
+        else S.tasks.push(res.task);
+        S.taskForm = null;
+        closeOverlay('crm-task-wrap', rerender);
+        toast(f.id ? 'המשימה עודכנה.' : 'המשימה נוספה.');
+    }
+
+    // מחיקה בשתי לחיצות
+    async function deleteTask() {
+        const f = S.taskForm;
+        if (!f || !f.id) return;
+        const btn = $('t-delete');
+        if (!f.armed) {
+            f.armed = true;
+            btn.textContent = 'בטוח? לחיצה נוספת מוחקת';
+            setTimeout(() => {
+                if (S.taskForm === f && f.armed) { f.armed = false; btn.textContent = 'מחיקת המשימה'; }
+            }, 4000);
+            return;
+        }
+        btn.disabled = true;
+        const res = await api('task_delete', { id: f.id });
+        btn.disabled = false;
+        if (!res.ok) { $('t-error').textContent = errorText(res, 'המחיקה נכשלה.'); return; }
+        S.tasks = S.tasks.filter(x => x.id !== f.id);
+        S.taskForm = null;
+        closeOverlay('crm-task-wrap', rerender);
+        toast('המשימה נמחקה.');
+    }
+
     // ---------- חלון התוצאה ----------
 
     function openOutcome(id, channel) {
@@ -434,12 +720,42 @@
 
     function finishOutcome(key, follow) {
         const o = S.outcome;
+        const c = o ? byId(o.id) : null;
+        // "הזמין" כשכבר רשומה הזמנה היום — לשאול לפני שנספרת עוד אחת
+        if (key === 'ordered' && c && C.orderOn(S.activities, c.id, S.today)) {
+            showOrderedChoice();
+            return;
+        }
+        S.outcome = null;
+        const note = $('crm-outcome-note').value.trim();
+        closeOverlay('crm-outcome');
+        if (!c) return;
+        const change = C.applyOutcome(c, key, o.channel, S.today, follow, note);
+        save(c, change.fields, change.activity);
+    }
+
+    function showOrderedChoice() {
+        $('crm-outcome-title').textContent = 'כבר רשומה הזמנה מהיום. לרשום הזמנה נוספת?';
+        const host = $('crm-outcome-options');
+        host.textContent = '';
+        [[true, 'כן, הזמנה נוספת'], [false, 'לא, רק לרשום את השיחה']].forEach(([extra, label]) => {
+            const b = el('button', 'crm-option', label);
+            b.type = 'button';
+            b.addEventListener('click', () => finishOrdered(extra));
+            host.appendChild(b);
+        });
+        $('crm-outcome-follow').hidden = true;
+        host.firstChild.focus();
+    }
+
+    function finishOrdered(extra) {
+        const o = S.outcome;
         S.outcome = null;
         const c = o ? byId(o.id) : null;
         const note = $('crm-outcome-note').value.trim();
         closeOverlay('crm-outcome');
         if (!c) return;
-        const change = C.applyOutcome(c, key, o.channel, S.today, follow, note);
+        const change = C.applyOutcome(c, 'ordered', o.channel, S.today, null, note, extra);
         save(c, change.fields, change.activity);
     }
 
@@ -482,6 +798,12 @@
             if (!(st.crm === 'overlay' && st.overlay === o.id)) o.hidden = true;
         });
         syncLock();
+        // "חזור" סגר חלון — הפוקוס חוזר למה שפתח אותו, ולא נשאר בתוך חלון מוסתר
+        const active = document.activeElement;
+        if (active && active.closest && active.closest('.crm-overlay[hidden]')) {
+            if (S.lastFocus && document.contains(S.lastFocus)) S.lastFocus.focus();
+            else $('main-content').focus({ preventScroll: true });
+        }
         const cardId = st.crm === 'card' || st.crm === 'overlay' ? st.id : null;
         if (cardId && byId(cardId)) {
             if (S.openId !== cardId || $('crm-card-view').hidden) showCard(cardId);
@@ -677,12 +999,24 @@
     }
 
     let toastTimer = null;
-    function toast(message) {
+    // הודעה צפה; עם actionLabel — כפתור (למשל "בטל") שנשאר 5 שניות
+    function toast(message, actionLabel, onAction) {
         const t = $('crm-toast');
-        t.textContent = message;
+        const b = $('crm-toast-action');
+        $('crm-toast-text').textContent = message;
+        b.hidden = !actionLabel;
+        b.textContent = actionLabel || '';
+        b.onclick = actionLabel ? () => {
+            t.classList.remove('is-on');
+            b.hidden = true;
+            onAction();
+        } : null;
         t.classList.add('is-on');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => t.classList.remove('is-on'), 3500);
+        toastTimer = setTimeout(() => {
+            t.classList.remove('is-on');
+            b.hidden = true;
+        }, actionLabel ? 5000 : 3500);
     }
 
     function updateOnline() {
@@ -722,6 +1056,24 @@
         });
         $('crm-search').addEventListener('input', (e) => { S.query = e.target.value; renderList(); });
         $('crm-add-btn').addEventListener('click', () => openForm('add'));
+        $('crm-task-add-btn').addEventListener('click', () => openTaskForm(null, null));
+        $('crm-order-form').addEventListener('submit', submitOrder);
+        $('o-cancel').addEventListener('click', () => closeOverlay('crm-order-wrap'));
+        $('o-date').addEventListener('change', () => {
+            const v = $('o-date').value;
+            if (!v || !S.orderForm) return;
+            setOrderDate(v);
+            orderChips(v);
+        });
+        $('crm-task-form').addEventListener('submit', submitTask);
+        $('t-cancel').addEventListener('click', () => closeOverlay('crm-task-wrap'));
+        $('t-delete').addEventListener('click', deleteTask);
+        $('t-date').addEventListener('change', () => {
+            const v = $('t-date').value;
+            if (!v || !S.taskForm) return;
+            S.taskForm.due = v;
+            taskChips(choiceFor(v));
+        });
         $('crm-menu-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
         $('crm-menu').addEventListener('click', (e) => {
             const b = e.target.closest('[data-menu]');

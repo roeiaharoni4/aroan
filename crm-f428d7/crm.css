@@ -220,6 +220,48 @@ h2.crm-label, p.crm-label, label.crm-label {
     .crm-sheet { border-radius: 16px; }
 }
 
+/* --- פס עליון בטלפון צר: שלושה כפתורים בלי לחתוך את הכותרת --- */
+@media (max-width: 400px) {
+    .crm-bar { padding-inline: 0.75rem; }
+    .crm-bar-btn:not(.crm-icon-btn) { padding-inline: 0.65rem; }
+}
+
+/* --- משימות --- */
+.crm-section { margin: 0.9rem 1rem 0.3rem; font-size: 0.85rem; font-weight: 700; color: var(--crm-muted); }
+.crm-task-list { margin: 0.25rem 0 0.5rem; }
+.crm-task-row { align-items: flex-start; }
+.crm-check {
+    flex: none; width: 40px; height: 40px; margin-top: 0.3rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 2px solid var(--crm-muted); border-radius: 8px;
+    background: var(--crm-surface); color: transparent; cursor: pointer;
+}
+.crm-check svg { width: 20px; height: 20px; }
+.crm-check:hover, .crm-check:focus-visible { color: var(--crm-primary); border-color: var(--crm-primary); }
+.crm-task-body { flex: 1; min-width: 0; display: grid; }
+.crm-task-text { white-space: normal; overflow-wrap: anywhere; }
+.crm-task-who { justify-self: start; padding: 0 0 0.45rem; font-size: 0.88rem; }
+.crm-card-tasks .crm-task-list .crm-task-row {
+    border: 1px solid var(--crm-border); border-radius: 8px; margin-bottom: 0.4rem;
+}
+
+/* --- הזמנות בכרטיס --- */
+.crm-orders { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.crm-orders h2, .crm-orders-line { flex: 1 1 100%; margin-bottom: 0; }
+.crm-late-tag { font-size: 0.88rem; font-weight: 700; color: var(--crm-late); }
+.crm-btn-small { min-height: 40px; padding: 0.45rem 0.9rem; }
+.crm-cancel-order {
+    justify-self: start; display: inline-flex; align-items: center;
+    min-height: 40px; padding: 0 0.25rem; font-size: 0.88rem;
+}
+
+/* --- הודעה עם פעולה --- */
+.crm-toast { display: flex; align-items: center; gap: 0.75rem; }
+.crm-toast-action {
+    background: none; border: 1px solid currentColor; border-radius: 6px; color: inherit;
+    padding: 0.3rem 0.8rem; min-height: 36px; font: inherit; font-weight: 700; cursor: pointer;
+}
+
 /* --- הודעה צפה --- */
 .crm-toast {
     position: fixed; bottom: 1.25rem; left: 50%; z-index: 60;

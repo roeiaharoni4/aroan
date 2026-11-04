@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="crm.css?v=2">
+    <link rel="stylesheet" href="crm.css?v=3">
 </head>
 
 <body class="crm-page">
@@ -44,6 +44,7 @@
             <header class="crm-bar">
                 <h1>לידים ולקוחות</h1>
                 <div class="crm-bar-actions">
+                    <button type="button" id="crm-task-add-btn" class="crm-bar-btn">+ משימה</button>
                     <button type="button" id="crm-add-btn" class="crm-bar-btn">+ ליד</button>
                     <button type="button" id="crm-menu-btn" class="crm-bar-btn crm-icon-btn" aria-label="תפריט"
                         aria-haspopup="true" aria-expanded="false" aria-controls="crm-menu">
@@ -61,9 +62,14 @@
                 <div class="crm-tools">
                     <input type="search" id="crm-search" class="crm-input" placeholder="שם, עסק או טלפון"
                         aria-label="חיפוש לפי שם, עסק או טלפון">
-                    <div id="crm-filters" class="crm-filters" role="group" aria-label="סינון לפי שלב"></div>
+                    <div id="crm-filters" class="crm-filters" role="group" aria-label="סינון"></div>
                 </div>
                 <p id="crm-banner" class="crm-banner" role="status" hidden></p>
+                <section id="crm-tasks-block" class="crm-tasks-block" aria-labelledby="crm-tasks-head" hidden>
+                    <h2 id="crm-tasks-head" class="crm-section">משימות</h2>
+                    <ul id="crm-task-list" class="crm-list crm-task-list"></ul>
+                </section>
+                <h2 id="crm-contacts-head" class="crm-section" hidden>לחזור</h2>
                 <ul id="crm-list" class="crm-list"></ul>
                 <p id="crm-empty" class="crm-empty" hidden>אין כאן אף אחד כרגע.</p>
             </div>
@@ -143,10 +149,50 @@
         </div>
     </div>
 
-    <div id="crm-toast" class="crm-toast" role="status" aria-live="polite"></div>
+    <div id="crm-order-wrap" class="crm-overlay" hidden>
+        <form id="crm-order-form" class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-order-title" novalidate>
+            <h2 id="crm-order-title" tabindex="-1">רישום הזמנה</h2>
+            <p class="crm-label" id="o-date-label">מתי?</p>
+            <div id="o-date-chips" class="crm-chips" role="group" aria-labelledby="o-date-label"></div>
+            <input type="date" id="o-date" class="crm-input crm-date" aria-label="תאריך ההזמנה">
+            <div id="o-dup" class="crm-dup" role="status" hidden></div>
+            <label for="o-note" class="crm-label">הערה (לא חובה)</label>
+            <input type="text" id="o-note" class="crm-input" maxlength="200" autocomplete="off">
+            <p id="o-error" class="crm-error" role="alert"></p>
+            <div class="crm-form-actions">
+                <button type="submit" id="o-submit" class="crm-btn crm-btn-primary">רישום</button>
+                <button type="button" id="o-cancel" class="crm-btn">ביטול</button>
+            </div>
+        </form>
+    </div>
 
-    <script src="crm-core.js?v=1"></script>
-    <script src="crm.js?v=2"></script>
+    <div id="crm-task-wrap" class="crm-overlay" hidden>
+        <form id="crm-task-form" class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-task-title" novalidate>
+            <h2 id="crm-task-title" tabindex="-1"></h2>
+            <p id="t-for" class="crm-card-meta" hidden></p>
+            <label for="t-text" class="crm-label">משימה *</label>
+            <textarea id="t-text" class="crm-input" rows="2" maxlength="300"></textarea>
+            <p class="crm-label" id="t-date-label">מתי?</p>
+            <div id="t-date-chips" class="crm-chips" role="group" aria-labelledby="t-date-label"></div>
+            <input type="date" id="t-date" class="crm-input crm-date" aria-label="תאריך המשימה">
+            <label for="t-time" class="crm-label">שעה (לא חובה — עם שעה מגיעה תזכורת בטלגרם)</label>
+            <input type="time" id="t-time" class="crm-input crm-date">
+            <button type="button" id="t-delete" class="crm-btn crm-btn-danger" hidden>מחיקת המשימה</button>
+            <p id="t-error" class="crm-error" role="alert"></p>
+            <div class="crm-form-actions">
+                <button type="submit" id="t-submit" class="crm-btn crm-btn-primary">שמירה</button>
+                <button type="button" id="t-cancel" class="crm-btn">ביטול</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="crm-toast" class="crm-toast" role="status" aria-live="polite">
+        <span id="crm-toast-text"></span>
+        <button type="button" id="crm-toast-action" class="crm-toast-action" hidden></button>
+    </div>
+
+    <script src="crm-core.js?v=2"></script>
+    <script src="crm.js?v=3"></script>
 </body>
 
 </html>
