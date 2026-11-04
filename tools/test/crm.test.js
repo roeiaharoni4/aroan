@@ -30,7 +30,7 @@ function loadGs() {
     '   rhythmFor_: rhythmFor_, lateInfo_: lateInfo_, recomputeOrders_: recomputeOrders_,' +
     '   inquiryMessage_: inquiryMessage_, dueReminders_: dueReminders_,' +
     '   reminderMessage_: reminderMessage_, digestDue_: digestDue_, digestFor_: digestFor_,' +
-    '   chatFromUpdates_: chatFromUpdates_ };')();
+    '   chatFromUpdates_: chatFromUpdates_, itemsJson_: itemsJson_ };')();
 }
 
 const gs = loadGs();
@@ -993,6 +993,101 @@ test('setupNotifications: בלי טוקן, או בלי הודעה לבוט — �
 
 test('API: doGet — בדיקת חיים בלי נתונים', () => {
   assert.strictEqual(loadApp().doGet().content, 'CRM — פעיל');
+});
+
+// ---------- ריווחית (סבב 88) ----------
+
+const ORDER_ITEMS = Object.assign({}, ORDER, {
+  orderId: 'AR-20261104-222222',
+  items: [
+    { id: 'ניק001', name: 'אקונומיקה 4 ליטר', category: 'ניקיון', qty: 6, unit: 'יחידה', price: 5, image: 'x.webp' },
+    { id: 'חדפ002', name: 'גביע 150 מ״ל - 100 יח׳', qty: 2, price: '' }
+  ]
+});
+
+test('ריווחית: מספר לקוח נשמר בכרטיס, ריק מוחק, לא-מספר נדחה', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: ORDER }).id;
+  let r = app.call({ action: 'update', password: P, id, fields: { rivhitNo: ' 1234 ' } });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.contact.rivhitNo, '1234');
+  assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { rivhitNo: '12a' } }).error, 'bad rivhit');
+  assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { rivhitNo: '123456' } }).error, 'bad rivhit');
+  assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { rivhitNo: '0' } }).error, 'bad rivhit');
+  r = app.call({ action: 'update', password: P, id, fields: { rivhitNo: '' } });
+  assert.strictEqual(r.contact.rivhitNo, '');
+});
+
+test('ריווחית: אירוע הזמנה מחזיר את מספר הלקוח מהכרטיס', () => {
+  const app = loadApp();
+  const first = app.call({ action: 'event', secret: S, event: ORDER });
+  assert.strictEqual(first.rivhitNo, '');
+  app.call({ action: 'update', password: P, id: first.id, fields: { rivhitNo: '777' } });
+  const second = app.call({ action: 'event', secret: S, event: ORDER_ITEMS });
+  assert.strictEqual(second.id, first.id);
+  assert.strictEqual(second.rivhitNo, '777');
+});
+
+test('ריווחית: פריטי ההזמנה נשמרים מקוצרים בפעולה ומוחזרים ברשימה', () => {
+  const app = loadApp();
+  app.call({ action: 'event', secret: S, event: ORDER_ITEMS });
+  const list = app.call({ action: 'list', password: P });
+  const a = list.activities.find(x => x.orderId === 'AR-20261104-222222');
+  assert.deepStrictEqual(JSON.parse(a.items), [
+    { id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 6, price: 5 },
+    { id: 'חדפ002', name: 'גביע 150 מ״ל - 100 יח׳', qty: 2, price: 0 }
+  ]);
+  const c = list.contacts.find(x => x.id === a.contactId);
+  assert.strictEqual(c.rivhitNo, '');
+});
+
+test('ריווחית: הזמנה בלי פריטים (ייבוא, ליד) — עמודת הפריטים ריקה', () => {
+  const app = loadApp();
+  app.call({ action: 'event', secret: S, event: ORDER });
+  const a = app.call({ action: 'list', password: P }).activities.find(x => x.orderId === ORDER.orderId);
+  assert.strictEqual(a.items, '');
+});
+
+test('ריווחית: הזמנה שמתחברת לרישום ידני מאותו יום מקבלת גם את הפריטים', () => {
+  const app = loadApp({ now: { date: '2026-11-04', stamp: '2026-11-04 09:00' } });
+  const id = app.call({ action: 'event', secret: S, event: ORDER }).id;
+  app.call({ action: 'order', password: P, id, order: { date: '2026-11-04' } });
+  app.setNow({ date: '2026-11-04', stamp: '2026-11-04 15:00' });
+  const r = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER_ITEMS, { at: '2026-11-04 15:00' }) });
+  assert.strictEqual(r.ok, true);
+  const a = app.call({ action: 'list', password: P }).activities.find(x => x.orderId === 'AR-20261104-222222');
+  assert.strictEqual(a.by, 'עמוד');
+  assert.strictEqual(JSON.parse(a.items).length, 2);
+});
+
+test('ריווחית: itemsJson_ — עד 200 פריטים, בלי שדות מיותרים, כמות לא תקינה נופלת', () => {
+  const many = Array.from({ length: 250 }, (_, i) => ({ id: 'X' + i, name: 'פריט ' + i, qty: 1, price: 2, image: 'a' }));
+  const out = JSON.parse(gs.itemsJson_(many));
+  assert.strictEqual(out.length, 200);
+  assert.deepStrictEqual(Object.keys(out[0]), ['id', 'name', 'qty', 'price']);
+  assert.strictEqual(gs.itemsJson_([{ id: 'A', name: 'א', qty: 'abc' }]), '');
+  assert.strictEqual(gs.itemsJson_(undefined), '');
+});
+
+test('ריווחית: גיליון קיים בלי העמודות החדשות — הכותרות מושלמות ושום עמודה לא זזה', () => {
+  const crm = fakeBook();
+  const cs = crm.insertSheet('אנשי קשר');
+  cs.rows.push(['מזהה', 'שם', 'עסק', 'טלפון', 'אימייל', 'כתובת', 'שלב', 'לחזור בתאריך', 'מקור',
+    'נוצר', 'פעולה אחרונה', 'הזמנות', 'הזמנה אחרונה']);
+  cs.rows.push(['C1', 'דנה', 'מסעדת הגפן', '0501234567', '', '', 'לקוח', '', 'אתר',
+    '2026-10-01 09:00', '2026-10-01 09:00', '1', '2026-10-01']);
+  const as = crm.insertSheet('פעולות');
+  as.rows.push(['מזהה פעולה', 'מזהה איש קשר', 'תאריך', 'סוג', 'פירוט', 'מספר הזמנה', 'PDF',
+    'קישור הצעה', 'נוצר ע"י']);
+  const app = loadApp({ crm });
+  const list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.contacts[0].rivhitNo, '');
+  assert.strictEqual(cs.rows[0][13], 'מספר לקוח בריווחית');
+  assert.strictEqual(as.rows[0][9], 'פריטים');
+  assert.strictEqual(cs.rows[0][12], 'הזמנה אחרונה');
+  app.call({ action: 'update', password: P, id: 'C1', fields: { rivhitNo: '55' } });
+  assert.strictEqual(cs.rows[1][13], '55');
+  assert.strictEqual(cs.rows[1][2], 'מסעדת הגפן');
 });
 
 let failed = 0;

@@ -26,14 +26,17 @@ var CONTACTS_SHEET = 'אנשי קשר';
 var ACTIVITIES_SHEET = 'פעולות';
 var ORDERS_SHEET = 'הזמנות';
 
+// עמודות חדשות — רק בסוף השורה, כדי שגיליון קיים לא יזוז (sheet_ משלים את הכותרות).
+// rivhitNo = מספר הלקוח בריווחית; items = פריטי הזמנה מהאתר (JSON מקוצר) לקובץ הקליטה (סבב 88).
 var CONTACT_HEADERS = ['מזהה', 'שם', 'עסק', 'טלפון', 'אימייל', 'כתובת', 'שלב',
-  'לחזור בתאריך', 'מקור', 'נוצר', 'פעולה אחרונה', 'הזמנות', 'הזמנה אחרונה'];
+  'לחזור בתאריך', 'מקור', 'נוצר', 'פעולה אחרונה', 'הזמנות', 'הזמנה אחרונה', 'מספר לקוח בריווחית'];
 var CONTACT_KEYS = ['id', 'name', 'business', 'phone', 'email', 'address', 'stage',
-  'followUp', 'source', 'created', 'lastActivity', 'orders', 'lastOrder'];
+  'followUp', 'source', 'created', 'lastActivity', 'orders', 'lastOrder', 'rivhitNo'];
 var ACTIVITY_HEADERS = ['מזהה פעולה', 'מזהה איש קשר', 'תאריך', 'סוג', 'פירוט',
-  'מספר הזמנה', 'PDF', 'קישור הצעה', 'נוצר ע"י'];
+  'מספר הזמנה', 'PDF', 'קישור הצעה', 'נוצר ע"י', 'פריטים'];
 var ACTIVITY_KEYS = ['id', 'contactId', 'at', 'type', 'text', 'orderId', 'pdf',
-  'quoteLink', 'by'];
+  'quoteLink', 'by', 'items'];
+var ITEMS_MAX_LEN = 20000;
 var TASKS_SHEET = 'משימות';
 var TASK_HEADERS = ['מזהה', 'מזהה איש קשר', 'משימה', 'תאריך', 'שעה', 'בוצעה', 'נוצרה', 'תזכורת נשלחה'];
 var TASK_KEYS = ['id', 'contactId', 'text', 'due', 'time', 'done', 'created', 'reminded'];
@@ -117,8 +120,27 @@ function blankContact_(at) {
   return {
     id: newId_('C'), name: '', business: '', phone: '', email: '', address: '',
     stage: 'חדש', followUp: '', source: '', created: at, lastActivity: at,
-    orders: '0', lastOrder: ''
+    orders: '0', lastOrder: '', rivhitNo: ''
   };
+}
+
+// פריטי ההזמנה כפי שסקריפט ההזמנות שולח אותם ⇒ JSON מקוצר לעמודת "פריטים".
+// רק מה שקובץ הקליטה לריווחית צריך; פריט בלי מזהה או בלי כמות נופל.
+function itemsJson_(items) {
+  if (!items || !items.length) return '';
+  var out = [];
+  for (var i = 0; i < items.length && out.length < 200; i++) {
+    var it = items[i] || {};
+    var qty = Number(it.qty);
+    if (!trim_(it.id) || !(qty > 0)) continue;
+    var price = Number(it.price);
+    out.push({ id: trim_(it.id).slice(0, 40), name: trim_(it.name).slice(0, 120),
+      qty: qty, price: price > 0 ? price : 0 });
+  }
+  if (!out.length) return '';
+  var s = JSON.stringify(out);
+  while (s.length > ITEMS_MAX_LEN && out.length) { out.pop(); s = JSON.stringify(out); }
+  return s;
 }
 
 function contactById_(model, id) {
@@ -182,7 +204,8 @@ function activityFor_(ev, contactId, at) {
     orderId: trim_(ev.orderId).slice(0, 30),
     pdf: trim_(ev.pdfUrl).slice(0, 300),
     quoteLink: trim_(ev.quoteLink).slice(0, 5000),
-    by: ev.by || (ev.type === 'lead' ? 'אתר' : 'הזמנות')
+    by: ev.by || (ev.type === 'lead' ? 'אתר' : 'הזמנות'),
+    items: ev.type === 'lead' ? '' : itemsJson_(ev.items)
   };
 }
 
@@ -237,6 +260,7 @@ function applyEvent_(model, ev, now) {
     manual.orderId = activity.orderId;
     manual.pdf = activity.pdf;
     manual.quoteLink = activity.quoteLink;
+    manual.items = activity.items;
     manual.text = activity.text + (manual.text ? '\n' + manual.text : '');
     manual._dirty = true;
     recomputeOrders_(model, c);
@@ -430,6 +454,11 @@ function sheet_(book, name, headers) {
     sh.getRange(1, 1, 1, headers.length).setNumberFormat('@').setValues([headers]);
     sh.setFrozenRows(1);
     sh.setRightToLeft(true);
+  } else if (sh.getLastColumn() < headers.length) {
+    // לשונית שנוצרה לפני שנוספו עמודות בסוף — משלימים רק את הכותרות החסרות
+    var from = sh.getLastColumn() + 1;
+    sh.getRange(1, from, 1, headers.length - from + 1).setNumberFormat('@')
+      .setValues([headers.slice(from - 1)]);
   }
   return sh;
 }
@@ -458,7 +487,7 @@ function readModel_(book) {
 
 function rowOf_(o, keys) {
   return keys.map(function (k) {
-    return sanitize_(o[k], k === 'quoteLink' ? 5000 : k === 'text' ? 2000 : 300);
+    return sanitize_(o[k], k === 'items' ? ITEMS_MAX_LEN : k === 'quoteLink' ? 5000 : k === 'text' ? 2000 : 300);
   });
 }
 
@@ -512,9 +541,13 @@ function handleEvent_(ev) {
   if (['lead', 'quote_request', 'order'].indexOf(ev.type) < 0) return { ok: false, error: 'bad event' };
   var model = readModel_(book_());
   var res = applyEvent_(model, ev, now_());
-  if (res.skipped) return { ok: true, id: res.contact ? res.contact.id : '', duplicate: true };
+  // rivhitNo — לסקריפט ההזמנות, לקובץ הקליטה לריווחית שמצורף למייל
+  if (res.skipped) {
+    return { ok: true, id: res.contact ? res.contact.id : '', duplicate: true,
+      rivhitNo: res.contact ? trim_(res.contact.rivhitNo) : '' };
+  }
   save_(model, [res.contact], res.attached ? [] : [res.activity]);
-  var out = { ok: true, id: res.contact.id };
+  var out = { ok: true, id: res.contact.id, rivhitNo: trim_(res.contact.rivhitNo) };
   if ((ev.type === 'lead' || ev.type === 'quote_request') && !ev.imported) {
     out.notify = inquiryMessage_(ev, res.contact);
   }
@@ -588,6 +621,12 @@ function applyFields_(model, c, f) {
   ['name', 'business', 'email', 'address'].forEach(function (k) {
     if (k in f) next[k] = trim_(f[k]).slice(0, 200);
   });
+  if ('rivhitNo' in f) {
+    // מספר כרטיס בריווחית: עד 5 ספרות (שדה 10 בקובץ הקליטה), ריק = לקוח מזדמן
+    var rv = trim_(f.rivhitNo);
+    if (rv && !(/^\d{1,5}$/.test(rv) && Number(rv) > 0)) return { ok: false, error: 'bad rivhit' };
+    next.rivhitNo = rv;
+  }
   if ('name' in next || 'business' in next) {
     var name = 'name' in next ? next.name : c.name;
     var business = 'business' in next ? next.business : c.business;
