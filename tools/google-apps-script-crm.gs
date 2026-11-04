@@ -3,13 +3,15 @@
  * Web app: Execute as Me, Access Anyone. הסקריפט היחיד שכותב לגיליון ה-CRM.
  *
  * מי פונה אליו:
- *  - עמוד ה-CRM (/crm-f428d7/) — עם הסיסמה: list, add, update, log, delete, import.
+ *  - עמוד ה-CRM (/crm-f428d7/) — עם הסיסמה: list, add, update, log, delete, import,
+ *    order, order_cancel.
  *  - סקריפט הלידים וסקריפט ההזמנות — עם הסוד המשותף: event.
  *
  * הריפו פומבי: כאן רק מצייני מקום (PUT_...). הערכים האמיתיים רק בעותק שבענן.
  * כל עוד הסיסמה או הסוד הם מציין מקום, או קצרים מ-12 תווים, כל בקשה נדחית.
  *
  * אפיון: docs/superpowers/specs/2026-11-02-crm-design.md
+ *        docs/superpowers/specs/2026-11-03-crm-orders-tasks-notifications-design.md
  * בדיקות: node tools/test/crm.test.js
  */
 
@@ -34,7 +36,12 @@ var ACTIVITY_KEYS = ['id', 'contactId', 'at', 'type', 'text', 'orderId', 'pdf',
 
 var STAGES = ['חדש', 'חזרתי', 'נשלחה הצעה', 'לקוח', 'לא רלוונטי'];
 var MANUAL_SOURCES = ['וואטסאפ', 'טלפון', 'מודעה בפייסבוק', 'הפניה', 'אחר'];
-var PAGE_ACTIVITY_TYPES = ['שיחה', 'וואטסאפ', 'הצעת מחיר', 'הערה', 'שלב'];
+var PAGE_ACTIVITY_TYPES = ['שיחה', 'וואטסאפ', 'הצעת מחיר', 'הערה', 'שלב', 'הזמנה'];
+
+// קצב הזמנות: הזמנות במרחק של עד 3 ימים נספרות כהזמנה אחת; בלי קצב (פחות
+// משלושה ימי הזמנה) לקוח מאחר אחרי 45 יום
+var MERGE_DAYS = 3;
+var DEFAULT_LATE_DAYS = 45;
 
 // ---------- עזרים ----------
 
@@ -81,6 +88,16 @@ function now_() {
     date: Utilities.formatDate(d, TZ, 'yyyy-MM-dd'),
     stamp: Utilities.formatDate(d, TZ, 'yyyy-MM-dd HH:mm')
   };
+}
+
+// ימים בין שני תאריכים (YYYY-MM-DD, או חותמת שמתחילה בתאריך). UTC — בלי קפיצות שעון קיץ.
+function dayNum_(s) {
+  var p = String(s).slice(0, 10).split('-');
+  return Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000;
+}
+
+function daysBetween_(a, b) {
+  return Math.round(dayNum_(b) - dayNum_(a));
 }
 
 function blankContact_(at) {
@@ -157,8 +174,9 @@ function activityFor_(ev, contactId, at) {
 }
 
 // אירוע מסקריפט הלידים, מסקריפט ההזמנות או מהייבוא. משנה את model במקום.
-// מחזיר { contact, activity, created }, או { skipped: true, contact } כשמספר
-// ההזמנה כבר רשום — ניסיון חוזר או סנכרון שני לא מכפילים כלום.
+// מחזיר { contact, activity, created } — ועם attached: true כשהזמנה מילאה רישום
+// ידני מאותו יום — או { skipped: true, contact } כשמספר ההזמנה כבר רשום:
+// ניסיון חוזר או סנכרון שני לא מכפילים כלום.
 function applyEvent_(model, ev, now) {
   var orderId = trim_(ev.orderId);
   if (orderId) {
@@ -190,8 +208,6 @@ function applyEvent_(model, ev, now) {
 
   if (ev.type === 'order') {
     c.stage = 'לקוח';
-    c.orders = String((Number(c.orders) || 0) + 1);
-    if (!c.lastOrder || at.slice(0, 10) > c.lastOrder) c.lastOrder = at.slice(0, 10);
     c.followUp = '';
   } else {
     // שלב לא יורד לבד; רק מי שסומן "לא רלוונטי" נפתח מחדש
@@ -202,8 +218,105 @@ function applyEvent_(model, ev, now) {
   if (!c.lastActivity || at > c.lastActivity) c.lastActivity = at;
   if (!c.created || at < c.created) c.created = at;
   var activity = activityFor_(ev, c.id, at);
+  // הזמנה עם מספר, באותו יום של הזמנה שרועי רשם ידנית — ממלאת את הרישום ולא נספרת פעמיים
+  var manual = ev.type === 'order' && orderId ? manualOrderOn_(model, c.id, at.slice(0, 10)) : null;
+  if (manual) {
+    manual.orderId = activity.orderId;
+    manual.pdf = activity.pdf;
+    manual.quoteLink = activity.quoteLink;
+    manual.text = activity.text + (manual.text ? '\n' + manual.text : '');
+    manual._dirty = true;
+    recomputeOrders_(model, c);
+    return { contact: c, activity: manual, created: created, attached: true };
+  }
   model.activities.push(activity);
+  if (ev.type === 'order') recomputeOrders_(model, c);
   return { contact: c, activity: activity, created: created };
+}
+
+// ---------- הזמנות וקצב ----------
+
+// לכל איש קשר: ימי ההזמנה שלו, ממוינים ובלי כפילויות
+function orderDaysByContact_(activities) {
+  var map = {};
+  activities.forEach(function (a) {
+    if (a.type !== 'הזמנה' || !a.at) return;
+    var d = String(a.at).slice(0, 10);
+    var list = map[a.contactId] || (map[a.contactId] = []);
+    if (list.indexOf(d) < 0) list.push(d);
+  });
+  Object.keys(map).forEach(function (k) { map[k].sort(); });
+  return map;
+}
+
+// הזמנה שנשלחה כמה פעמים או פוצלה ליומיים נספרת פעם אחת לצורך הקצב
+function orderEvents_(days) {
+  var out = [];
+  days.forEach(function (d) {
+    if (!out.length || daysBetween_(out[out.length - 1], d) > MERGE_DAYS) out.push(d);
+  });
+  return out;
+}
+
+// חציון המרווחים בימים שלמים; 0 = אין קצב (פחות משלושה ימי הזמנה)
+function rhythmFor_(events) {
+  if (events.length < 3) return 0;
+  var gaps = [];
+  for (var i = 1; i < events.length; i++) gaps.push(daysBetween_(events[i - 1], events[i]));
+  gaps.sort(function (a, b) { return a - b; });
+  var m = gaps.length;
+  return Math.round(m % 2 ? gaps[(m - 1) / 2] : (gaps[m / 2 - 1] + gaps[m / 2]) / 2);
+}
+
+// days: ימי ההזמנה של איש הקשר. מאחר — רק "לקוח", לא כשנקבע תאריך חזרה עתידי,
+// וכשעבר יותר מהסף: קצב × 1.5 ולפחות קצב + 7, או 45 בלי קצב.
+// lateBy נמדד מהקצב (או מ-45), כמו "מאחר ב-22 ימים" באפיון.
+function lateInfo_(c, days, today) {
+  var info = { rhythm: 0, daysSinceOrder: null, lateBy: 0, isLate: false };
+  if (!days || !days.length) return info;
+  var rhythm = rhythmFor_(orderEvents_(days));
+  var since = daysBetween_(days[days.length - 1], today);
+  info.rhythm = rhythm;
+  info.daysSinceOrder = since;
+  if (c.stage !== 'לקוח' || (c.followUp && c.followUp > today)) return info;
+  var threshold = rhythm ? Math.max(Math.round(rhythm * 1.5), rhythm + 7) : DEFAULT_LATE_DAYS;
+  if (since > threshold) {
+    info.isLate = true;
+    info.lateBy = since - (rhythm || DEFAULT_LATE_DAYS);
+  }
+  return info;
+}
+
+// "הזמנות" ו"הזמנה אחרונה" — תמיד מההיסטוריה, כך שביטול או חיבור לא משאירים מונה שגוי
+function recomputeOrders_(model, c) {
+  var n = 0;
+  var last = '';
+  model.activities.forEach(function (a) {
+    if (a.contactId !== c.id || a.type !== 'הזמנה') return;
+    n++;
+    var d = String(a.at).slice(0, 10);
+    if (d > last) last = d;
+  });
+  c.orders = String(n);
+  c.lastOrder = last;
+}
+
+// הזמנה ידנית (נוצרה ע"י "עמוד", בלי מספר) של איש הקשר באותו יום
+function manualOrderOn_(model, contactId, day) {
+  for (var i = 0; i < model.activities.length; i++) {
+    var a = model.activities[i];
+    if (a.contactId === contactId && a.type === 'הזמנה' && !a.orderId && a.by === 'עמוד' &&
+        String(a.at).slice(0, 10) === day) return a;
+  }
+  return null;
+}
+
+// איש קשר כפי שהעמוד מקבל אותו: שדות הגיליון, ועוד הקצב והאיחור
+function contactOut_(c, byContact, today) {
+  var out = publicOf_(c, CONTACT_KEYS);
+  var late = lateInfo_(c, byContact[c.id], today);
+  Object.keys(late).forEach(function (k) { out[k] = late[k]; });
+  return out;
 }
 
 // שורה מגיליון ההזמנות: { kind: 'quote_request' }, { kind: 'order', via }
@@ -335,7 +448,8 @@ function writeRows_(sh, startRow, rows, width) {
   sh.getRange(startRow, 1, rows.length, width).setNumberFormat('@').setValues(rows);
 }
 
-// אנשי קשר עם _row נכתבים במקומם; חדשים ופעולות חדשות — בסוף הלשונית
+// אנשי קשר עם _row נכתבים במקומם; חדשים ופעולות חדשות — בסוף הלשונית. פעולה
+// קיימת שסומנה _dirty (הזמנה ידנית שהתחברה להזמנה מהאתר) נכתבת במקומה.
 function save_(model, changedContacts, newActivities) {
   var fresh = [];
   changedContacts.forEach(function (c) {
@@ -345,6 +459,12 @@ function save_(model, changedContacts, newActivities) {
   var next = model.cs.getLastRow() + 1;
   fresh.forEach(function (c, i) { c._row = next + i; });
   writeRows_(model.cs, next, fresh.map(function (c) { return rowOf_(c, CONTACT_KEYS); }), CONTACT_KEYS.length);
+  model.activities.forEach(function (a) {
+    if (a._dirty && a._row) {
+      writeRows_(model.as, a._row, [rowOf_(a, ACTIVITY_KEYS)], ACTIVITY_KEYS.length);
+      a._dirty = false;
+    }
+  });
   writeRows_(model.as, model.as.getLastRow() + 1,
     newActivities.map(function (a) { return rowOf_(a, ACTIVITY_KEYS); }), ACTIVITY_KEYS.length);
 }
@@ -362,16 +482,18 @@ function handleEvent_(ev) {
   var model = readModel_(book_());
   var res = applyEvent_(model, ev, now_());
   if (res.skipped) return { ok: true, id: res.contact ? res.contact.id : '', duplicate: true };
-  save_(model, [res.contact], [res.activity]);
+  save_(model, [res.contact], res.attached ? [] : [res.activity]);
   return { ok: true, id: res.contact.id };
 }
 
 function handleList_() {
   var model = readModel_(book_());
+  var today = now_().date;
+  var byContact = orderDaysByContact_(model.activities);
   return {
     ok: true,
-    today: now_().date,
-    contacts: model.contacts.map(function (c) { return publicOf_(c, CONTACT_KEYS); }),
+    today: today,
+    contacts: model.contacts.map(function (c) { return contactOut_(c, byContact, today); }),
     activities: model.activities.map(function (a) { return publicOf_(a, ACTIVITY_KEYS); })
   };
 }
@@ -446,21 +568,68 @@ function handleUpdate_(id, fields, activity) {
   }
   var check = applyFields_(model, c, fields || {});
   if (!check.ok) return check;
+  var now = now_();
   var added = [];
   if (activity) {
-    var now = now_();
     added.push({
       id: newId_('A'), contactId: c.id, at: now.stamp, type: trim_(activity.type),
       text: trim_(activity.text).slice(0, 2000), orderId: '', pdf: '', quoteLink: '', by: 'עמוד'
     });
     c.lastActivity = now.stamp;
+    model.activities.push(added[0]);
+    // התוצאה "הזמין" — הזמנה לכל דבר
+    if (added[0].type === 'הזמנה') recomputeOrders_(model, c);
   }
   save_(model, [c], added);
   return {
     ok: true,
-    contact: publicOf_(c, CONTACT_KEYS),
+    contact: contactOut_(c, orderDaysByContact_(model.activities), now.date),
     activity: added.length ? publicOf_(added[0], ACTIVITY_KEYS) : null
   };
+}
+
+// הזמנה שרועי רושם בעצמו, בלי התוכן שלה: תאריך עד היום (ברירת מחדל היום), הערה לא חובה.
+// השעה ברישום — עכשיו כשהתאריך הוא היום, ו-12:00 בתאריך אחר.
+function handleOrder_(id, input) {
+  var model = readModel_(book_());
+  var c = contactById_(model, id);
+  if (!c) return { ok: false, error: 'not found' };
+  var now = now_();
+  var day = trim_(input.date) || now.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > now.date) return { ok: false, error: 'bad date' };
+  var a = {
+    id: newId_('A'), contactId: c.id, at: day === now.date ? now.stamp : day + ' 12:00',
+    type: 'הזמנה', text: trim_(input.note).slice(0, 200), orderId: '', pdf: '', quoteLink: '', by: 'עמוד'
+  };
+  model.activities.push(a);
+  c.stage = 'לקוח';
+  c.followUp = '';
+  c.lastActivity = now.stamp;
+  recomputeOrders_(model, c);
+  save_(model, [c], [a]);
+  return {
+    ok: true,
+    contact: contactOut_(c, orderDaysByContact_(model.activities), now.date),
+    activity: publicOf_(a, ACTIVITY_KEYS)
+  };
+}
+
+// ביטול הזמנה שנרשמה בטעות — רק ידנית ובלי מספר. השלב לא משתנה.
+function handleOrderCancel_(activityId) {
+  var model = readModel_(book_());
+  var a = null;
+  for (var i = 0; i < model.activities.length; i++) {
+    if (model.activities[i].id === activityId) { a = model.activities[i]; break; }
+  }
+  if (!a) return { ok: false, error: 'not found' };
+  if (a.type !== 'הזמנה' || a.by !== 'עמוד' || a.orderId) return { ok: false, error: 'not cancellable' };
+  var c = contactById_(model, a.contactId);
+  model.as.deleteRow(a._row);
+  model.activities.splice(model.activities.indexOf(a), 1);
+  if (!c) return { ok: true };
+  recomputeOrders_(model, c);
+  save_(model, [c], []);
+  return { ok: true, contact: contactOut_(c, orderDaysByContact_(model.activities), now_().date) };
 }
 
 function handleDelete_(id) {
@@ -551,6 +720,8 @@ function doPost(e) {
       case 'log': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, body.activity || null); }));
       case 'delete': return json_(withLock_(function () { return handleDelete_(body.id); }));
       case 'import': return json_(withLock_(function () { return handleImport_(body.dryRun !== false); }));
+      case 'order': return json_(withLock_(function () { return handleOrder_(body.id, body.order || {}); }));
+      case 'order_cancel': return json_(withLock_(function () { return handleOrderCancel_(body.activityId); }));
     }
     return json_({ ok: false, error: 'unknown action' });
   } catch (err) {

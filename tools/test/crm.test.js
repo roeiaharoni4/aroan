@@ -25,7 +25,9 @@ function loadGs() {
     '; return { normalizePhone_: normalizePhone_, sanitize_: sanitize_,' +
     '   findContact_: findContact_, applyEvent_: applyEvent_,' +
     '   classifyOrderRow_: classifyOrderRow_, buildImport_: buildImport_,' +
-    '   orderRowsFromValues_: orderRowsFromValues_ };')();
+    '   orderRowsFromValues_: orderRowsFromValues_, daysBetween_: daysBetween_,' +
+    '   orderDaysByContact_: orderDaysByContact_, orderEvents_: orderEvents_,' +
+    '   rhythmFor_: rhythmFor_, lateInfo_: lateInfo_, recomputeOrders_: recomputeOrders_ };')();
 }
 
 const gs = loadGs();
@@ -183,6 +185,88 @@ test('טלפון אחר עם אותו שם עסק — איש קשר נפרד', (
   gs.applyEvent_(m, ORDER, NOW);
   gs.applyEvent_(m, Object.assign({}, ORDER, { orderId: 'AR-2', phone: '0529999999' }), NOW);
   assert.strictEqual(m.contacts.length, 2);
+});
+
+// ---------- הזמנות וקצב ----------
+
+test('קצב: הזמנות במרחק עד 3 ימים מתמזגות; פחות משלוש — בלי קצב', () => {
+  assert.deepStrictEqual(gs.orderEvents_(['2026-10-05', '2026-10-06', '2026-10-08', '2026-10-20']),
+    ['2026-10-05', '2026-10-20']);
+  assert.strictEqual(gs.rhythmFor_(['2026-09-01', '2026-10-01']), 0);
+  assert.strictEqual(gs.daysBetween_('2026-09-30', '2026-11-21'), 52);
+});
+
+test('קצב: חציון המרווחים בין ההזמנות', () => {
+  assert.strictEqual(gs.rhythmFor_(['2026-07-01', '2026-08-01', '2026-08-29', '2026-10-01']), 31);
+  assert.strictEqual(gs.rhythmFor_(['2026-09-01', '2026-09-08', '2026-09-15', '2026-09-29']), 7);
+});
+
+test('איחור: דוגמאות האפיון — חודשי, בלי קצב, שבועי, כל חודשיים', () => {
+  const cust = { stage: 'לקוח', followUp: '' };
+  assert.deepStrictEqual(gs.lateInfo_(cust, ['2026-08-01', '2026-08-31', '2026-09-30'], '2026-11-21'),
+    { rhythm: 30, daysSinceOrder: 52, lateBy: 22, isLate: true });
+  assert.deepStrictEqual(gs.lateInfo_(cust, ['2026-09-30'], '2026-11-21'),
+    { rhythm: 0, daysSinceOrder: 52, lateBy: 7, isLate: true });
+  assert.deepStrictEqual(gs.lateInfo_(cust, ['2026-09-01', '2026-09-08', '2026-09-15'], '2026-11-06'),
+    { rhythm: 7, daysSinceOrder: 52, lateBy: 45, isLate: true });
+  const bimonthly = gs.lateInfo_(cust, ['2026-05-03', '2026-07-02', '2026-08-31'], '2026-10-22');
+  assert.strictEqual(bimonthly.rhythm, 60);
+  assert.strictEqual(bimonthly.daysSinceOrder, 52);
+  assert.strictEqual(bimonthly.isLate, false);
+  assert.strictEqual(gs.lateInfo_(cust, ['2026-09-30'], '2026-11-14').isLate, false); // 45 בדיוק — עוד לא
+});
+
+test('איחור: לא בלי הזמנות, לא עם תאריך חזרה עתידי, ולא בשלב אחר', () => {
+  assert.deepStrictEqual(gs.lateInfo_({ stage: 'לקוח' }, [], '2026-11-21'),
+    { rhythm: 0, daysSinceOrder: null, lateBy: 0, isLate: false });
+  assert.strictEqual(gs.lateInfo_({ stage: 'לקוח', followUp: '2026-11-25' }, ['2026-09-30'], '2026-11-21').isLate, false);
+  assert.strictEqual(gs.lateInfo_({ stage: 'לקוח', followUp: '2026-11-21' }, ['2026-09-30'], '2026-11-21').isLate, true);
+  assert.strictEqual(gs.lateInfo_({ stage: 'חזרתי' }, ['2026-09-30'], '2026-11-21').isLate, false);
+  assert.strictEqual(gs.lateInfo_({ stage: 'לא רלוונטי' }, ['2026-09-30'], '2026-11-21').isLate, false);
+});
+
+test('ימי הזמנה לכל איש קשר — ממוינים, בלי כפילויות, רק "הזמנה"', () => {
+  const map = gs.orderDaysByContact_([
+    { contactId: 'C1', type: 'הזמנה', at: '2026-10-07 13:22' },
+    { contactId: 'C1', type: 'הזמנה', at: '2026-10-01 09:00' },
+    { contactId: 'C1', type: 'הזמנה', at: '2026-10-07 14:25' },
+    { contactId: 'C1', type: 'שיחה', at: '2026-10-09 10:00' },
+    { contactId: 'C2', type: 'הזמנה', at: '2026-09-08 04:52' }
+  ]);
+  assert.deepStrictEqual(map.C1, ['2026-10-01', '2026-10-07']);
+  assert.deepStrictEqual(map.C2, ['2026-09-08']);
+});
+
+test('הזמנה ידנית באותו יום מתחברת להזמנה מהאתר — נספרת פעם אחת', () => {
+  const m = emptyModel();
+  gs.applyEvent_(m, LEAD, NOW);
+  const c = m.contacts[0];
+  m.activities.push({ id: 'A-m', contactId: c.id, at: '2026-11-02 08:00', type: 'הזמנה',
+    text: 'בטלפון', orderId: '', pdf: '', quoteLink: '', by: 'עמוד', _row: 3 });
+  gs.recomputeOrders_(m, c);
+  const r = gs.applyEvent_(m, ORDER, NOW);
+  assert.strictEqual(r.attached, true);
+  assert.strictEqual(m.activities.length, 2);
+  const a = m.activities[1];
+  assert.strictEqual(a.id, 'A-m');
+  assert.strictEqual(a.orderId, 'AR-20261101-123456');
+  assert.strictEqual(a.pdf, 'https://drive.google.com/file/d/x/view');
+  assert.ok(/345\.00 ₪[\s\S]*בטלפון/.test(a.text), a.text);
+  assert.strictEqual(a._dirty, true);
+  assert.strictEqual(c.orders, '1');
+  assert.strictEqual(c.lastOrder, '2026-11-02');
+});
+
+test('הזמנה מהאתר ביום אחר מהרישום הידני — שתי הזמנות', () => {
+  const m = emptyModel();
+  gs.applyEvent_(m, LEAD, NOW);
+  const c = m.contacts[0];
+  m.activities.push({ id: 'A-m', contactId: c.id, at: '2026-11-01 12:00', type: 'הזמנה',
+    text: '', orderId: '', pdf: '', quoteLink: '', by: 'עמוד' });
+  const r = gs.applyEvent_(m, ORDER, NOW);
+  assert.strictEqual(r.attached, undefined);
+  assert.strictEqual(c.orders, '2');
+  assert.strictEqual(c.lastOrder, '2026-11-02');
 });
 
 // ---------- ייבוא ----------
@@ -473,7 +557,7 @@ test('API: שלב, תאריך וסוג פעולה לא חוקיים נדחים �
   assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { stage: 'משהו' } }).error, 'bad stage');
   assert.strictEqual(app.call({ action: 'update', password: P, id, fields: { followUp: '2.11.26' } }).error, 'bad date');
   assert.strictEqual(app.call({ action: 'log', password: P, id, fields: { stage: 'לקוח' },
-    activity: { type: 'הזמנה', text: 'x' } }).error, 'bad activity');
+    activity: { type: 'משהו', text: 'x' } }).error, 'bad activity');
   const c = app.call({ action: 'list', password: P }).contacts[0];
   assert.strictEqual(c.stage, 'חדש');
   assert.strictEqual(c.followUp, '2026-11-02');
@@ -531,6 +615,83 @@ test('API: import אמיתי כותב, ושני ייבואים לא משכפלי
   assert.strictEqual(list.contacts.length, 1);
   assert.strictEqual(list.activities.length, 1);
   assert.strictEqual(app.crm.sheets['פעולות'].untyped, false);
+});
+
+test('API: order — הזמנה ידנית: לקוח, מונה, היום עם השעה ותאריך אחר ב-12:00', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const r = app.call({ action: 'order', password: P, id, order: { note: 'בטלפון' } });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.contact.stage, 'לקוח');
+  assert.strictEqual(r.contact.followUp, '');
+  assert.strictEqual(r.contact.orders, '1');
+  assert.strictEqual(r.contact.daysSinceOrder, 0);
+  assert.strictEqual(r.activity.type, 'הזמנה');
+  assert.strictEqual(r.activity.by, 'עמוד');
+  assert.strictEqual(r.activity.at, '2026-11-02 10:42');
+  assert.strictEqual(r.activity.text, 'בטלפון');
+  const old = app.call({ action: 'order', password: P, id, order: { date: '2026-10-20' } });
+  assert.strictEqual(old.activity.at, '2026-10-20 12:00');
+  assert.strictEqual(old.contact.orders, '2');
+  assert.strictEqual(old.contact.lastOrder, '2026-11-02');
+  assert.strictEqual(app.call({ action: 'order', password: P, id, order: { date: '2026-11-03' } }).error, 'bad date');
+  assert.strictEqual(app.call({ action: 'order', password: P, id, order: { date: '3.11' } }).error, 'bad date');
+  assert.strictEqual(app.call({ action: 'order', password: P, id: 'C-none', order: {} }).error, 'not found');
+});
+
+test('API: order_cancel — רק הזמנה ידנית בלי מספר; המונה חוזר והשלב נשאר', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const manual = app.call({ action: 'order', password: P, id, order: { date: '2026-10-20' } }).activity;
+  app.call({ action: 'event', secret: S, event: ORDER });
+  let list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.contacts[0].orders, '2');
+  const site = list.activities.find(a => a.orderId === 'AR-20261101-123456');
+  assert.strictEqual(app.call({ action: 'order_cancel', password: P, activityId: site.id }).error, 'not cancellable');
+  const r = app.call({ action: 'order_cancel', password: P, activityId: manual.id });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.contact.orders, '1');
+  assert.strictEqual(r.contact.stage, 'לקוח');
+  list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.activities.some(a => a.id === manual.id), false);
+  assert.strictEqual(app.call({ action: 'order_cancel', password: P, activityId: 'A-none' }).error, 'not found');
+});
+
+test('API: הזמנה מהאתר באותו יום של רישום ידני נכתבת במקום הרישום', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  app.call({ action: 'order', password: P, id, order: { note: 'בטלפון' } });
+  app.call({ action: 'event', secret: S, event: ORDER });
+  const list = app.call({ action: 'list', password: P });
+  const orders = list.activities.filter(a => a.type === 'הזמנה');
+  assert.strictEqual(orders.length, 1);
+  assert.strictEqual(orders[0].orderId, 'AR-20261101-123456');
+  assert.strictEqual(list.contacts[0].orders, '1');
+  assert.strictEqual(app.crm.sheets['פעולות'].untyped, false);
+  // אותה הזמנה שוב (ניסיון חוזר) — עדיין כפילות שנחסמת, גם אחרי החיבור
+  assert.strictEqual(app.call({ action: 'event', secret: S, event: ORDER }).duplicate, true);
+  assert.strictEqual(app.call({ action: 'list', password: P }).contacts[0].orders, '1');
+});
+
+test('API: log מסוג הזמנה (התוצאה "הזמין") נספר כהזמנה', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const r = app.call({ action: 'log', password: P, id, fields: { stage: 'לקוח', followUp: '' },
+    activity: { type: 'הזמנה', text: 'דרך שיחה' } });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.contact.orders, '1');
+  assert.strictEqual(r.contact.lastOrder, '2026-11-02');
+  assert.strictEqual(r.activity.type, 'הזמנה');
+});
+
+test('API: list מחזיר קצב ואיחור לכל איש קשר', () => {
+  const app = loadApp({ orders: ordersBookWith(ORDER_ROWS) });
+  app.call({ action: 'import', password: P, dryRun: false });
+  const c = app.call({ action: 'list', password: P }).contacts[0];
+  assert.strictEqual(c.rhythm, 0);
+  assert.strictEqual(c.daysSinceOrder, 62);
+  assert.strictEqual(c.isLate, true);
+  assert.strictEqual(c.lateBy, 17);
 });
 
 test('API: doGet — בדיקת חיים בלי נתונים', () => {
