@@ -185,6 +185,10 @@ h2.crm-label, p.crm-label, label.crm-label {
 .crm-dup { margin-top: 0.35rem; padding: 0.5rem 0.7rem; border-radius: 8px; background: #FDF0D5; color: #7A4A00; }
 [data-theme="dark"] .crm-dup { background: #4A3200; color: #FAD89A; }
 .crm-dup .crm-link-btn { color: inherit; }
+.crm-input-short { max-width: 9rem; }
+.crm-hint { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--crm-muted); }
+/* "קובץ לריווחית" בשורת הקישורים של ההיסטוריה — נראה כמו הקישורים לצדו */
+.crm-history-links .crm-link-btn { padding: 0; font-size: inherit; }
 
 /* --- חלונות --- */
 .crm-overlay {

@@ -41,7 +41,7 @@
               created: at(-60), lastActivity: at(-30), orders: '1', lastOrder: day(-30) },
             { id: 'C6', name: 'דוד', business: 'משרדי אלפא', phone: '0541112222', email: '', address: '',
               stage: 'לקוח', followUp: day(20), source: 'ייבוא', created: at(-80), lastActivity: at(-10),
-              orders: '1', lastOrder: day(-10) },
+              orders: '1', lastOrder: day(-10), rivhitNo: '1234' },
             { id: 'C7', name: 'נועה', business: '', phone: '0549998888', email: '', address: '',
               stage: 'לא רלוונטי', followUp: '', source: 'אחר', created: at(-15), lastActivity: at(-14),
               orders: '0', lastOrder: '' },
@@ -61,8 +61,16 @@
               orderId: '', pdf: '', quoteLink: '', by: 'עמוד' },
             { id: 'A4', contactId: 'C5', at: at(-30), type: 'הזמנה', text: '18 פריטים',
               orderId: 'AR-' + day(-30).replace(/-/g, '') + '-123456',
-              pdf: 'https://drive.google.com/file/d/example2/view', quoteLink: '', by: 'הזמנות' },
-            order('A5', 'C6', -10, 'SL-' + day(-10).replace(/-/g, '') + '-654321'),
+              pdf: 'https://drive.google.com/file/d/example2/view', quoteLink: '', by: 'הזמנות',
+              // פריטי ההזמנה לכפתור "קובץ לריווחית" (סבב 88): מזהים אמיתיים מ-products.csv,
+              // ואחד בלי מק"ט בריווחית (טיפ001) — כדי לראות את רשימת "לא נכללו"
+              items: JSON.stringify([
+                  { id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 6, price: 5 },
+                  { id: 'מוצ020', name: 'גליל תעשייתי חד שכבתי 5012', qty: 4, price: 44 },
+                  { id: 'טיפ001', name: 'DOVE סבון מוצק', qty: 2, price: 12 }
+              ]) },
+            Object.assign(order('A5', 'C6', -10, 'SL-' + day(-10).replace(/-/g, '') + '-654321'), {
+              items: JSON.stringify([{ id: 'חדפ006', name: 'כוסות נייר 8B - 1000 יח׳', qty: 2, price: 68 }]) }),
             order('A6', 'C8', -100, 'AR-' + day(-100).replace(/-/g, '') + '-111111'),
             order('A7', 'C8', -70, 'AR-' + day(-70).replace(/-/g, '') + '-222222'),
             order('A8', 'C8', -50, 'AR-' + day(-50).replace(/-/g, '') + '-333333')
@@ -149,6 +157,11 @@
             case 'log': {
                 if (!c) return { ok: false, error: 'not found' };
                 const f = Object.assign({}, b.fields || {});
+                if ('rivhitNo' in f) {
+                    const rv = String(f.rivhitNo || '').trim();
+                    if (rv && !(/^\d{1,5}$/.test(rv) && Number(rv) > 0)) return { ok: false, error: 'bad rivhit' };
+                    f.rivhitNo = rv;
+                }
                 if ('phone' in f) {
                     const p = phoneOf(f.phone);
                     const other = p && db.contacts.find(x => x.phone === p && x.id !== c.id);

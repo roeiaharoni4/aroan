@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="crm.css?v=3">
+    <link rel="stylesheet" href="crm.css?v=4">
 </head>
 
 <body class="crm-page">
@@ -128,6 +128,10 @@
                 <input type="email" id="f-email" class="crm-input" autocomplete="off">
                 <label for="f-address" class="crm-label">כתובת</label>
                 <input type="text" id="f-address" class="crm-input" autocomplete="off">
+                <label for="f-rivhit" class="crm-label">מספר לקוח בריווחית</label>
+                <input type="text" id="f-rivhit" class="crm-input crm-input-short" inputmode="numeric"
+                    maxlength="5" autocomplete="off" aria-describedby="f-rivhit-hint">
+                <p id="f-rivhit-hint" class="crm-hint">נכנס לקובצי הקליטה לריווחית. ריק — יוצא כלקוח מזדמן (118).</p>
                 <button type="button" id="f-delete" class="crm-btn crm-btn-danger">מחיקת איש הקשר</button>
             </div>
             <p id="f-error" class="crm-error" role="alert"></p>
@@ -186,13 +190,29 @@
         </form>
     </div>
 
+    <div id="crm-rivhit-wrap" class="crm-overlay" hidden>
+        <div class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-rivhit-title">
+            <h2 id="crm-rivhit-title" tabindex="-1">קובץ לריווחית</h2>
+            <p id="r-customer" class="crm-card-meta"></p>
+            <p class="crm-label" id="r-type-label">סוג מסמך</p>
+            <div id="r-type" class="crm-chips" role="group" aria-labelledby="r-type-label"></div>
+            <div id="r-missing" class="crm-dup" role="status" hidden></div>
+            <p id="r-error" class="crm-error" role="alert"></p>
+            <div class="crm-form-actions">
+                <button type="button" id="r-download" class="crm-btn crm-btn-primary">הורדת הקובץ</button>
+                <button type="button" id="r-cancel" class="crm-btn">סגירה</button>
+            </div>
+        </div>
+    </div>
+
     <div id="crm-toast" class="crm-toast" role="status" aria-live="polite">
         <span id="crm-toast-text"></span>
         <button type="button" id="crm-toast-action" class="crm-toast-action" hidden></button>
     </div>
 
     <script src="crm-core.js?v=2"></script>
-    <script src="crm.js?v=3"></script>
+    <script src="/js/rivhit-core.js?v=1"></script>
+    <script src="crm.js?v=4"></script>
 </body>
 
 </html>

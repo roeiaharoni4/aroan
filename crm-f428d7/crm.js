@@ -30,14 +30,18 @@
         'bad date': 'התאריך לא תקין.',
         'bad time': 'השעה לא תקינה.',
         'text required': 'צריך לכתוב מה המשימה.',
-        'not cancellable': 'אפשר לבטל רק הזמנה שנרשמה כאן ידנית.'
+        'not cancellable': 'אפשר לבטל רק הזמנה שנרשמה כאן ידנית.',
+        'bad rivhit': 'מספר הלקוח בריווחית — ספרות בלבד, עד 5.'
     };
+    // קובץ קליטה לריווחית (סבב 88): js/rivhit-core.js, ומק"טי הפריטים מ-products.csv
+    const R = window.RivhitCore;
     const FOLLOW_CHOICES = [['today', 'היום'], ['tomorrow', 'מחר'], ['three', '3 ימים'], ['week', 'שבוע']];
 
     const S = {
         password: '', contacts: [], activities: [], tasks: [], filter: 'todo', query: '',
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
-        outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null
+        outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
+        rivhit: null, rivhitCodes: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -286,6 +290,9 @@
         if (c.email) host.appendChild(el('p', 'crm-card-meta', c.email));
         if (c.address) host.appendChild(el('p', 'crm-card-meta', c.address));
         host.appendChild(el('p', 'crm-card-meta', 'מקור: ' + (c.source || '—')));
+        host.appendChild(el('p', 'crm-card-meta', c.rivhitNo
+            ? 'ריווחית: לקוח ' + c.rivhitNo
+            : 'ריווחית: אין מספר לקוח (יוצא כלקוח מזדמן 118)'));
         host.appendChild(actions(c, false));
         host.appendChild(ordersBlock(c));
 
@@ -361,6 +368,12 @@
         const links = el('span', 'crm-history-links');
         if (/^https:\/\//.test(a.pdf)) links.appendChild(link(a.pdf, 'PDF'));
         if (/^https:\/\//.test(a.quoteLink)) links.appendChild(link(a.quoteLink, 'פתח כהצעת מחיר'));
+        if (a.items && a.orderId && R) {
+            const rv = el('button', 'crm-link-btn', 'קובץ לריווחית');
+            rv.type = 'button';
+            rv.addEventListener('click', () => openRivhit(a));
+            links.appendChild(rv);
+        }
         if (links.childNodes.length) li.appendChild(links);
         // לא על רישום זמני ששמירה אופטימית עוד לא אישרה (מזהה tmp-)
         if (C.isManualOrder(a) && a.id.indexOf('tmp-') !== 0) li.appendChild(cancelOrderButton(a));
@@ -759,6 +772,87 @@
         save(c, change.fields, change.activity);
     }
 
+    // ---------- קובץ לריווחית ----------
+    // הקובץ נבנה ברגע הלחיצה: מספר הלקוח העדכני מהכרטיס, מק"טי הפריטים מ-products.csv
+    // (אותו מקור שסקריפט ההזמנות משתמש בו), וסוג המסמך שנבחר כאן.
+
+    function rivhitItems(a) {
+        try {
+            const items = JSON.parse(a.items);
+            return Array.isArray(items) ? items : [];
+        } catch (e) { return []; }
+    }
+
+    async function rivhitCodes() {
+        if (S.rivhitCodes) return S.rivhitCodes;
+        const res = await fetch('/data/products.csv?t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('products.csv ' + res.status);
+        S.rivhitCodes = R.rivhitCodeMap(R.parseCsv(await res.text()));
+        return S.rivhitCodes;
+    }
+
+    function rivhitOrder(a, c) {
+        return {
+            orderId: a.orderId,
+            customer: { business: c.business, contact: c.name, address: c.address },
+            items: rivhitItems(a)
+        };
+    }
+
+    async function openRivhit(a) {
+        const c = byId(a.contactId);
+        if (!c) return;
+        S.rivhit = { activity: a, docType: a.type === 'בקשת הצעת מחיר' ? 6 : 7 };
+        $('r-customer').textContent = (C.displayName(c) + ' · ' + a.orderId + ' · ') +
+            (c.rivhitNo ? 'לקוח ' + c.rivhitNo : 'לקוח מזדמן (118) — אין מספר בכרטיס');
+        chipGroup($('r-type'), R.SITE_DOC_TYPES.map(t => [t.code, t.label]), S.rivhit.docType,
+            (k) => { if (S.rivhit) S.rivhit.docType = k; });
+        $('r-error').textContent = '';
+        $('r-missing').hidden = true;
+        $('r-download').disabled = true;
+        openOverlay('crm-rivhit-wrap', 'crm-rivhit-title');
+        let codes;
+        try {
+            codes = await rivhitCodes();
+        } catch (e) {
+            $('r-error').textContent = 'רשימת המוצרים לא נטענה — בדקו את החיבור ונסו שוב.';
+            return;
+        }
+        if (!S.rivhit || S.rivhit.activity !== a) return;
+        const doc = R.siteOrderDocument(rivhitOrder(a, c), codes, { docType: 7, customerNo: '', today: new Date() });
+        if (doc.missing.length) {
+            $('r-missing').textContent = 'לא ייכנסו לקובץ (אין מק"ט בריווחית): ' + doc.missing.join(', ');
+            $('r-missing').hidden = false;
+        }
+        if (doc.error || !doc.records.length) {
+            $('r-error').textContent = doc.error
+                ? 'מספר ההזמנה לא בפורמט הצפוי — אי אפשר להפיק קובץ.'
+                : 'לאף מוצר בהזמנה אין מק"ט בריווחית.';
+            return;
+        }
+        $('r-download').disabled = false;
+    }
+
+    function downloadRivhit() {
+        const r = S.rivhit;
+        if (!r || !S.rivhitCodes) return;
+        const c = byId(r.activity.contactId);
+        if (!c) return;
+        const doc = R.siteOrderDocument(rivhitOrder(r.activity, c), S.rivhitCodes,
+            { docType: r.docType, customerNo: c.rivhitNo || '', today: new Date() });
+        if (!doc.records.length) return;
+        const blob = new Blob([R.encodeCp1255(doc.text).bytes], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = doc.fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        closeOverlay('crm-rivhit-wrap', () => toast('הקובץ ירד: ' + doc.fileName));
+    }
+
     // ---------- חלונות ----------
     // כל חלון מוסיף ערך היסטוריה, כך ש"חזור" בטלפון סוגר אותו ולא יוצא מהעמוד.
 
@@ -854,6 +948,7 @@
         $('f-business').value = c ? c.business : '';
         $('f-email').value = c ? c.email : '';
         $('f-address').value = c ? c.address : '';
+        $('f-rivhit').value = c ? (c.rivhitNo || '') : '';
         $('f-note').value = '';
         $('f-new-only').hidden = mode !== 'add';
         $('f-edit-only').hidden = mode !== 'edit';
@@ -904,7 +999,8 @@
             ? await api('add', { contact: Object.assign(input, {
                 source: f.source, followUp: C.followUpFor(f.follow, S.today), note: $('f-note').value.trim() }) })
             : await api('update', { id: f.id, fields: Object.assign(input, {
-                email: $('f-email').value.trim(), address: $('f-address').value.trim() }) });
+                email: $('f-email').value.trim(), address: $('f-address').value.trim(),
+                rivhitNo: $('f-rivhit').value.trim() }) });
         btn.disabled = false;
         btn.textContent = 'שמירה';
         if (!res.ok) { $('f-error').textContent = errorText(res, 'לא נשמר — נסו שוב.'); return; }
@@ -1097,6 +1193,8 @@
         $('f-delete').addEventListener('click', deleteContact);
         $('crm-import-run').addEventListener('click', runImport);
         $('crm-import-close').addEventListener('click', () => closeOverlay('crm-import'));
+        $('r-download').addEventListener('click', downloadRivhit);
+        $('r-cancel').addEventListener('click', () => { S.rivhit = null; closeOverlay('crm-rivhit-wrap'); });
         document.querySelectorAll('.crm-overlay').forEach(o => o.addEventListener('click', (e) => {
             if (e.target !== o) return;
             if (o.id === 'crm-outcome') S.outcome = null;
