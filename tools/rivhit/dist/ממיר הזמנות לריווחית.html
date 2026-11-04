@@ -537,28 +537,49 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
     return p;
   }
 
-  function buildRecords(order, opts) {
-    var created = T.rivhitDate(opts.today);
-    var opDate = T.rivhitDate(T.parseIsoDate(order.date));
-    return order.lines.map(function (l, i) {
+  // מסמך אחד בריווחית: רשומה לכל שורה. משותף לממיר של הרשת ולהזמנות מהאתר.
+  // doc = {docType, today, date (Date), customerNo, lastName, firstName, street, internalNo,
+  //        lines:[{code, name, qty, price}]}
+  function buildDocument(doc) {
+    var created = T.rivhitDate(doc.today);
+    var opDate = T.rivhitDate(doc.date);
+    return doc.lines.map(function (l, i) {
       var f = [];
       for (var k = 0; k < FIELD_COUNT; k++) f.push('');
-      var name = l.name || l.desc;
       f[0] = '1';                                          // קוד מסמך: חשבונית/מסמך
       f[1] = created;                                      // תאריך יצירת הקובץ
       f[2] = opDate;                                       // תאריך הפעולה המקורית
-      f[3] = String(opts.docType);                         // סוג מסמך
+      f[3] = String(doc.docType);                          // סוג מסמך
       f[4] = outCode(l.code);                              // מספר קטלוגי
-      f[5] = outString(l.note ? name + ' - ' + l.note : name, 100); // שם פריט
+      f[5] = outString(l.name, 100);                       // שם פריט
       f[6] = T.formatNumber(l.qty);                        // כמות
       f[7] = T.formatNumber(l.price);                      // מחיר ליחידה
       f[8] = T.formatNumber(l.qty * l.price);              // סה"כ לשורה
-      f[9] = String(Number(opts.customerNo));              // מספר לקוח
-      f[10] = outString(opts.customerName, 30);            // שם משפחה
-      f[12] = outString(order.branch, 30);                 // כתובת – רחוב: הסניף
-      f[14] = String(opts.internalNo);                     // מספר פעולה פנימי
+      f[9] = String(Number(doc.customerNo));               // מספר לקוח
+      f[10] = outString(doc.lastName, 30);                 // שם משפחה
+      f[11] = outString(doc.firstName, 20);                // שם פרטי
+      f[12] = outString(doc.street, 30);                   // כתובת – רחוב
+      f[14] = String(doc.internalNo);                      // מספר פעולה פנימי
       f[25] = String(i + 1);                               // סדר הדפסה במסמך
       return f;
+    });
+  }
+
+  // הממיר של הרשת: הסניף בשדה הרחוב, וההערה מהטופס מוצמדת לשם הפריט
+  function buildRecords(order, opts) {
+    return buildDocument({
+      docType: opts.docType,
+      today: opts.today,
+      date: T.parseIsoDate(order.date),
+      customerNo: opts.customerNo,
+      lastName: opts.customerName,
+      firstName: '',
+      street: order.branch,
+      internalNo: opts.internalNo,
+      lines: order.lines.map(function (l) {
+        var name = l.name || l.desc;
+        return { code: l.code, name: l.note ? name + ' - ' + l.note : name, qty: l.qty, price: l.price };
+      })
     });
   }
 
@@ -642,6 +663,7 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
     DOC_TYPES: DOC_TYPES,
     validateSettings: validateSettings,
     validateOrder: validateOrder,
+    buildDocument: buildDocument,
     buildRecords: buildRecords,
     serialize: serialize,
     encodeCp1255: encodeCp1255,

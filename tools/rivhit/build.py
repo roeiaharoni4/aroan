@@ -14,6 +14,15 @@ OUT = HERE / 'dist' / 'ממיר הזמנות לריווחית.html'
 # סדר הטעינה חשוב: text.js לפני המודולים שתלויים בו
 CORE = ['text.js', 'order-form.js', 'mapping.js', 'rivhit-file.js']
 
+# קובץ הקליטה מהזמנות האתר (סבב 88): נטען בעמוד ה-CRM ונדחף כקובץ שני
+# לפרויקט Apps Script של ההזמנות. מגדיר RivhitCore גלובלי.
+SITE_CORE_OUT = HERE.parent.parent / 'js' / 'rivhit-core.js'
+SITE_CORE = ['text.js', 'rivhit-file.js', 'site-order.js']
+SITE_CORE_HEADER = (
+    '/* נגזר מ-tools/rivhit/src (text.js, rivhit-file.js, site-order.js) ע"י tools/rivhit/build.py.\n'
+    '   לא לערוך ידנית — משנים ב-src ומריצים את הבנייה. נטען בעמוד ה-CRM ובסקריפט ההזמנות (ריווחית.js). */\n'
+)
+
 
 def script(code):
     return '<script>\n' + code.replace('</script', '<\\/script') + '\n</script>'
@@ -39,6 +48,10 @@ def main():
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(html, encoding='utf-8')
     print(f'נבנה: {OUT} ({OUT.stat().st_size // 1024} KB)')
+
+    core = SITE_CORE_HEADER + '\n'.join(read(SRC / name) for name in SITE_CORE)
+    SITE_CORE_OUT.write_text(core, encoding='utf-8')
+    print(f'נבנה: {SITE_CORE_OUT} ({SITE_CORE_OUT.stat().st_size // 1024} KB)')
 
 
 if __name__ == '__main__':
