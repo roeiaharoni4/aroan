@@ -4,7 +4,7 @@
  *
  * מי פונה אליו:
  *  - עמוד ה-CRM (/crm-f428d7/) — עם הסיסמה: list, add, update, log, delete, import,
- *    order, order_cancel.
+ *    order, order_cancel, task_add, task_update, task_delete.
  *  - סקריפט הלידים וסקריפט ההזמנות — עם הסוד המשותף: event.
  *
  * הריפו פומבי: כאן רק מצייני מקום (PUT_...). הערכים האמיתיים רק בעותק שבענן.
@@ -33,6 +33,9 @@ var ACTIVITY_HEADERS = ['מזהה פעולה', 'מזהה איש קשר', 'תאר
   'מספר הזמנה', 'PDF', 'קישור הצעה', 'נוצר ע"י'];
 var ACTIVITY_KEYS = ['id', 'contactId', 'at', 'type', 'text', 'orderId', 'pdf',
   'quoteLink', 'by'];
+var TASKS_SHEET = 'משימות';
+var TASK_HEADERS = ['מזהה', 'מזהה איש קשר', 'משימה', 'תאריך', 'שעה', 'בוצעה', 'נוצרה', 'תזכורת נשלחה'];
+var TASK_KEYS = ['id', 'contactId', 'text', 'due', 'time', 'done', 'created', 'reminded'];
 
 var STAGES = ['חדש', 'חזרתי', 'נשלחה הצעה', 'לקוח', 'לא רלוונטי'];
 var MANUAL_SOURCES = ['וואטסאפ', 'טלפון', 'מודעה בפייסבוק', 'הפניה', 'אחר'];
@@ -434,7 +437,13 @@ function readRows_(sh, keys) {
 function readModel_(book) {
   var cs = sheet_(book, CONTACTS_SHEET, CONTACT_HEADERS);
   var as = sheet_(book, ACTIVITIES_SHEET, ACTIVITY_HEADERS);
-  return { cs: cs, as: as, contacts: readRows_(cs, CONTACT_KEYS), activities: readRows_(as, ACTIVITY_KEYS) };
+  var ts = sheet_(book, TASKS_SHEET, TASK_HEADERS);
+  return {
+    cs: cs, as: as, ts: ts,
+    contacts: readRows_(cs, CONTACT_KEYS),
+    activities: readRows_(as, ACTIVITY_KEYS),
+    tasks: readRows_(ts, TASK_KEYS)
+  };
 }
 
 function rowOf_(o, keys) {
@@ -469,6 +478,18 @@ function save_(model, changedContacts, newActivities) {
     newActivities.map(function (a) { return rowOf_(a, ACTIVITY_KEYS); }), ACTIVITY_KEYS.length);
 }
 
+// משימות עם _row נכתבות במקומן; חדשות — בסוף הלשונית
+function saveTasks_(model, tasks) {
+  var fresh = [];
+  tasks.forEach(function (t) {
+    if (t._row) writeRows_(model.ts, t._row, [rowOf_(t, TASK_KEYS)], TASK_KEYS.length);
+    else fresh.push(t);
+  });
+  var next = model.ts.getLastRow() + 1;
+  fresh.forEach(function (t, i) { t._row = next + i; });
+  writeRows_(model.ts, next, fresh.map(function (t) { return rowOf_(t, TASK_KEYS); }), TASK_KEYS.length);
+}
+
 function publicOf_(o, keys) {
   var out = {};
   keys.forEach(function (k) { out[k] = o[k] == null ? '' : String(o[k]); });
@@ -494,7 +515,10 @@ function handleList_() {
     ok: true,
     today: today,
     contacts: model.contacts.map(function (c) { return contactOut_(c, byContact, today); }),
-    activities: model.activities.map(function (a) { return publicOf_(a, ACTIVITY_KEYS); })
+    activities: model.activities.map(function (a) { return publicOf_(a, ACTIVITY_KEYS); }),
+    tasks: model.tasks
+      .filter(function (t) { return !t.done; })
+      .map(function (t) { return publicOf_(t, TASK_KEYS); })
   };
 }
 
@@ -637,13 +661,120 @@ function handleDelete_(id) {
   var c = contactById_(model, id);
   if (!c) return { ok: false, error: 'not found' };
   // מלמטה למעלה, כדי שמחיקת שורה לא תזיז את השורות שעוד לא נמחקו
-  var rows = model.activities
-    .filter(function (a) { return a.contactId === id; })
-    .map(function (a) { return a._row; })
-    .sort(function (a, b) { return b - a; });
+  var rowsOf = function (list) {
+    return list
+      .filter(function (x) { return x.contactId === id; })
+      .map(function (x) { return x._row; })
+      .sort(function (a, b) { return b - a; });
+  };
+  var rows = rowsOf(model.activities);
   rows.forEach(function (r) { model.as.deleteRow(r); });
+  rowsOf(model.tasks).forEach(function (r) { model.ts.deleteRow(r); });
   model.cs.deleteRow(c._row);
   return { ok: true, deleted: rows.length };
+}
+
+// ---------- משימות ----------
+
+function taskById_(model, id) {
+  for (var i = 0; i < model.tasks.length; i++) {
+    if (model.tasks[i].id === id) return model.tasks[i];
+  }
+  return null;
+}
+
+// משימה שהשעה שלה כבר עברה כשנוצרה או נערכה — מסומנת כנשלחה, בלי לשלוח
+function remindedFor_(t, now) {
+  return t.time && (t.due + ' ' + t.time) <= now.stamp ? now.stamp : '';
+}
+
+// בודק טקסט, תאריך ושעה לפני שמשנה משהו — שגיאה אחת משאירה את המשימה כמו שהייתה
+function taskFields_(t, f) {
+  var next = {};
+  if ('text' in f) {
+    var text = trim_(f.text).slice(0, 300);
+    if (!text) return { ok: false, error: 'text required' };
+    next.text = text;
+  }
+  if ('due' in f) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trim_(f.due))) return { ok: false, error: 'bad date' };
+    next.due = trim_(f.due);
+  }
+  if ('time' in f) {
+    var time = trim_(f.time);
+    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { ok: false, error: 'bad time' };
+    next.time = time;
+  }
+  Object.keys(next).forEach(function (k) { t[k] = next[k]; });
+  return { ok: true };
+}
+
+function handleTaskAdd_(input) {
+  var model = readModel_(book_());
+  var contactId = trim_(input.contactId);
+  if (contactId && !contactById_(model, contactId)) return { ok: false, error: 'not found' };
+  var now = now_();
+  var t = { id: newId_('T'), contactId: contactId, text: '', due: '', time: '', done: '', created: now.stamp, reminded: '' };
+  var check = taskFields_(t, { text: input.text, due: input.due, time: input.time || '' });
+  if (!check.ok) return check;
+  t.reminded = remindedFor_(t, now);
+  model.tasks.push(t);
+  saveTasks_(model, [t]);
+  return { ok: true, task: publicOf_(t, TASK_KEYS) };
+}
+
+// fields: text, due, time, done (true = בוצעה, false = נפתחת שוב). משימה על לקוח נרשמת
+// בהיסטוריה שלו כשהיא נסגרת, והרישום נמחק כשהיא נפתחת שוב ("בטל" בעמוד).
+function handleTaskUpdate_(id, fields) {
+  var model = readModel_(book_());
+  var t = taskById_(model, id);
+  if (!t) return { ok: false, error: 'not found' };
+  var now = now_();
+  var whenBefore = t.due + ' ' + t.time;
+  var check = taskFields_(t, fields);
+  if (!check.ok) return check;
+  if (t.due + ' ' + t.time !== whenBefore) t.reminded = remindedFor_(t, now);
+  var out = { ok: true };
+  var c = t.contactId ? contactById_(model, t.contactId) : null;
+  if (fields.done === true && !t.done) {
+    t.done = now.stamp;
+    if (c) {
+      var a = {
+        id: newId_('A'), contactId: c.id, at: now.stamp, type: 'משימה',
+        text: 'בוצעה: ' + t.text, orderId: '', pdf: '', quoteLink: '', by: 'עמוד'
+      };
+      model.activities.push(a);
+      c.lastActivity = now.stamp;
+      save_(model, [c], [a]);
+      out.activity = publicOf_(a, ACTIVITY_KEYS);
+    }
+  } else if (fields.done === false && t.done) {
+    t.done = '';
+    if (c) {
+      var text = 'בוצעה: ' + t.text;
+      for (var i = model.activities.length - 1; i >= 0; i--) {
+        var x = model.activities[i];
+        if (x.contactId === c.id && x.type === 'משימה' && x.text === text) {
+          model.as.deleteRow(x._row);
+          model.activities.splice(i, 1);
+          out.removedActivityId = x.id;
+          break;
+        }
+      }
+    }
+  }
+  saveTasks_(model, [t]);
+  out.task = publicOf_(t, TASK_KEYS);
+  if (c) out.contact = contactOut_(c, orderDaysByContact_(model.activities), now.date);
+  return out;
+}
+
+function handleTaskDelete_(id) {
+  var model = readModel_(book_());
+  var t = taskById_(model, id);
+  if (!t) return { ok: false, error: 'not found' };
+  model.ts.deleteRow(t._row);
+  return { ok: true };
 }
 
 function readOrderRows_() {
@@ -722,6 +853,9 @@ function doPost(e) {
       case 'import': return json_(withLock_(function () { return handleImport_(body.dryRun !== false); }));
       case 'order': return json_(withLock_(function () { return handleOrder_(body.id, body.order || {}); }));
       case 'order_cancel': return json_(withLock_(function () { return handleOrderCancel_(body.activityId); }));
+      case 'task_add': return json_(withLock_(function () { return handleTaskAdd_(body.task || {}); }));
+      case 'task_update': return json_(withLock_(function () { return handleTaskUpdate_(body.id, body.fields || {}); }));
+      case 'task_delete': return json_(withLock_(function () { return handleTaskDelete_(body.id); }));
     }
     return json_({ ok: false, error: 'unknown action' });
   } catch (err) {

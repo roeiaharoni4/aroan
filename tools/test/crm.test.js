@@ -694,6 +694,77 @@ test('API: list מחזיר קצב ואיחור לכל איש קשר', () => {
   assert.strictEqual(c.lateBy, 17);
 });
 
+test('API: משימות — כללית ועל לקוח, ולידציה, list מחזיר רק פתוחות, בפורמט טקסט', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const g = app.call({ action: 'task_add', password: P, task: { text: 'להזמין מהספק', due: '2026-11-03' } });
+  assert.strictEqual(g.ok, true);
+  assert.ok(/^T/.test(g.task.id), g.task.id);
+  assert.strictEqual(g.task.contactId, '');
+  assert.strictEqual(g.task.created, '2026-11-02 10:42');
+  const l = app.call({ action: 'task_add', password: P,
+    task: { text: 'להביא דוגמאות', due: '2026-11-02', time: '14:00', contactId: id } });
+  assert.strictEqual(l.task.contactId, id);
+  assert.strictEqual(l.task.reminded, '');
+  assert.strictEqual(app.call({ action: 'task_add', password: P, task: { text: '', due: '2026-11-02' } }).error, 'text required');
+  assert.strictEqual(app.call({ action: 'task_add', password: P, task: { text: 'x', due: '2.11' } }).error, 'bad date');
+  assert.strictEqual(app.call({ action: 'task_add', password: P,
+    task: { text: 'x', due: '2026-11-02', time: '25:00' } }).error, 'bad time');
+  assert.strictEqual(app.call({ action: 'task_add', password: P,
+    task: { text: 'x', due: '2026-11-02', contactId: 'C-none' } }).error, 'not found');
+  const list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.tasks.length, 2);
+  assert.strictEqual('_row' in list.tasks[0], false);
+  assert.strictEqual(app.crm.sheets['משימות'].rows[0][2], 'משימה');
+  assert.strictEqual(app.crm.sheets['משימות'].untyped, false);
+});
+
+test('API: משימה עם שעה שכבר עברה — מסומנת כנשלחה; שינוי שעה מאפס', () => {
+  const app = loadApp();
+  const t = app.call({ action: 'task_add', password: P, task: { text: 'x', due: '2026-11-02', time: '09:00' } }).task;
+  assert.strictEqual(t.reminded, '2026-11-02 10:42');
+  const u = app.call({ action: 'task_update', password: P, id: t.id, fields: { time: '15:00' } });
+  assert.strictEqual(u.task.reminded, '');
+  const same = app.call({ action: 'task_update', password: P, id: t.id, fields: { text: 'y' } });
+  assert.strictEqual(same.task.reminded, '');
+  assert.strictEqual(same.task.text, 'y');
+  assert.strictEqual(app.call({ action: 'task_update', password: P, id: 'T-none', fields: {} }).error, 'not found');
+});
+
+test('API: סימון משימה על לקוח נרשם בהיסטוריה, ו"בטל" מוחק את הרישום', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const t = app.call({ action: 'task_add', password: P,
+    task: { text: 'להביא דוגמאות', due: '2026-11-02', contactId: id } }).task;
+  const done = app.call({ action: 'task_update', password: P, id: t.id, fields: { done: true } });
+  assert.strictEqual(done.task.done, '2026-11-02 10:42');
+  assert.strictEqual(done.activity.type, 'משימה');
+  assert.strictEqual(done.activity.text, 'בוצעה: להביא דוגמאות');
+  assert.strictEqual(done.contact.id, id);
+  let list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.tasks.length, 0);
+  assert.strictEqual(list.activities.length, 2);
+  const undo = app.call({ action: 'task_update', password: P, id: t.id, fields: { done: false } });
+  assert.strictEqual(undo.task.done, '');
+  assert.strictEqual(undo.removedActivityId, done.activity.id);
+  list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.tasks.length, 1);
+  assert.strictEqual(list.activities.length, 1);
+});
+
+test('API: משימה כללית נסגרת בלי רישום; מחיקה; מחיקת איש קשר מוחקת את המשימות שלו', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const g = app.call({ action: 'task_add', password: P, task: { text: 'כללית', due: '2026-11-02' } }).task;
+  assert.strictEqual(app.call({ action: 'task_update', password: P, id: g.id, fields: { done: true } }).activity, undefined);
+  const g2 = app.call({ action: 'task_add', password: P, task: { text: 'למחוק', due: '2026-11-05' } }).task;
+  assert.strictEqual(app.call({ action: 'task_delete', password: P, id: g2.id }).ok, true);
+  assert.strictEqual(app.call({ action: 'task_delete', password: P, id: g2.id }).error, 'not found');
+  app.call({ action: 'task_add', password: P, task: { text: 'של הלקוח', due: '2026-11-02', contactId: id } });
+  app.call({ action: 'delete', password: P, id });
+  assert.strictEqual(app.call({ action: 'list', password: P }).tasks.length, 0);
+});
+
 test('API: doGet — בדיקת חיים בלי נתונים', () => {
   assert.strictEqual(loadApp().doGet().content, 'CRM — פעיל');
 });
