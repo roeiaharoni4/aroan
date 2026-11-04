@@ -6,6 +6,7 @@
  *  - עמוד ה-CRM (/crm-f428d7/) — עם הסיסמה: list, add, update, log, delete, import,
  *    order, order_cancel, task_add, task_update, task_delete.
  *  - סקריפט הלידים וסקריפט ההזמנות — עם הסוד המשותף: event.
+ *  - טריגר זמן (tick, כל 5 דקות) — תזכורות למשימות וסיכום הבוקר. מוקם ב-setupNotifications.
  *
  * הריפו פומבי: כאן רק מצייני מקום (PUT_...). הערכים האמיתיים רק בעותק שבענן.
  * כל עוד הסיסמה או הסוד הם מציין מקום, או קצרים מ-12 תווים, כל בקשה נדחית.
@@ -45,6 +46,15 @@ var PAGE_ACTIVITY_TYPES = ['שיחה', 'וואטסאפ', 'הצעת מחיר', '�
 // משלושה ימי הזמנה) לקוח מאחר אחרי 45 יום
 var MERGE_DAYS = 3;
 var DEFAULT_LATE_DAYS = 45;
+
+// התראות (אפיון 2026-11-03). הטוקן והצ'אט של הבוט — ב-Script Properties בלבד:
+// TELEGRAM_TOKEN (רועי מדביק), TELEGRAM_CHAT_ID (setupNotifications שומרת).
+var NOTIFY_EMAIL = 'meiraroam@gmail.com';
+var CRM_PAGE_URL = 'https://aroam.co.il/crm-f428d7/';
+var DIGEST_FROM = '07:30';
+var DIGEST_UNTIL = '12:00';
+var REMIND_RETRY_MINUTES = 120;
+var REMIND_LATE_MINUTES = 30;
 
 // ---------- עזרים ----------
 
@@ -504,7 +514,11 @@ function handleEvent_(ev) {
   var res = applyEvent_(model, ev, now_());
   if (res.skipped) return { ok: true, id: res.contact ? res.contact.id : '', duplicate: true };
   save_(model, [res.contact], res.attached ? [] : [res.activity]);
-  return { ok: true, id: res.contact.id };
+  var out = { ok: true, id: res.contact.id };
+  if ((ev.type === 'lead' || ev.type === 'quote_request') && !ev.imported) {
+    out.notify = inquiryMessage_(ev, res.contact);
+  }
+  return out;
 }
 
 function handleList_() {
@@ -801,6 +815,282 @@ function handleImport_(dryRun) {
   return { ok: true, dryRun: false, summary: res.summary };
 }
 
+// ---------- התראות ----------
+
+function esc_(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function cmp_(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function formatPhone_(d) {
+  d = String(d || '');
+  if (/^0[57]\d{8}$/.test(d)) return d.slice(0, 3) + '-' + d.slice(3);
+  if (/^0[2-489]\d{7}$/.test(d)) return d.slice(0, 2) + '-' + d.slice(2);
+  return d;
+}
+
+function displayName_(c) {
+  return trim_(c.business) || trim_(c.name) || formatPhone_(c.phone) || 'ללא שם';
+}
+
+// דקות מאז "תחילת הזמן" — להשוואת חותמות YYYY-MM-DD HH:mm, גם מעבר לחצות
+function minutesOf_(stamp) {
+  var t = String(stamp).slice(11, 16).split(':');
+  return dayNum_(stamp) * 1440 + Number(t[0] || 0) * 60 + Number(t[1] || 0);
+}
+
+// 0 = ראשון … 6 = שבת
+function weekday_(day) {
+  return new Date(dayNum_(day) * 86400000).getUTCDay();
+}
+
+function lateDays_(n) {
+  return n === 1 ? 'באיחור יום' : 'באיחור ' + n + ' ימים';
+}
+
+// אותו סדר כמו "לטיפול" בעמוד: חדשים, באיחור, של היום
+function todoGroup_(c, today) {
+  if (c.stage === 'חדש') return 0;
+  return c.followUp && c.followUp < today ? 1 : 2;
+}
+
+// טלגרם על פנייה חדשה: מי, טלפון (טלגרם הופך מספר בינלאומי ללחיץ) ומה ביקש
+function inquiryMessage_(ev, c) {
+  var lines = [ev.type === 'quote_request' ? 'בקשת הצעת מחיר' : 'פנייה חדשה מהאתר'];
+  var who = [trim_(c.business), trim_(c.name)].filter(function (x) { return x; }).join(' · ');
+  if (who) lines.push(who);
+  if (c.phone) lines.push(/^0\d+$/.test(c.phone) ? '+972' + c.phone.slice(1) : c.phone);
+  var what = ev.type === 'quote_request'
+    ? (trim_(ev.totalItems) ? trim_(ev.totalItems) + ' פריטים' : '')
+    : [trim_(ev.subject), trim_(ev.message).split('\n')[0]].filter(function (x) { return x; }).join(' — ');
+  if (what) lines.push(what.slice(0, 200));
+  return { text: lines.join('\n'), button: 'פתח בכרטיס', url: CRM_PAGE_URL + '#c=' + c.id };
+}
+
+// משימות שהגיע זמן התזכורת שלהן. send — לשלוח עכשיו; expire — עברו יותר משעתיים
+// מהשעה (אחרי תקלה): מסמנים כנשלחו בלי לשלוח, כדי לא לשלוח תזכורת ישנה
+function dueReminders_(tasks, now) {
+  var out = { send: [], expire: [] };
+  tasks.forEach(function (t) {
+    if (t.done || !t.time || t.reminded) return;
+    var when = t.due + ' ' + t.time;
+    if (when > now.stamp) return;
+    var late = minutesOf_(now.stamp) - minutesOf_(when);
+    (late > REMIND_RETRY_MINUTES ? out.expire : out.send).push(t);
+  });
+  return out;
+}
+
+function reminderMessage_(t, c, now) {
+  var late = minutesOf_(now.stamp) - minutesOf_(t.due + ' ' + t.time) > REMIND_LATE_MINUTES;
+  var text = 'תזכורת: ' + t.text + (late ? ' (באיחור)' : '') + (c ? '\n' + displayName_(c) : '');
+  return c
+    ? { text: text, button: 'פתח בכרטיס', url: CRM_PAGE_URL + '#c=' + c.id }
+    : { text: text, button: 'פתח את ה-CRM', url: CRM_PAGE_URL };
+}
+
+// סיכום הבוקר: פעם ביום, מראשון עד שישי, בריצה הראשונה בין 07:30 ל-12:00
+function digestDue_(now, lastSent) {
+  var time = now.stamp.slice(11, 16);
+  return weekday_(now.date) !== 6 && time >= DIGEST_FROM && time < DIGEST_UNTIL && lastSent !== now.date;
+}
+
+// סיכום הבוקר — null כשאין שום דבר לטיפול
+function digestFor_(model, now) {
+  var today = now.date;
+  var tasks = model.tasks
+    .filter(function (t) { return !t.done && t.due <= today; })
+    .sort(function (a, b) {
+      return cmp_(a.due, b.due) || (a.time ? 1 : 0) - (b.time ? 1 : 0) || cmp_(a.time, b.time);
+    });
+  var todo = model.contacts
+    .filter(function (c) {
+      if (c.stage === 'לא רלוונטי') return false;
+      return c.followUp ? c.followUp <= today : c.stage === 'חדש';
+    })
+    .sort(function (a, b) {
+      var ga = todoGroup_(a, today);
+      var gb = todoGroup_(b, today);
+      if (ga !== gb) return ga - gb;
+      if (ga === 0) return cmp_(b.created, a.created);
+      if (ga === 1) return cmp_(a.followUp, b.followUp);
+      return 0;
+    });
+  var byContact = orderDaysByContact_(model.activities);
+  var late = model.contacts
+    .map(function (c) { return { c: c, info: lateInfo_(c, byContact[c.id], today) }; })
+    .filter(function (x) { return x.info.isLate; })
+    .sort(function (a, b) { return b.info.lateBy - a.info.lateBy; });
+  if (!tasks.length && !todo.length && !late.length) return null;
+
+  var link = function (c) { return CRM_PAGE_URL + '#c=' + c.id; };
+  var sections = [];
+  if (tasks.length) {
+    sections.push({ title: 'משימות', items: tasks.map(function (t) {
+      var c = t.contactId ? contactById_(model, t.contactId) : null;
+      var when = t.due < today ? lateDays_(daysBetween_(t.due, today)) : 'היום' + (t.time ? ' ' + t.time : '');
+      return { name: t.text, url: c ? link(c) : CRM_PAGE_URL, detail: (c ? displayName_(c) + ' · ' : '') + when };
+    }) });
+  }
+  if (todo.length) {
+    sections.push({ title: 'לחזור', items: todo.map(function (c) {
+      var when = c.followUp && c.followUp < today ? lateDays_(daysBetween_(c.followUp, today)) : 'היום';
+      return { name: displayName_(c), url: link(c), detail: (c.stage === 'חדש' ? 'ליד חדש · ' : '') + when };
+    }) });
+  }
+  if (late.length) {
+    sections.push({ title: 'לא הזמינו', more: Math.max(0, late.length - 10), items: late.slice(0, 10).map(function (x) {
+      return { name: displayName_(x.c), url: link(x.c),
+        detail: 'אחרונה לפני ' + x.info.daysSinceOrder + ' ימים' +
+          (x.info.rhythm ? ' (בדרך כלל כל ' + x.info.rhythm + ')' : '') };
+    }) });
+  }
+
+  var parts = [];
+  if (tasks.length) parts.push(tasks.length === 1 ? 'משימה אחת' : tasks.length + ' משימות');
+  if (todo.length) parts.push(todo.length + ' לחזור');
+  if (late.length) parts.push(late.length + ' לא הזמינו');
+  var text = [];
+  var html = ['<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">'];
+  var tg = ['בוקר טוב — ' + parts.join(' · ')];
+  sections.forEach(function (s) {
+    text.push(s.title + ':');
+    html.push('<h3 style="margin:16px 0 6px">' + esc_(s.title) + '</h3><ul style="margin:0;padding-inline-start:18px">');
+    tg.push('', s.title + ':');
+    s.items.forEach(function (it, i) {
+      text.push('• ' + it.name + ' — ' + it.detail + '\n  ' + it.url);
+      html.push('<li><a href="' + esc_(it.url) + '">' + esc_(it.name) + '</a> — ' + esc_(it.detail) + '</li>');
+      if (i < 5) tg.push('• ' + it.name + ' — ' + it.detail);
+    });
+    if (s.more) {
+      text.push('ועוד ' + s.more);
+      html.push('<li>ועוד ' + s.more + '</li>');
+    }
+    var rest = Math.max(0, s.items.length - 5) + (s.more || 0);
+    if (rest) tg.push('ועוד ' + rest);
+    html.push('</ul>');
+    text.push('');
+  });
+  text.push('ה-CRM: ' + CRM_PAGE_URL);
+  html.push('<p style="margin-top:16px"><a href="' + CRM_PAGE_URL + '">פתח את ה-CRM</a></p></div>');
+  return {
+    subject: 'CRM — ' + parts.join(' · '),
+    text: text.join('\n'),
+    html: html.join(''),
+    telegram: tg.join('\n')
+  };
+}
+
+// שליחה לטלגרם. false כשאין טוקן או צ'אט, או כשהשליחה נכשלה — כולל HTTP 200 בלי ok
+// בגוף התשובה (הלקח מסבב 62). הטוקן לא נכתב ליומן.
+function telegramSend_(text, buttonText, url) {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty('TELEGRAM_TOKEN');
+  var chat = props.getProperty('TELEGRAM_CHAT_ID');
+  if (!token || !chat) return false;
+  var body = { chat_id: chat, text: String(text).slice(0, 4000), disable_web_page_preview: true };
+  if (buttonText && url) body.reply_markup = { inline_keyboard: [[{ text: buttonText, url: url }]] };
+  try {
+    var res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      payload: JSON.stringify(body)
+    });
+    var parsed = JSON.parse(res.getContentText());
+    if (parsed && parsed.ok === true) return true;
+    Logger.log('Telegram: ' + res.getContentText().slice(0, 200));
+  } catch (e) {
+    Logger.log('Telegram: ' + e);
+  }
+  return false;
+}
+
+function telegramGet_(token, method) {
+  var res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/' + method, { muteHttpExceptions: true });
+  try {
+    return JSON.parse(res.getContentText());
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
+// הצ'אט הפרטי מההודעה האחרונה שנשלחה לבוט
+function chatFromUpdates_(upd) {
+  var list = (upd && upd.result) || [];
+  for (var i = list.length - 1; i >= 0; i--) {
+    var m = list[i].message || list[i].edited_message;
+    if (m && m.chat && m.chat.type === 'private') return String(m.chat.id);
+  }
+  return '';
+}
+
+// טריגר זמן, כל 5 דקות (נוצר ב-setupNotifications): תזכורות למשימות עם שעה, וסיכום הבוקר.
+// טריגר מריץ את הקוד השמור בפרויקט, ולא גרסה פרוסה.
+function tick() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return;
+  try {
+    var now = now_();
+    var model = readModel_(book_());
+    var due = dueReminders_(model.tasks, now);
+    var changed = [];
+    due.expire.forEach(function (t) {
+      t.reminded = now.stamp;
+      changed.push(t);
+    });
+    due.send.forEach(function (t) {
+      var msg = reminderMessage_(t, t.contactId ? contactById_(model, t.contactId) : null, now);
+      if (telegramSend_(msg.text, msg.button, msg.url)) {
+        t.reminded = now.stamp;
+        changed.push(t);
+      }
+    });
+    if (changed.length) saveTasks_(model, changed);
+    var props = PropertiesService.getScriptProperties();
+    if (digestDue_(now, props.getProperty('LAST_DIGEST'))) {
+      props.setProperty('LAST_DIGEST', now.date);
+      var d = digestFor_(model, now);
+      if (d) {
+        try {
+          MailApp.sendEmail({ to: NOTIFY_EMAIL, subject: d.subject, body: d.text, htmlBody: d.html });
+        } catch (e) {
+          Logger.log('CRM digest: ' + e);
+        }
+        telegramSend_(d.telegram, 'פתח את ה-CRM', CRM_PAGE_URL);
+      }
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// הרצה ידנית אחת מהעורך, אחרי ש-TELEGRAM_TOKEN הודבק ב-Script Properties ונשלחה לבוט הודעה.
+// מבקשת את ההרשאות (רשת, מייל, טריגרים), מנתקת webhook ישן, שומרת את הצ'אט, שולחת
+// הודעת בדיקה ויוצרת את טריגר ה-tick. אפשר להריץ שוב — הטריגר לא מוכפל.
+function setupNotifications() {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty('TELEGRAM_TOKEN');
+  if (!token) throw new Error('חסר TELEGRAM_TOKEN בהגדרות הפרויקט (Script Properties).');
+  var info = telegramGet_(token, 'getWebhookInfo');
+  if (!info.ok) throw new Error('הטוקן לא תקין — בדקו אותו ב-BotFather.');
+  if (info.result && info.result.url) telegramGet_(token, 'deleteWebhook');
+  var chat = chatFromUpdates_(telegramGet_(token, 'getUpdates'));
+  if (!chat) throw new Error('שלחו לבוט הודעה כלשהי בטלגרם, והריצו שוב.');
+  props.setProperty('TELEGRAM_CHAT_ID', chat);
+  if (!telegramSend_('ה-CRM מחובר. מכאן יגיעו ההתראות.', 'פתח את ה-CRM', CRM_PAGE_URL)) {
+    throw new Error('הודעת הבדיקה לא נשלחה.');
+  }
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'tick') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('tick').timeBased().everyMinutes(5).create();
+  MailApp.getRemainingDailyQuota();
+  Logger.log('ההתראות מחוברות.');
+}
+
 // ---------- כניסה ----------
 
 // מציין מקום (PUT_...) או ערך קצר — חוסם הכל, כדי שהדבקת קובץ הריפו לענן
@@ -841,7 +1131,13 @@ function doPost(e) {
   try {
     if (body.action === 'event') {
       if (!authorized_(CRM_SECRET, body.secret)) return json_({ ok: false, error: 'unauthorized' });
-      return json_(withLock_(function () { return handleEvent_(body.event || {}); }));
+      var res = withLock_(function () { return handleEvent_(body.event || {}); });
+      // טלגרם מחוץ לנעילה: שליחה איטית לא מעכבת שמירות אחרות, וכשל בה לא מפיל את האירוע
+      if (res.notify) {
+        telegramSend_(res.notify.text, res.notify.button, res.notify.url);
+        delete res.notify;
+      }
+      return json_(res);
     }
     if (!authorized_(CRM_PASSWORD, body.password)) return json_({ ok: false, error: 'unauthorized' });
     switch (body.action) {

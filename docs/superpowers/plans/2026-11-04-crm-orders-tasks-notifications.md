@@ -1530,8 +1530,8 @@ function setupNotifications() {
 Run: `node tools/test/crm.test.js`
 Expected: `כל 64 הבדיקות עברו`.
 
-Run: `node --check tools/google-apps-script-crm.gs`
-Expected: בלי פלט (תחביר תקין).
+Run: `node -e "new Function(require('fs').readFileSync('tools/google-apps-script-crm.gs', 'utf8'))"`
+Expected: בלי פלט — התחביר תקין. (`node --check` לא מקבל קובץ עם סיומת `.gs`.)
 
 - [ ] **Step 5: Commit**
 

@@ -27,7 +27,10 @@ function loadGs() {
     '   classifyOrderRow_: classifyOrderRow_, buildImport_: buildImport_,' +
     '   orderRowsFromValues_: orderRowsFromValues_, daysBetween_: daysBetween_,' +
     '   orderDaysByContact_: orderDaysByContact_, orderEvents_: orderEvents_,' +
-    '   rhythmFor_: rhythmFor_, lateInfo_: lateInfo_, recomputeOrders_: recomputeOrders_ };')();
+    '   rhythmFor_: rhythmFor_, lateInfo_: lateInfo_, recomputeOrders_: recomputeOrders_,' +
+    '   inquiryMessage_: inquiryMessage_, dueReminders_: dueReminders_,' +
+    '   reminderMessage_: reminderMessage_, digestDue_: digestDue_, digestFor_: digestFor_,' +
+    '   chatFromUpdates_: chatFromUpdates_ };')();
 }
 
 const gs = loadGs();
@@ -269,6 +272,94 @@ test('הזמנה מהאתר ביום אחר מהרישום הידני — שתי
   assert.strictEqual(c.lastOrder, '2026-11-02');
 });
 
+// ---------- התראות ----------
+
+test('טלגרם על פנייה: ליד ובקשת הצעה, טלפון בינלאומי וקישור לכרטיס', () => {
+  const c = { id: 'C1', business: 'מסעדת הגפן', name: 'דנה כהן', phone: '0501234567' };
+  const m = gs.inquiryMessage_(LEAD, c);
+  assert.strictEqual(m.text,
+    'פנייה חדשה מהאתר\nמסעדת הגפן · דנה כהן\n+972501234567\nפנייה חדשה מעמוד צור קשר — צריך הצעה לחד פעמי');
+  assert.strictEqual(m.button, 'פתח בכרטיס');
+  assert.strictEqual(m.url, 'https://aroam.co.il/crm-f428d7/#c=C1');
+  const q = gs.inquiryMessage_({ type: 'quote_request', totalItems: 12 }, c);
+  assert.ok(q.text.indexOf('בקשת הצעת מחיר') === 0, q.text);
+  assert.ok(/12 פריטים$/.test(q.text), q.text);
+});
+
+test('תזכורות: בשעה — נשלחת; לפני — לא; נשלחה, בוצעה או בלי שעה — לא; אחרי שעתיים — פוקעת', () => {
+  const now = { date: '2026-11-02', stamp: '2026-11-02 14:03' };
+  const t = (o) => Object.assign({ id: 'T', contactId: '', text: 'x', due: '2026-11-02', time: '14:00',
+    done: '', reminded: '' }, o);
+  const r = gs.dueReminders_([t({ id: 'a' }), t({ id: 'b', time: '14:30' }),
+    t({ id: 'c', reminded: '2026-11-02 14:00' }), t({ id: 'd', done: '2026-11-02 13:00' }),
+    t({ id: 'e', time: '' }), t({ id: 'f', time: '11:30' })], now);
+  assert.deepStrictEqual(r.send.map(x => x.id), ['a']);
+  assert.deepStrictEqual(r.expire.map(x => x.id), ['f']);
+  const overnight = gs.dueReminders_([t({ id: 'n', due: '2026-11-01', time: '23:30' })],
+    { date: '2026-11-02', stamp: '2026-11-02 00:20' });
+  assert.deepStrictEqual(overnight.send.map(x => x.id), ['n']);
+});
+
+test('תזכורת: שם הלקוח והקישור; "(באיחור)" אחרי חצי שעה', () => {
+  const c = { id: 'C1', business: 'גן תות', name: '' };
+  const t = { text: 'להביא דוגמאות', due: '2026-11-02', time: '14:00' };
+  const m1 = gs.reminderMessage_(t, c, { date: '2026-11-02', stamp: '2026-11-02 14:04' });
+  assert.strictEqual(m1.text, 'תזכורת: להביא דוגמאות\nגן תות');
+  assert.strictEqual(m1.url, 'https://aroam.co.il/crm-f428d7/#c=C1');
+  const m2 = gs.reminderMessage_(t, null, { date: '2026-11-02', stamp: '2026-11-02 14:45' });
+  assert.strictEqual(m2.text, 'תזכורת: להביא דוגמאות (באיחור)');
+  assert.strictEqual(m2.button, 'פתח את ה-CRM');
+  assert.strictEqual(m2.url, 'https://aroam.co.il/crm-f428d7/');
+});
+
+test('סיכום הבוקר: ראשון עד שישי, 07:30–12:00, פעם ביום', () => {
+  const at = (date, time) => ({ date, stamp: date + ' ' + time });
+  assert.strictEqual(gs.digestDue_(at('2026-11-02', '07:31'), null), true);          // שני
+  assert.strictEqual(gs.digestDue_(at('2026-11-02', '07:29'), null), false);
+  assert.strictEqual(gs.digestDue_(at('2026-11-02', '12:00'), null), false);
+  assert.strictEqual(gs.digestDue_(at('2026-11-02', '08:00'), '2026-11-02'), false);
+  assert.strictEqual(gs.digestDue_(at('2026-11-07', '08:00'), null), false);         // שבת
+  assert.strictEqual(gs.digestDue_(at('2026-11-06', '08:00'), '2026-11-05'), true);  // שישי
+});
+
+test('סיכום הבוקר: ריק — null; משימות, למי לחזור ולא הזמינו — עשרה ועוד', () => {
+  const now = { date: '2026-11-21', stamp: '2026-11-21 07:30' };
+  assert.strictEqual(gs.digestFor_({ contacts: [], activities: [], tasks: [] }, now), null);
+  const contacts = [
+    { id: 'L', name: '', business: 'ליד <חדש>', phone: '', stage: 'חדש', followUp: '2026-11-21', created: '2026-11-21 06:00' },
+    { id: 'B', name: '', business: 'חזרתי באיחור', phone: '', stage: 'חזרתי', followUp: '2026-11-19', created: '2026-10-01 06:00' }
+  ];
+  const activities = [];
+  for (let i = 0; i < 12; i++) {
+    contacts.push({ id: 'K' + i, name: '', business: 'לקוח ' + i, phone: '', stage: 'לקוח', followUp: '',
+      created: '2026-01-01 06:00' });
+    activities.push({ contactId: 'K' + i, type: 'הזמנה', at: '2026-09-' + (10 + i) + ' 10:00' });
+  }
+  const tasks = [
+    { id: 'T1', contactId: 'B', text: 'להתקשר', due: '2026-11-21', time: '14:00', done: '' },
+    { id: 'T2', contactId: '', text: 'להזמין מהספק', due: '2026-11-20', time: '', done: '' },
+    { id: 'T3', contactId: '', text: 'עתידית', due: '2026-11-25', time: '', done: '' }
+  ];
+  const d = gs.digestFor_({ contacts, activities, tasks }, now);
+  assert.strictEqual(d.subject, 'CRM — 2 משימות · 2 לחזור · 12 לא הזמינו');
+  assert.ok(d.text.indexOf('• להזמין מהספק — באיחור יום') >= 0, d.text);
+  assert.ok(d.text.indexOf('• להתקשר — חזרתי באיחור · היום 14:00') >= 0, d.text);
+  assert.ok(d.text.indexOf('• לקוח 0 — אחרונה לפני 72 ימים') >= 0, d.text);
+  assert.ok(d.text.indexOf('ועוד 2') >= 0, d.text);
+  assert.strictEqual(d.text.indexOf('עתידית'), -1);
+  assert.ok(d.html.indexOf('ליד &lt;חדש&gt;') >= 0, d.html);
+  assert.ok(d.html.indexOf('href="https://aroam.co.il/crm-f428d7/#c=B"') >= 0, d.html);
+  assert.strictEqual(d.telegram.indexOf('בוקר טוב — 2 משימות · 2 לחזור · 12 לא הזמינו'), 0);
+  assert.ok(d.telegram.indexOf('ועוד 7') >= 0, d.telegram);
+});
+
+test('הצ\'אט מההודעה האחרונה לבוט — רק פרטי', () => {
+  assert.strictEqual(gs.chatFromUpdates_({ result: [{ message: { chat: { id: 7, type: 'group' } } },
+    { message: { chat: { id: 99, type: 'private' } } }] }), '99');
+  assert.strictEqual(gs.chatFromUpdates_({ result: [] }), '');
+  assert.strictEqual(gs.chatFromUpdates_(null), '');
+});
+
 // ---------- ייבוא ----------
 
 test('ייבוא: רשת, ועד וצרכן מדולגים', () => {
@@ -412,6 +503,10 @@ function loadApp(opts) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'google-apps-script-crm.gs'), 'utf8');
   const crm = opts.crm || fakeBook();
   const orders = opts.orders || fakeBook();
+  const props = Object.assign({}, opts.props || {});
+  const sent = { telegram: [], mails: [], triggers: [], deleted: [] };
+  const net = { telegramDown: !!opts.telegramDown, webhook: opts.webhook || '' };
+  const clock = { now: opts.now || { date: '2026-11-02', stamp: '2026-11-02 10:42' } };
   const env = {
     SpreadsheetApp: { openById(id) { return id === 'ORDERS-ID' ? orders : crm; } },
     LockService: { getScriptLock() { return { tryLock() { return true; }, releaseLock() {} }; } },
@@ -426,18 +521,62 @@ function loadApp(opts) {
         return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
           ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
       }
+    },
+    PropertiesService: {
+      getScriptProperties() {
+        return {
+          getProperty(k) { return props[k] == null ? null : props[k]; },
+          setProperty(k, v) { props[k] = String(v); }
+        };
+      }
+    },
+    UrlFetchApp: {
+      fetch(url, o) {
+        const method = url.split('/').pop();
+        let body = { ok: true };
+        if (method === 'sendMessage') {
+          sent.telegram.push(JSON.parse(o.payload));
+          body = { ok: !net.telegramDown };
+        } else if (method === 'getWebhookInfo') {
+          body = { ok: true, result: { url: net.webhook } };
+        } else if (method === 'deleteWebhook') {
+          sent.deleted.push('webhook');
+          net.webhook = '';
+        } else if (method === 'getUpdates') {
+          body = { ok: true, result: opts.updates || [] };
+        }
+        return { getContentText() { return JSON.stringify(body); } };
+      }
+    },
+    MailApp: { sendEmail(m) { sent.mails.push(m); }, getRemainingDailyQuota() { return 100; } },
+    ScriptApp: {
+      getProjectTriggers() { return sent.triggers.map(n => ({ getHandlerFunction() { return n; } })); },
+      deleteTrigger(t) { sent.triggers.splice(sent.triggers.indexOf(t.getHandlerFunction()), 1); },
+      newTrigger(name) {
+        const chain = {
+          timeBased() { return chain; },
+          everyMinutes() { return chain; },
+          create() { sent.triggers.push(name); }
+        };
+        return chain;
+      }
     }
   };
   const password = opts.password === undefined ? P : opts.password;
   const secret = opts.secret === undefined ? S : opts.secret;
-  const gsApp = new Function('SpreadsheetApp', 'LockService', 'ContentService', 'Logger', 'Utilities',
+  const names = Object.keys(env);
+  const gsApp = new Function(...names, '__clock',
     src + '\n' +
     "SPREADSHEET_ID = 'CRM-ID'; ORDERS_SPREADSHEET_ID = 'ORDERS-ID';\n" +
     'CRM_PASSWORD = ' + JSON.stringify(password) + '; CRM_SECRET = ' + JSON.stringify(secret) + ';\n' +
-    "now_ = function () { return { date: '2026-11-02', stamp: '2026-11-02 10:42' }; };\n" +
-    'return { doPost: doPost, doGet: doGet };'
-  )(env.SpreadsheetApp, env.LockService, env.ContentService, env.Logger, env.Utilities);
+    'now_ = function () { return __clock.now; };\n' +
+    'return { doPost: doPost, doGet: doGet, tick: tick, setupNotifications: setupNotifications };'
+  )(...names.map(n => env[n]), clock);
   gsApp.crm = crm;
+  gsApp.props = props;
+  gsApp.sent = sent;
+  gsApp.setNow = (now) => { clock.now = now; };
+  gsApp.setTelegramDown = (v) => { net.telegramDown = v; };
   gsApp.call = (body) => JSON.parse(gsApp.doPost({ postData: { contents: JSON.stringify(body) } }).content);
   return gsApp;
 }
@@ -763,6 +902,93 @@ test('API: משימה כללית נסגרת בלי רישום; מחיקה; מח�
   app.call({ action: 'task_add', password: P, task: { text: 'של הלקוח', due: '2026-11-02', contactId: id } });
   app.call({ action: 'delete', password: P, id });
   assert.strictEqual(app.call({ action: 'list', password: P }).tasks.length, 0);
+});
+
+test('API: ליד ובקשת הצעה שולחים טלגרם; הזמנה לא; כשל בטלגרם לא מפיל', () => {
+  const app = loadApp({ props: { TELEGRAM_TOKEN: 'tok', TELEGRAM_CHAT_ID: '42' } });
+  const r = app.call({ action: 'event', secret: S, event: LEAD });
+  assert.strictEqual('notify' in r, false);
+  assert.strictEqual(app.sent.telegram.length, 1);
+  assert.strictEqual(app.sent.telegram[0].chat_id, '42');
+  assert.strictEqual(app.sent.telegram[0].text.indexOf('פנייה חדשה מהאתר'), 0);
+  assert.strictEqual(app.sent.telegram[0].reply_markup.inline_keyboard[0][0].text, 'פתח בכרטיס');
+  app.call({ action: 'event', secret: S, event: { type: 'quote_request', orderId: 'HM-20261102-000001',
+    business: 'מוסך הגליל', contact: 'משה', phone: '0547781203', totalItems: 4 } });
+  assert.strictEqual(app.sent.telegram.length, 2);
+  assert.strictEqual(app.sent.telegram[1].text.indexOf('בקשת הצעת מחיר'), 0);
+  app.call({ action: 'event', secret: S, event: ORDER });
+  assert.strictEqual(app.sent.telegram.length, 2);
+  const down = loadApp({ props: { TELEGRAM_TOKEN: 'tok', TELEGRAM_CHAT_ID: '42' }, telegramDown: true });
+  assert.strictEqual(down.call({ action: 'event', secret: S, event: LEAD }).ok, true);
+  assert.strictEqual(down.call({ action: 'list', password: P }).contacts.length, 1);
+  const none = loadApp();
+  assert.strictEqual(none.call({ action: 'event', secret: S, event: LEAD }).ok, true);
+  assert.strictEqual(none.sent.telegram.length, 0);
+});
+
+test('API: ייבוא לא שולח טלגרם — גם לא על בקשת הצעת מחיר', () => {
+  const rows = ORDER_ROWS.concat([[new Date(2026, 8, 4, 9, 0), 'HM-20260904-444444', '', 'מוסך הגליל', 'משה',
+    '0547781203', '', '', '...', 2, '', 'חדשה', '', '', '', '']]);
+  const app = loadApp({ orders: ordersBookWith(rows), props: { TELEGRAM_TOKEN: 'tok', TELEGRAM_CHAT_ID: '42' } });
+  assert.strictEqual(app.call({ action: 'import', password: P, dryRun: false }).summary.activities, 2);
+  assert.strictEqual(app.sent.telegram.length, 0);
+});
+
+test('tick: תזכורת נשלחת פעם אחת, בשעה שלה', () => {
+  const app = loadApp({ props: { TELEGRAM_TOKEN: 'tok', TELEGRAM_CHAT_ID: '42', LAST_DIGEST: '2026-11-02' } });
+  app.call({ action: 'task_add', password: P, task: { text: 'להתקשר', due: '2026-11-02', time: '14:00' } });
+  app.setNow({ date: '2026-11-02', stamp: '2026-11-02 13:58' });
+  app.tick();
+  assert.strictEqual(app.sent.telegram.length, 0);
+  app.setNow({ date: '2026-11-02', stamp: '2026-11-02 14:02' });
+  app.tick();
+  app.tick();
+  assert.strictEqual(app.sent.telegram.length, 1);
+  assert.strictEqual(app.sent.telegram[0].text, 'תזכורת: להתקשר');
+});
+
+test('tick: שליחה שנכשלה חוזרת בריצה הבאה', () => {
+  const app = loadApp({ props: { TELEGRAM_TOKEN: 'tok', TELEGRAM_CHAT_ID: '42', LAST_DIGEST: '2026-11-02' },
+    telegramDown: true });
+  app.call({ action: 'task_add', password: P, task: { text: 'x', due: '2026-11-02', time: '14:00' } });
+  app.setNow({ date: '2026-11-02', stamp: '2026-11-02 14:02' });
+  app.tick();
+  app.setTelegramDown(false);
+  app.tick();
+  assert.strictEqual(app.sent.telegram.length, 2);
+  app.tick();
+  assert.strictEqual(app.sent.telegram.length, 2);
+});
+
+test('tick: סיכום הבוקר נשלח פעם אחת ביום, במייל ובטלגרם', () => {
+  const app = loadApp({ props: { TELEGRAM_TOKEN: 'tok', TELEGRAM_CHAT_ID: '42' } });
+  app.call({ action: 'event', secret: S, event: LEAD });
+  app.sent.telegram.length = 0;
+  app.setNow({ date: '2026-11-03', stamp: '2026-11-03 07:32' });
+  app.tick();
+  app.tick();
+  assert.strictEqual(app.sent.mails.length, 1);
+  assert.strictEqual(app.sent.mails[0].to, 'meiraroam@gmail.com');
+  assert.ok(app.sent.mails[0].subject.indexOf('1 לחזור') > 0, app.sent.mails[0].subject);
+  assert.ok(app.sent.mails[0].htmlBody.indexOf('מסעדת הגפן') > 0);
+  assert.strictEqual(app.sent.telegram.length, 1);
+  assert.strictEqual(app.props.LAST_DIGEST, '2026-11-03');
+});
+
+test('setupNotifications: מנתק webhook ישן, שומר את הצ\'אט, הודעת בדיקה וטריגר אחד', () => {
+  const app = loadApp({ props: { TELEGRAM_TOKEN: 'tok' }, webhook: 'https://script.google.com/old',
+    updates: [{ message: { chat: { id: 7, type: 'group' } } }, { message: { chat: { id: 99, type: 'private' } } }] });
+  app.setupNotifications();
+  app.setupNotifications();
+  assert.deepStrictEqual(app.sent.deleted, ['webhook']);
+  assert.strictEqual(app.props.TELEGRAM_CHAT_ID, '99');
+  assert.strictEqual(app.sent.telegram[0].text, 'ה-CRM מחובר. מכאן יגיעו ההתראות.');
+  assert.deepStrictEqual(app.sent.triggers, ['tick']);
+});
+
+test('setupNotifications: בלי טוקן, או בלי הודעה לבוט — עוצר עם הסבר', () => {
+  assert.throws(() => loadApp().setupNotifications(), /TELEGRAM_TOKEN/);
+  assert.throws(() => loadApp({ props: { TELEGRAM_TOKEN: 'tok' } }).setupNotifications(), /שלחו לבוט הודעה/);
 });
 
 test('API: doGet — בדיקת חיים בלי נתונים', () => {
