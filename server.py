@@ -70,8 +70,9 @@ def optimize_product_image(raw):
 
 # עמודות הקטלוג העסקי (data/products.csv). מקור אמת יחיד לכתיבה מהעורך —
 # packaging = מידע אריזה/קרטון, subcategory = שיוך לדף תת-קטגוריה (שניהם אופציונליים).
+# rivhit = מק"ט הפריט בריווחית (item_num). כמה מק"טים (מוצר שמכסה כמה מידות) מופרדים ב-|.
 PRODUCT_FIELDS = ['id', 'name', 'category', 'subcategory', 'unit', 'image',
-                  'price', 'brand', 'carton_qty', 'packaging', 'description']
+                  'price', 'brand', 'carton_qty', 'packaging', 'description', 'rivhit']
 
 
 def _clean_date(v):

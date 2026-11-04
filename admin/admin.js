@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartonQtyInput = document.getElementById('prod-carton-qty');
     const subcatInput = document.getElementById('prod-subcategory');
     const descInput = document.getElementById('prod-description');
-    
+    const rivhitInput = document.getElementById('prod-rivhit');
+
     const fileInput = document.getElementById('prod-image-file');
     const urlInput = document.getElementById('prod-image-url');
     const imgPreview = document.getElementById('image-preview');
@@ -63,7 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     brand: item.brand || '',
                     carton_qty: item.carton_qty || '',
                     packaging: item.packaging || '',
-                    description: item.description || ''
+                    description: item.description || '',
+                    rivhit: item.rivhit || ''
                 })).filter(p => p.id && p.name);
                 
                 renderTable();
@@ -83,7 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         products.forEach(p => {
             if (catSel && p.category !== catSel) return;
-            if (filter && !p.name.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return;
+            if (filter && !p.name.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)
+                && !(p.rivhit || '').split('|').includes(q.trim())) return;
             
             const tr = document.createElement('tr');
             
@@ -93,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             tr.innerHTML = `
                 <td class="td-img"><img src="${imgSrc}" onerror="this.src='../images/logo.png'"></td>
-                <td>${p.id}</td>
+                <td>${p.id}${p.rivhit ? `<br><small class="field-hint">ריווחית ${p.rivhit.split('|').join(', ')}</small>` : ''}</td>
                 <td>${p.name}</td>
                 <td>${p.category}${p.subcategory ? `<br><small class="field-hint">${p.subcategory}</small>` : ''}</td>
                 <td>${p.unit}</td>
@@ -229,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         subcatInput.value = p.subcategory || '';
         updateSubcategoryList();
         descInput.value = p.description || '';
+        rivhitInput.value = (p.rivhit || '').split('|').join(', ');
         urlInput.value = p.image;
         
         if (p.image) {
@@ -312,7 +316,9 @@ document.addEventListener('DOMContentLoaded', () => {
             brand: brandInput.value.trim(),
             carton_qty: cartonQtyInput.value.trim(),
             packaging: packagingInput.value.trim(),
-            description: descInput.value.trim()
+            description: descInput.value.trim(),
+            // מספרים בלבד; כמה מק"טים נשמרים מופרדים ב-|
+            rivhit: (rivhitInput.value.match(/\d+/g) || []).join('|')
         };
         
         const originalId = originalIdInput.value;
