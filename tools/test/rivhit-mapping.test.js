@@ -103,7 +103,7 @@ test('הצעות: אין חפיפה ⇒ ריק', () => {
 });
 
 // השיוך המובנה מול טופס הרשת האמיתי: כל רשומה תואמת שורה קיימת בטופס
-test('השיוך המובנה מכסה את טופס הרשת (33 מתוך 39 — רועי משייך בעצמו את השאר)', () => {
+test('השיוך המובנה מכסה את טופס הרשת (36 מתוך 39 — שורות הביוטי בלי שיוך)', () => {
   const fs = require('fs');
   const path = require('path');
   const XLSX = require('../rivhit/vendor/xlsx.full.min.js');
@@ -126,9 +126,22 @@ test('השיוך המובנה מכסה את טופס הרשת (33 מתוך 39 �
   const formKeys = new Set(formLines.map(l => T.descKey(l.desc)));
   mapping.map.forEach(e => assert.ok(formKeys.has(T.descKey(e.desc)), 'לא בטופס: ' + e.desc));
   const unmapped = M.resolveLines(formLines, map, {}).filter(l => !l.code).map(l => l.desc);
-  assert.strictEqual(unmapped.length, 6, unmapped.join(' | '));
+  assert.strictEqual(unmapped.length, 3, unmapped.join(' | '));
   const ordered = M.resolveLines(F.parseWorkbook([{ name: 's', rows, firstRow: 1 }]), map, {});
-  assert.deepStrictEqual(ordered.map(l => l.code), ['693', '851', '', '295', '1305', '944']);
+  assert.deepStrictEqual(ordered.map(l => l.code), ['693', '851', '1489', '295', '1305', '944']);
+});
+
+// שיוך שנשמר ידנית כשרשימת הפריטים לא הייתה טעונה נשמר בלי שם — ואז יצא לריווחית
+// בשם של הלקוח. השם נלקח לפי המק"ט גם מהשיוך המובנה.
+test('שם בריווחית לפי המק"ט גם לשיוך שנשמר בלי שם', () => {
+  const builtIn = [{ desc: 'נייר תעשייתי 1200 מיוחד צר', code: '1612', name: 'גליל תעשייתי תאית חד שכבתי 5012' }];
+  const learned = M.indexMap([{ desc: 'נייר תעשייתי 1200 מיוחד צר', code: '1612', name: '' }]);
+  const line = { desc: 'נייר תעשייתי 1200 מיוחד צר', qty: 2, price: 44 };
+  const r = M.resolveLines([line], learned, M.indexItemsWithMapNames([], builtIn))[0];
+  assert.deepStrictEqual([r.code, r.name], ['1612', 'גליל תעשייתי תאית חד שכבתי 5012']);
+  const fromList = M.indexItemsWithMapNames([{ code: '1612', name: 'שם מהרשימה' }], builtIn);
+  assert.strictEqual(M.resolveLines([line], learned, fromList)[0].name, 'שם מהרשימה');
+  assert.strictEqual(M.resolveLines([line], learned, M.indexItemsWithMapNames([], []))[0].name, '');
 });
 
 let failed = 0;

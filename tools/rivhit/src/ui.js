@@ -72,6 +72,9 @@
     keys.slice(0, keys.length - HISTORY_MAX).forEach(function (k) { delete state.history[k]; });
   }
 
+  // פריטי ריווחית לפי מק"ט: הרשימה שנטענה, ומה שחסר בה — מהשמות שבשיוך המובנה
+  function itemsIndex() { return C.indexItemsWithMapNames(state.items, BUILT_IN.map); }
+
   function currentMap() { return Object.assign({}, BUILT_IN_MAP, state.learned); }
   function settings() { return { customerNo: state.customerNo, customerName: state.customerName }; }
 
@@ -79,7 +82,7 @@
     return {
       branch: o.branch,
       date: o.date,
-      lines: C.resolveLines(o.lines, map || currentMap(), by || C.indexItems(state.items))
+      lines: C.resolveLines(o.lines, map || currentMap(), by || itemsIndex())
     };
   }
 
@@ -144,7 +147,7 @@
     var value = String(rawValue || '').trim();
     if (!value) return;
     var code = value.split(' — ')[0].trim();
-    var by = C.indexItems(state.items);
+    var by = itemsIndex();
     if (code.length > 15) { toast('מק״ט בריווחית מוגבל ל-15 תווים'); return; }
     if (state.items.length && !by[code] &&
         !confirm('המק״ט "' + code + '" לא נמצא ברשימת הפריטים מריווחית.\nלהשתמש בו בכל זאת?')) return;
@@ -198,7 +201,7 @@
   function generate() {
     var ready = orders.filter(function (o) { return !o.error; });
     if (!ready.length || C.validateSettings(settings()).length) return;
-    var map = currentMap(), by = C.indexItems(state.items);
+    var map = currentMap(), by = itemsIndex();
     var resolved = ready.map(function (o) { return resolvedOrder(o, map, by); });
     if (resolved.some(function (r) { return C.validateOrder(r).length; })) return;
 
@@ -339,7 +342,7 @@
     var sp = C.validateSettings(settings());
     var ready = orders.filter(function (o) { return !o.error; });
     var failedFiles = orders.length - ready.length;
-    var map = currentMap(), by = C.indexItems(state.items);
+    var map = currentMap(), by = itemsIndex();
     var bad = 0, lines = 0;
     ready.forEach(function (o) {
       var r = resolvedOrder(o, map, by);
@@ -357,7 +360,7 @@
   }
 
   function render() {
-    var map = currentMap(), by = C.indexItems(state.items);
+    var map = currentMap(), by = itemsIndex();
     $('orders').innerHTML = orders.map(function (o) { return orderCard(o, map, by); }).join('');
     renderStatus();
     renderFooter();
@@ -403,7 +406,7 @@
     var t = e.target;
     if (!t.classList.contains('map-input') || t.value.indexOf(' — ') === -1) return;
     var code = t.value.split(' — ')[0].trim();
-    if (C.indexItems(state.items)[code]) setMapping(t.getAttribute('data-desc'), t.value);
+    if (itemsIndex()[code]) setMapping(t.getAttribute('data-desc'), t.value);
   }
 
   function init() {

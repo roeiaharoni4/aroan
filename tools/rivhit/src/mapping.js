@@ -61,6 +61,17 @@
     return by;
   }
 
+  // מק"ט ⇒ פריט: רשימת הפריטים מריווחית, ומה שחסר בה — מהשמות שבשיוך המובנה. כך שיוך
+  // שנשמר ידנית כשהרשימה לא הייתה טעונה (בלי שם) עדיין יוצא בשם של ריווחית ולא בשם מהטופס.
+  function indexItemsWithMapNames(items, mapList) {
+    var by = indexItems(items);
+    (mapList || []).forEach(function (e) {
+      var code = e && e.code !== undefined && e.code !== null ? String(e.code) : '';
+      if (code && e.name && !by[code]) by[code] = { code: code, name: e.name };
+    });
+    return by;
+  }
+
   // שיוך מובנה (mapping.json) ⇒ אובייקט לפי מפתח התיאור
   function indexMap(list) {
     var map = {};
@@ -119,6 +130,7 @@
   return {
     parseItemList: parseItemList,
     indexItems: indexItems,
+    indexItemsWithMapNames: indexItemsWithMapNames,
     indexMap: indexMap,
     resolveLines: resolveLines,
     suggest: suggest
