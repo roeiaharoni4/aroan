@@ -645,8 +645,12 @@ function crmEventFor_(data, pdf) {
     quoteLink: quoteLink_(data) || '',
     // לכפתור "קובץ לריווחית" בכרטיס ב-CRM (סבב 88)
     items: (data.items || []).slice(0, 200).map(function (it) {
-      return { id: String(it.id || ''), name: String(it.name || ''),
+      var o = { id: String(it.id || ''), name: String(it.name || ''),
         qty: Number(it.qty) || 0, price: Number(it.price) || 0 };
+      // פריט מרשימת ריווחית בדף הסוכן נושא את המק"ט שלו (אפיון 2026-11-09)
+      var rv = String(it.rivhit || '').trim();
+      if (/^\d{1,15}$/.test(rv)) o.rivhit = rv;
+      return o;
     })
   };
 }

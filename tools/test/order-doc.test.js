@@ -531,6 +531,41 @@ test('ריווחית: doPost — רשת החנויות והזמנת צרכן ב�
   });
 });
 
+// ---------- פריטים מריווחית בדף הסוכן (אפיון 2026-11-09) ----------
+
+const SL_WITH_RV = Object.assign({}, AR_ORDER, {
+  orderId: 'SL-20261109-123456', showPrices: true,
+  items: AR_ORDER.items.concat([
+    { id: 'RV-1500', name: 'כפפות ניטריל M', category: 'מריווחית', qty: 3, unit: '', image: '',
+      price: 7, total: 21, rivhit: '1500' }
+  ])
+});
+
+test('ריווחית: האירוע ל-CRM מעביר את המק"ט של פריט מריווחית, ורק שלו', () => {
+  const app = loadOrdersApp();
+  const ev = app.crmEventFor_(SL_WITH_RV, null);
+  assert.deepStrictEqual(ev.items[3], { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: '1500' });
+  assert.ok(!('rivhit' in ev.items[1]));
+});
+
+test('ריווחית: קובץ הקליטה כולל פריט מריווחית לפי המק"ט שהוא נושא', () => {
+  const app = loadOrdersApp();
+  const r = app.rivhitAttachments_(SL_WITH_RV, '1234', null, TODAY);
+  const lines = Buffer.from(r.files[0].bytes.map(x => x & 255)).toString('latin1').split('\r\n');
+  assert.strictEqual(lines.length, 3, 'שני מוצרי אתר משויכים + פריט מריווחית');
+  assert.strictEqual(lines[2].split('\t')[4], '1500');
+  assert.deepStrictEqual(r.missing, ['DOVE סבון']);
+});
+
+test('ריווחית: doPost — הזמנה מדף הסוכן עם פריט מריווחית', () => {
+  const app = loadOrdersApp({ rivhitNo: '1234' });
+  assert.strictEqual(app.post(SL_WITH_RV).success, true);
+  const m = app.sent.mails[0];
+  assert.strictEqual(m.o.attachments.length, 3);
+  const text = Buffer.from(m.o.attachments[0].bytes.map(x => x & 255)).toString('latin1');
+  assert.ok(text.split('\r\n').some(l => l.split('\t')[4] === '1500'), 'המק"ט של הפריט מריווחית בקובץ');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
