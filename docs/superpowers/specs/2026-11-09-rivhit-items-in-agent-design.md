@@ -37,7 +37,7 @@
 - מספר שמופיע פעמיים: נשמרת ההופעה הראשונה.
 - תקרה של 5,000 פריטים. מעליה מחזירים `too many items` ולא כותבים כלום.
 - אם אחרי הניקוי לא נשאר אף פריט, מחזירים `no items` והרשימה הקיימת לא נמחקת.
-- בהצלחה מחזירים `{ ok: true, count, updated }`. `updated` הוא חותמת זמן ISO שנשמרת ב-Script Properties (`ITEMS_UPDATED`).
+- בהצלחה מחזירים `{ ok: true, count, updated }`. `updated` הוא חותמת הזמן של הסקריפט (`yyyy-MM-dd HH:mm`, כמו שאר התאריכים ב-CRM), ונשמר ב-Script Properties (`ITEMS_UPDATED`).
 
 **`items`** מחזיר `{ ok: true, items: [[מספר, שם], ...], updated }`. כשהלשונית ריקה או לא קיימת: `items: []` ו-`updated: ''`.
 
@@ -110,7 +110,7 @@
 **גרסאות:**
 - `app.js?v=71` ו-`style.css?v=46` בכל 16 הדפים.
 - `agent.js?v=4`.
-- `crm.js?v=5` ו-`crm.css?v=5`.
+- `crm.js?v=5`. ‏`crm.css` לא משתנה, כי החלון משתמש במחלקות קיימות.
 - `rivhit-core.js?v=2`.
 - sw `cache-v67`.
 
