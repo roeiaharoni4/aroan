@@ -1090,6 +1090,75 @@ test('ריווחית: גיליון קיים בלי העמודות החדשות �
   assert.strictEqual(cs.rows[1][2], 'מסעדת הגפן');
 });
 
+// ---------- פריטים מריווחית (אפיון 2026-11-09) ----------
+
+test('פריטים מריווחית: items_set שומר מספר ושם, בטקסט, ומחליף את הרשימה כולה', () => {
+  const app = loadApp();
+  let r = app.call({ action: 'items_set', password: P, items: [['56', 'אקונומיקה 4 ליטר'], ['1148', 'גביע 150 מ"ל']] });
+  assert.deepStrictEqual(r, { ok: true, count: 2, updated: '2026-11-02 10:42' });
+  app.setNow({ date: '2026-11-03', stamp: '2026-11-03 08:15' });
+  r = app.call({ action: 'items_set', password: P, items: [['1500', 'כפפות ניטריל M']] });
+  assert.strictEqual(r.count, 1);
+  assert.deepStrictEqual(app.call({ action: 'items', password: P }),
+    { ok: true, items: [['1500', 'כפפות ניטריל M']], updated: '2026-11-03 08:15' });
+  const sh = app.crm.sheets['פריטי ריווחית'];
+  assert.deepStrictEqual(sh.rows[0], ['מספר פריט', 'שם']);
+  assert.strictEqual(sh.untyped, false, 'נכתב בפורמט טקסט — 0 בהתחלה לא נמחק');
+});
+
+test('פריטים מריווחית: ולידציה — מספר לא תקין, שם ריק וכפילות נופלים; שם נחתך ל-100', () => {
+  const app = loadApp();
+  const r = app.call({ action: 'items_set', password: P, items: [
+    ['12a', 'לא מספר'], ['', 'בלי מספר'], ['77', '   '], ['88', 'ראשון'], ['88', 'כפול'],
+    [' 99 ', 'א'.repeat(150)], 'לא מערך'
+  ] });
+  assert.strictEqual(r.count, 2);
+  const items = app.call({ action: 'items', password: P }).items;
+  assert.deepStrictEqual(items.map(x => x[0]), ['88', '99']);
+  assert.strictEqual(items[0][1], 'ראשון');
+  assert.strictEqual(items[1][1].length, 100);
+});
+
+test('פריטים מריווחית: שם שמתחיל בסימן נוסחה נשמר כטקסט וחוזר כמו שהוא', () => {
+  const app = loadApp();
+  app.call({ action: 'items_set', password: P, items: [['5', '=SUM(A1)']] });
+  assert.strictEqual(app.crm.sheets['פריטי ריווחית'].rows[1][1], "'=SUM(A1)");
+  assert.deepStrictEqual(app.call({ action: 'items', password: P }).items, [['5', '=SUM(A1)']]);
+});
+
+test('פריטים מריווחית: רשימה ריקה לא מוחקת את הקיימת; מעל 5,000 נדחה; בקשה גדולה עוברת', () => {
+  const app = loadApp();
+  app.call({ action: 'items_set', password: P, items: [['56', 'אקונומיקה']] });
+  assert.strictEqual(app.call({ action: 'items_set', password: P, items: [] }).error, 'no items');
+  assert.strictEqual(app.call({ action: 'items_set', password: P, items: [['x', 'y']] }).error, 'no items');
+  assert.strictEqual(app.call({ action: 'items_set', password: P }).error, 'no items');
+  const big = Array.from({ length: 5001 }, (_, i) => [String(i + 1), 'פריט ' + i]);
+  assert.ok(JSON.stringify(big).length > 100000, 'מעל המגבלה הישנה');
+  assert.strictEqual(app.call({ action: 'items_set', password: P, items: big }).error, 'too many items');
+  assert.deepStrictEqual(app.call({ action: 'items', password: P }).items, [['56', 'אקונומיקה']]);
+  const ok = app.call({ action: 'items_set', password: P, items: big.slice(0, 5000) });
+  assert.strictEqual(ok.count, 5000);
+});
+
+test('פריטים מריווחית: items בלי לשונית ⇒ ריק בלי תאריך ובלי ליצור לשונית; סיסמה שגויה נחסמת', () => {
+  const app = loadApp();
+  assert.deepStrictEqual(app.call({ action: 'items', password: P }), { ok: true, items: [], updated: '' });
+  assert.strictEqual(app.crm.sheets['פריטי ריווחית'], undefined);
+  assert.strictEqual(app.call({ action: 'items', password: 'wrong' }).error, 'unauthorized');
+  assert.strictEqual(app.call({ action: 'items_set', password: 'wrong', items: [['1', 'א']] }).error, 'unauthorized');
+});
+
+test('פריטים מריווחית: itemsJson_ שומר rivhit תקין בלבד', () => {
+  const out = JSON.parse(gs.itemsJson_([
+    { id: 'RV-1500', name: 'כפפות', qty: 2, price: 7, rivhit: '1500' },
+    { id: 'RV-x', name: 'שגוי', qty: 1, price: 1, rivhit: '15a' },
+    { id: 'ניק001', name: 'אקונומיקה', qty: 1, price: 5 }
+  ]));
+  assert.strictEqual(out[0].rivhit, '1500');
+  assert.ok(!('rivhit' in out[1]));
+  assert.deepStrictEqual(Object.keys(out[2]), ['id', 'name', 'qty', 'price']);
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

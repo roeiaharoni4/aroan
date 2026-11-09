@@ -40,6 +40,11 @@ var ITEMS_MAX_LEN = 20000;
 var TASKS_SHEET = 'משימות';
 var TASK_HEADERS = ['מזהה', 'מזהה איש קשר', 'משימה', 'תאריך', 'שעה', 'בוצעה', 'נוצרה', 'תזכורת נשלחה'];
 var TASK_KEYS = ['id', 'contactId', 'text', 'due', 'time', 'done', 'created', 'reminded'];
+// פריטים מריווחית לדף הסוכן (אפיון 2026-11-09): מספר ושם בלבד, בלי מחירים
+var ITEMS_SHEET = 'פריטי ריווחית';
+var ITEM_HEADERS = ['מספר פריט', 'שם'];
+var ITEMS_MAX = 5000;
+var ITEM_NAME_MAX = 100;
 
 var STAGES = ['חדש', 'חזרתי', 'נשלחה הצעה', 'לקוח', 'לא רלוונטי'];
 var MANUAL_SOURCES = ['וואטסאפ', 'טלפון', 'מודעה בפייסבוק', 'הפניה', 'אחר'];
@@ -134,8 +139,12 @@ function itemsJson_(items) {
     var qty = Number(it.qty);
     if (!trim_(it.id) || !(qty > 0)) continue;
     var price = Number(it.price);
-    out.push({ id: trim_(it.id).slice(0, 40), name: trim_(it.name).slice(0, 120),
-      qty: qty, price: price > 0 ? price : 0 });
+    var o = { id: trim_(it.id).slice(0, 40), name: trim_(it.name).slice(0, 120),
+      qty: qty, price: price > 0 ? price : 0 };
+    // פריט מרשימת ריווחית בדף הסוכן נושא את המק"ט שלו (אפיון 2026-11-09)
+    var rv = trim_(it.rivhit);
+    if (/^\d{1,15}$/.test(rv)) o.rivhit = rv;
+    out.push(o);
   }
   if (!out.length) return '';
   var s = JSON.stringify(out);
@@ -1132,6 +1141,48 @@ function setupNotifications() {
 
 // ---------- כניסה ----------
 
+// ---------- פריטים מריווחית (אפיון 2026-11-09) ----------
+
+function cleanItems_(items) {
+  if (!Array.isArray(items)) return { error: 'no items' };
+  if (items.length > ITEMS_MAX) return { error: 'too many items' };
+  var seen = {}, out = [];
+  items.forEach(function (it) {
+    if (!Array.isArray(it)) return;
+    var n = trim_(it[0]);
+    var name = trim_(it[1]).replace(/\s+/g, ' ');
+    if (!/^\d{1,15}$/.test(n) || !name || seen[n]) return;
+    seen[n] = true;
+    out.push([n, name.slice(0, ITEM_NAME_MAX)]);
+  });
+  return out.length ? { items: out } : { error: 'no items' };
+}
+
+// מחליף את כל הרשימה. שורות ישנות שמעבר לחדשה מתרוקנות (getLastRow מתעלם מהן).
+// sanitize_ מקבל תקרה של 101: הגרש שהוא מוסיף לשם שמתחיל בסימן נוסחה לא יחתוך
+// את התו האחרון של שם באורך 100 (השם עצמו כבר נחתך ב-cleanItems_).
+function handleItemsSet_(items) {
+  var clean = cleanItems_(items);
+  if (clean.error) return { ok: false, error: clean.error };
+  var sh = sheet_(book_(), ITEMS_SHEET, ITEM_HEADERS);
+  var old = Math.max(0, sh.getLastRow() - 1);
+  var rows = clean.items.map(function (it) { return [it[0], sanitize_(it[1], ITEM_NAME_MAX + 1)]; });
+  for (var i = rows.length; i < old; i++) rows.push(['', '']);
+  writeRows_(sh, 2, rows, ITEM_HEADERS.length);
+  var updated = now_().stamp;
+  PropertiesService.getScriptProperties().setProperty('ITEMS_UPDATED', updated);
+  return { ok: true, count: clean.items.length, updated: updated };
+}
+
+function handleItems_() {
+  var sh = book_().getSheetByName(ITEMS_SHEET);
+  var items = sh ? readRows_(sh, ['num', 'name'])
+    .filter(function (r) { return /^\d{1,15}$/.test(r.num) && r.name; })
+    .map(function (r) { return [r.num, r.name]; }) : [];
+  var updated = items.length ? (PropertiesService.getScriptProperties().getProperty('ITEMS_UPDATED') || '') : '';
+  return { ok: true, items: items, updated: updated };
+}
+
 // מציין מקום (PUT_...) או ערך קצר — חוסם הכל, כדי שהדבקת קובץ הריפו לענן
 // לא תפתח את הנתונים
 function authorized_(expected, given) {
@@ -1160,7 +1211,8 @@ function doGet() {
 
 function doPost(e) {
   var raw = (e && e.postData && e.postData.contents) || '';
-  if (!raw || raw.length > 100000) return json_({ ok: false, error: 'bad request' });
+  // 300 אלף תווים: העלאת רשימת הפריטים מריווחית (~63 אלף היום) נשארת בקשה אחת
+  if (!raw || raw.length > 300000) return json_({ ok: false, error: 'bad request' });
   var body;
   try {
     body = JSON.parse(raw);
@@ -1191,6 +1243,8 @@ function doPost(e) {
       case 'task_add': return json_(withLock_(function () { return handleTaskAdd_(body.task || {}); }));
       case 'task_update': return json_(withLock_(function () { return handleTaskUpdate_(body.id, body.fields || {}); }));
       case 'task_delete': return json_(withLock_(function () { return handleTaskDelete_(body.id); }));
+      case 'items': return json_(handleItems_());
+      case 'items_set': return json_(withLock_(function () { return handleItemsSet_(body.items); }));
     }
     return json_({ ok: false, error: 'unknown action' });
   } catch (err) {
