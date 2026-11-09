@@ -184,6 +184,62 @@ test('js/rivhit-core.js נטען כסקריפט קלאסי ומגדיר RivhitCo
   const res = ctx.RivhitCore.siteOrderDocument(ORDER, CODES, { docType: 7, customerNo: '', today: TODAY });
   assert.strictEqual(res.records.length, 2);
   assert.strictEqual(typeof ctx.RivhitCore.encodeCp1255, 'function');
+  assert.strictEqual(typeof ctx.RivhitCore.itemExportRows, 'function');
+});
+
+// ---------- פריטים מריווחית בדף הסוכן (אפיון 2026-11-09) ----------
+
+const EXPORT_CSV = 'item_num,item_name,item_part_num,sapak,item_cost_nis,item_sale_nis\r\n' +
+  '56,אקונומיקה 4 ליטר,,,7.5,12\r\n' +
+  '1500,"כפפות ניטריל ""M""",,,20,35\r\n' +
+  '1501,,,,1,2\r\n' +
+  '15a,שגוי,,,1,2\r\n' +
+  '56,כפול,,,1,2\r\n' +
+  '9001,  מגב   תעשייתי  ,,,30,45\r\n';
+
+test('ייצוא פריטים: רק מספר ושם; בלי שם, מספר לא תקין וכפילות נופלים', () => {
+  const r = S.itemExportRows(S.parseCsv(EXPORT_CSV));
+  assert.strictEqual(r.error, '');
+  assert.deepStrictEqual(r.items, [
+    ['56', 'אקונומיקה 4 ליטר'],
+    ['1500', 'כפפות ניטריל "M"'],
+    ['9001', 'מגב תעשייתי']
+  ]);
+  assert.ok(!JSON.stringify(r.items).includes('7.5'), 'מחיר העלות לא נכנס לרשימה');
+});
+
+test('ייצוא פריטים: קובץ בלי item_num/item_name ⇒ שגיאה מסבירה; קובץ ריק', () => {
+  const bad = S.itemExportRows(S.parseCsv('id,name\r\nניק001,אקונומיקה\r\n'));
+  assert.deepStrictEqual(bad.items, []);
+  assert.ok(/item_num/.test(bad.error), bad.error);
+  assert.ok(S.itemExportRows(S.parseCsv('')).error);
+  const empty = S.itemExportRows(S.parseCsv('item_num,item_name\r\n1,\r\n'));
+  assert.deepStrictEqual(empty.items, []);
+  assert.ok(empty.error);
+});
+
+test('ייצוא פריטים: UTF-16 עם BOM (כך ריווחית מייצאת) נקרא דרך decodeText', () => {
+  const T = require('../rivhit/src/text.js');
+  const bytes = new Uint8Array(Buffer.from('﻿' + EXPORT_CSV, 'utf16le'));
+  const r = S.itemExportRows(S.parseCsv(T.decodeText(bytes)));
+  assert.strictEqual(r.items.length, 3);
+  assert.strictEqual(r.items[0][0], '56');
+});
+
+test('ייצוא פריטים: שם ארוך נחתך ל-100 תווים (שדה 6 בריווחית)', () => {
+  const r = S.itemExportRows([{ item_num: '7', item_name: 'א'.repeat(150) }]);
+  assert.strictEqual(r.items[0][1].length, 100);
+});
+
+test('מסמך: פריט מריווחית נושא את המק"ט שלו; המפה החיה גוברת; מק"ט לא תקין ⇒ חסר', () => {
+  const order = Object.assign({}, ORDER, { items: [
+    { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: '1500' },
+    { id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 1, price: 5, rivhit: '999' },
+    { id: 'RV-x', name: 'מק"ט שגוי', qty: 1, price: 1, rivhit: '15a' }
+  ] });
+  const res = S.siteOrderDocument(order, CODES, { docType: 7, customerNo: '', today: TODAY });
+  assert.deepStrictEqual(res.records.map(r => r[4]), ['1500', '56']);
+  assert.deepStrictEqual(res.missing, ['מק"ט שגוי']);
 });
 
 let failed = 0;

@@ -104,7 +104,30 @@
     return (base || 'הזמנה מהאתר') + ' - ' + docLabel(docType) + '.txt';
   }
 
-  // order = {orderId, customer:{business, contact, address}, items:[{id, name, qty, price}]}
+  function rivhitOf(it) {
+    var c = String((it && it.rivhit) || '').trim();
+    return /^\d{1,15}$/.test(c) ? c : '';
+  }
+
+  // ייצוא הפריטים של ריווחית (פריטים.csv) ⇒ [[מספר, שם], ...]. רק שתי העמודות
+  // האלה יוצאות מהמכשיר — מחירי העלות ושאר העמודות נשארים בקובץ.
+  function itemExportRows(rows) {
+    rows = rows || [];
+    if (!rows.length || !('item_num' in rows[0]) || !('item_name' in rows[0])) {
+      return { items: [], error: 'זה לא קובץ ייצוא הפריטים של ריווחית (חסרות העמודות item_num ו-item_name).' };
+    }
+    var seen = {}, items = [];
+    rows.forEach(function (r) {
+      var n = String(r.item_num == null ? '' : r.item_num).trim();
+      var name = T.normalizeText(r.item_name).slice(0, 100);
+      if (!/^\d{1,15}$/.test(n) || !name || seen[n]) return;
+      seen[n] = true;
+      items.push([n, name]);
+    });
+    return { items: items, error: items.length ? '' : 'לא נמצאו בקובץ פריטים עם מספר ושם.' };
+  }
+
+  // order = {orderId, customer:{business, contact, address}, items:[{id, name, qty, price, rivhit?}]}
   // codes = rivhitCodeMap(...); opts = {docType, customerNo, today}
   function siteOrderDocument(order, codes, opts) {
     var customer = order.customer || {};
@@ -112,7 +135,9 @@
     (order.items || []).forEach(function (it) {
       var qty = num(it.qty);
       if (!qty) return;
-      var code = codes[String(it.id || '').trim()];
+      // מוצר אתר — לפי המפה החיה מ-products.csv; פריט שנבחר מרשימת ריווחית
+      // בדף הסוכן — לפי המק"ט שהוא נושא (אפיון 2026-11-09)
+      var code = codes[String(it.id || '').trim()] || rivhitOf(it);
       if (!code) { missing.push(String(it.name || it.id || '')); return; }
       lines.push({ code: code, name: String(it.name || ''), qty: qty, price: num(it.price) });
     });
@@ -142,6 +167,7 @@
     OCCASIONAL_CUSTOMER: OCCASIONAL_CUSTOMER,
     SITE_DOC_TYPES: SITE_DOC_TYPES,
     parseCsv: parseCsv,
+    itemExportRows: itemExportRows,
     rivhitCodeMap: rivhitCodeMap,
     siteOrderDate: siteOrderDate,
     siteInternalNo: siteInternalNo,
