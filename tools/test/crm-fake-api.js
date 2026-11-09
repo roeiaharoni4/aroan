@@ -84,7 +84,9 @@
               done: '', created: at(-1), reminded: '' },
             { id: 'T4', contactId: '', text: 'ספירת מלאי', due: day(3), time: '',
               done: '', created: at(-1), reminded: '' }
-        ]
+        ],
+        items: [],
+        itemsUpdated: ''
     };
     const clone = (x) => JSON.parse(JSON.stringify(x));
     const phoneOf = (raw) => window.CrmCore.normalizePhone(raw);
@@ -135,6 +137,17 @@
         }
         const c = b.id ? db.contacts.find(x => x.id === b.id) : null;
         switch (b.action) {
+            case 'items':
+                return { ok: true, items: clone(db.items), updated: db.items.length ? db.itemsUpdated : '' };
+            case 'items_set': {
+                const items = (Array.isArray(b.items) ? b.items : [])
+                    .filter(x => Array.isArray(x) && /^\d{1,15}$/.test(String(x[0]).trim()) && String(x[1] || '').trim())
+                    .map(x => [String(x[0]).trim(), String(x[1]).trim().slice(0, 100)]);
+                if (!items.length) return { ok: false, error: 'no items' };
+                db.items = items;
+                db.itemsUpdated = at(0, '12:00');
+                return { ok: true, count: items.length, updated: db.itemsUpdated };
+            }
             case 'list':
                 return { ok: true, today: today, contacts: db.contacts.map(withLate),
                     activities: clone(db.activities), tasks: clone(db.tasks.filter(t => !t.done)) };

@@ -53,6 +53,7 @@
                     <div id="crm-menu" class="crm-menu" hidden>
                         <button type="button" data-menu="refresh">רענון</button>
                         <button type="button" data-menu="import">סנכרון מגיליון ההזמנות</button>
+                        <button type="button" data-menu="items">פריטים מריווחית</button>
                         <a href="/agent/">דף הסוכן</a>
                         <button type="button" data-menu="logout">יציאה</button>
                     </div>
@@ -205,14 +206,30 @@
         </div>
     </div>
 
+    <div id="crm-items" class="crm-overlay" hidden>
+        <div class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-items-title">
+            <h2 id="crm-items-title" tabindex="-1">פריטים מריווחית</h2>
+            <p id="i-status" class="crm-card-meta" aria-live="polite"></p>
+            <p class="crm-hint">הרשימה מופיעה בחיפוש בדף הסוכן. בוחרים את קובץ ייצוא הפריטים מריווחית (פריטים.csv). נשמרים רק מספר הפריט והשם — מחירי העלות לא יוצאים מהמחשב.</p>
+            <label for="i-file" class="crm-label">קובץ ייצוא מריווחית</label>
+            <input type="file" id="i-file" class="crm-input" accept=".csv,text/csv">
+            <p id="i-found" class="crm-card-meta" aria-live="polite"></p>
+            <p id="i-error" class="crm-error" role="alert"></p>
+            <div class="crm-form-actions">
+                <button type="button" id="i-save" class="crm-btn crm-btn-primary" disabled>שמירה</button>
+                <button type="button" id="i-close" class="crm-btn">סגירה</button>
+            </div>
+        </div>
+    </div>
+
     <div id="crm-toast" class="crm-toast" role="status" aria-live="polite">
         <span id="crm-toast-text"></span>
         <button type="button" id="crm-toast-action" class="crm-toast-action" hidden></button>
     </div>
 
     <script src="crm-core.js?v=2"></script>
-    <script src="/js/rivhit-core.js?v=1"></script>
-    <script src="crm.js?v=4"></script>
+    <script src="/js/rivhit-core.js?v=2"></script>
+    <script src="crm.js?v=5"></script>
 </body>
 
 </html>

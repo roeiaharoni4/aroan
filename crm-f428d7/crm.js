@@ -31,7 +31,9 @@
         'bad time': 'השעה לא תקינה.',
         'text required': 'צריך לכתוב מה המשימה.',
         'not cancellable': 'אפשר לבטל רק הזמנה שנרשמה כאן ידנית.',
-        'bad rivhit': 'מספר הלקוח בריווחית — ספרות בלבד, עד 5.'
+        'bad rivhit': 'מספר הלקוח בריווחית — ספרות בלבד, עד 5.',
+        'no items': 'לא נמצאו פריטים לשמירה.',
+        'too many items': 'יותר מ-5,000 פריטים — זה לא נראה כמו קובץ הייצוא של ריווחית.'
     };
     // קובץ קליטה לריווחית (סבב 88): js/rivhit-core.js, ומק"טי הפריטים מ-products.csv
     const R = window.RivhitCore;
@@ -41,7 +43,8 @@
         password: '', contacts: [], activities: [], tasks: [], filter: 'todo', query: '',
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
         outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
-        rivhit: null, rivhitCodes: null
+        rivhit: null, rivhitCodes: null,
+        itemsUpload: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1078,6 +1081,80 @@
         }
     }
 
+    // ---------- פריטים מריווחית (אפיון 2026-11-09) ----------
+    // הקובץ נקרא כאן בדפדפן. לסקריפט נשלחים רק מספר הפריט והשם —
+    // מחירי העלות ושאר העמודות של הייצוא לא יוצאים מהמכשיר.
+
+    function itemsStatusText(res) {
+        if (!res || !res.ok) return errorText(res, 'לא ניתן לבדוק מה שמור — נסו שוב.');
+        if (!res.items || !res.items.length) return 'עוד לא נטענה רשימה.';
+        return 'שמורים ' + res.items.length.toLocaleString('he-IL') + ' פריטים' +
+            (res.updated ? ' · עודכן ' + C.formatStamp(res.updated) : '');
+    }
+
+    function resetItemsForm() {
+        S.itemsUpload = null;
+        $('i-file').value = '';
+        $('i-found').textContent = '';
+        $('i-error').textContent = '';
+        $('i-save').disabled = true;
+    }
+
+    async function openItems() {
+        resetItemsForm();
+        $('i-status').textContent = 'בודק מה שמור…';
+        openOverlay('crm-items', 'crm-items-title');
+        const res = await api('items');
+        if ($('crm-items').hidden) return;
+        $('i-status').textContent = itemsStatusText(res);
+    }
+
+    function readItemsFile(file) {
+        return new Promise((resolve) => {
+            const fr = new FileReader();
+            fr.onload = () => {
+                try { resolve(R.itemExportRows(R.parseCsv(R.decodeText(new Uint8Array(fr.result))))); }
+                catch (e) { resolve({ items: [], error: 'הקובץ לא נקרא.' }); }
+            };
+            fr.onerror = () => resolve({ items: [], error: 'הקובץ לא נקרא.' });
+            fr.readAsArrayBuffer(file);
+        });
+    }
+
+    async function pickItemsFile() {
+        const file = $('i-file').files && $('i-file').files[0];
+        S.itemsUpload = null;
+        $('i-save').disabled = true;
+        $('i-found').textContent = '';
+        $('i-error').textContent = '';
+        if (!file) return;
+        const parsed = await readItemsFile(file);
+        if (parsed.error) { $('i-error').textContent = parsed.error; return; }
+        S.itemsUpload = parsed.items;
+        $('i-found').textContent = 'נמצאו ' + parsed.items.length.toLocaleString('he-IL') + ' פריטים.';
+        $('i-save').disabled = false;
+    }
+
+    async function saveItems() {
+        const items = S.itemsUpload;
+        if (!items || !items.length) return;
+        if (offline()) { $('i-error').textContent = ERRORS.network; return; }
+        const btn = $('i-save');
+        btn.disabled = true;
+        btn.textContent = 'שומר…';
+        $('i-error').textContent = '';
+        const res = await api('items_set', { items: items });
+        btn.textContent = 'שמירה';
+        if (!res.ok) {
+            btn.disabled = false;
+            $('i-error').textContent = errorText(res, 'השמירה נכשלה — נסו שוב.');
+            return;
+        }
+        resetItemsForm();
+        $('i-status').textContent = 'נשמרו ' + res.count.toLocaleString('he-IL') + ' פריטים · עודכן ' + C.formatStamp(res.updated);
+        toast('רשימת הפריטים מריווחית עודכנה.');
+    }
+
     // ---------- תפריט, הודעות, רשת ----------
 
     function toggleMenu() {
@@ -1177,7 +1254,9 @@
             closeMenu();
             const k = b.getAttribute('data-menu');
             if (k === 'refresh') refresh(false);
-            else if (k === 'import') openImport();
+            // הפריט בתפריט כבר מוסתר — החלון יחזיר את הפוקוס לכפתור התפריט
+            else if (k === 'import') { $('crm-menu-btn').focus(); openImport(); }
+            else if (k === 'items') { $('crm-menu-btn').focus(); openItems(); }
             else if (k === 'logout') logout('יצאת מה-CRM.');
         });
         document.addEventListener('click', (e) => {
@@ -1193,6 +1272,9 @@
         $('f-delete').addEventListener('click', deleteContact);
         $('crm-import-run').addEventListener('click', runImport);
         $('crm-import-close').addEventListener('click', () => closeOverlay('crm-import'));
+        $('i-file').addEventListener('change', pickItemsFile);
+        $('i-save').addEventListener('click', saveItems);
+        $('i-close').addEventListener('click', () => { S.itemsUpload = null; closeOverlay('crm-items'); });
         $('r-download').addEventListener('click', downloadRivhit);
         $('r-cancel').addEventListener('click', () => { S.rivhit = null; closeOverlay('crm-rivhit-wrap'); });
         document.querySelectorAll('.crm-overlay').forEach(o => o.addEventListener('click', (e) => {
