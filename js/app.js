@@ -310,7 +310,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const CATEGORY_ORDER = ['חד פעמי ואריזות', 'ניקיון', 'מוצרי נייר', 'אביזרי ניקיון', 'ציוד משרדי',
             'שקיות', 'מתקנים', 'טיפוח והיגיינה', 'מבשמים', 'שונים', 'מוצרי יצירה'];
         const orderOf = c => { const i = CATEGORY_ORDER.indexOf(c); return i === -1 ? CATEGORY_ORDER.length : i; };
-        const categories = Array.from(new Set(PRODUCTS.map(p => p.category))).filter(c => c)
+        // פריטים מריווחית (דף הסוכן) — רק בחיפוש, לא כקטגוריה
+        const categories = Array.from(new Set(PRODUCTS.filter(p => !p.fromRivhit).map(p => p.category))).filter(c => c)
             .map((c, i) => ({ c, i }))
             .sort((a, b) => orderOf(a.c) - orderOf(b.c) || a.i - b.i)
             .map(x => x.c);
@@ -523,6 +524,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // תת-קטגוריה (עברית) — מוצגת כסינון בתוך הקטגוריה; ריק = רק תחת "הכל"
                             subcategory: (item.subcategory || "").trim(),
                             carton_qty: (item.carton_qty || "").toString().trim(),
+                            // מק"ט בריווחית (סבב 87). דף הסוכן משתמש בו כדי לא להציג פעמיים פריט מריווחית שכבר קיים באתר
+                            rivhit: (item.rivhit || "").toString().trim(),
                             brand: (item.brand || "").trim() || detectBrand(item.name), // עמודת brand בקובץ גוברת על זיהוי אוטומטי
                             // מבצע חבילה ותוקף — קיימים רק בקובץ המחירון (בקטלוג הרגיל העמודות לא קיימות)
                             bundle: (item.bundle || "").trim(),
@@ -956,7 +959,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const container = document.querySelector(".search-container");
         if (!container || document.getElementById("brand-filter")) return;
 
-        const brands = Array.from(new Set(PRODUCTS.map(p => p.brand).filter(b => b)))
+        const brands = Array.from(new Set(PRODUCTS.filter(p => !p.fromRivhit).map(p => p.brand).filter(b => b)))
             .sort((a, b) => a.localeCompare(b, 'he'));
         if (brands.length < 2) return;
 
@@ -1230,6 +1233,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         const box = document.createElement('div');
         box.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;';
         box.textContent = 'לא נמצאו מוצרים.';
+        // דף הסוכן: אין רשימת פריטים מריווחית במכשיר — אומרים למה ומה עושים
+        const rivhitHint = CONFIG.agentMode && window.AGENT && window.AGENT.rivhitHint ? window.AGENT.rivhitHint() : '';
+        if (searchQuery && rivhitHint) {
+            const p = document.createElement('p');
+            p.className = 'rivhit-more';
+            p.textContent = rivhitHint;
+            box.appendChild(p);
+        }
         if (searchQuery && CONFIG.showContact !== false && !CONFIG.agentMode && !CONFIG.directSend) {
             const p = document.createElement('p');
             p.style.cssText = 'margin: 0.75rem 0 1rem; color: #555;';
@@ -1247,6 +1258,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function renderProducts() {
+        // פריטים מריווחית בדף הסוכן (אפיון 2026-11-09): כמה מוצגים בתוצאות חיפוש.
+        // בתוך הפונקציה ולא מעליה — const ברמת ה-scope היה בתוך ה-TDZ אם renderProducts
+        // נקראת לפני שהביצוע מגיע לשורה הזו
+        const RIVHIT_SEARCH_LIMIT = 50;
         if (!productsEl) return;
         const searchQuery = (searchInput?.value || "").trim();
         productsEl.innerHTML = "";
@@ -1313,8 +1328,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         }
 
-        renderResultsBar(filtered.length);
-        if (searchQuery !== "") reportSearch(searchQuery, filtered.length);
+        // פריטים מריווחית: עד 50 בתוצאות, כדי שאות אחת לא תצייר 1,660 כרטיסים בטלפון
+        let rivhitHidden = 0;
+        if (searchQuery !== "") {
+            const rv = filtered.filter(p => p.fromRivhit);
+            if (rv.length > RIVHIT_SEARCH_LIMIT) {
+                const keep = new Set(rv.slice(0, RIVHIT_SEARCH_LIMIT));
+                rivhitHidden = rv.length - RIVHIT_SEARCH_LIMIT;
+                filtered = filtered.filter(p => !p.fromRivhit || keep.has(p));
+            }
+        }
+
+        renderResultsBar(filtered.length + rivhitHidden);
+        if (searchQuery !== "") reportSearch(searchQuery, filtered.length + rivhitHidden);
 
         if (filtered.length === 0) {
             productsEl.appendChild(renderNoResults(searchQuery));
@@ -1350,7 +1376,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             img.decoding = "async";
             img.width = 240;
             img.height = 200;
-            img.src = product.image || "#";
+            if (!product.fromRivhit) img.src = product.image || "#";
             img.alt = product.name;
 
             // Robust Image Loading Strategy
@@ -1404,7 +1430,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             // qvBtn.onmouseover = () => qvBtn.style.opacity = "1";
             // qvBtn.onmouseout = () => qvBtn.style.opacity = "0.8";
 
-            imgContainer.appendChild(img);
+            // פריט מריווחית: אין תמונה — ישר "אין תמונה", בלי בקשת רשת (כמו נפילת הטעינה)
+            if (product.fromRivhit) imgContainer.appendChild(document.createTextNode('אין תמונה'));
+            else imgContainer.appendChild(img);
             imgContainer.appendChild(qvBtn);
 
             // Share Button
@@ -1491,8 +1519,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             body.appendChild(title);
 
-            // Price - Conditional
-            if (CONFIG.showPrices) {
+            if (product.fromRivhit) {
+                const rv = document.createElement("div");
+                rv.className = "product-rivhit";
+                rv.textContent = "מריווחית · מק״ט " + product.rivhit;
+                body.appendChild(rv);
+            }
+
+            // Price - Conditional. לפריט מריווחית בלי מחיר אין שורת מחיר: מקלידים אותו בסיכום ההזמנה
+            if (CONFIG.showPrices && !(product.fromRivhit && !(product.price > 0))) {
                 const price = document.createElement("div");
                 price.className = "product-price";
                 price.textContent = product.price.toFixed(2) + " ₪";
@@ -1605,6 +1640,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             productsEl.appendChild(card);
         });
+
+        if (rivhitHidden > 0) {
+            const more = document.createElement('div');
+            more.className = 'rivhit-more';
+            more.textContent = `ועוד ${rivhitHidden} פריטים מריווחית — הוסיפו מילה לחיפוש`;
+            productsEl.appendChild(more);
+        }
     }
 
     // מעקב אירועים: שולח גם ל-dataLayer (GTM) וגם ל-GA4, באותה תבנית של order_sent.
@@ -2104,6 +2146,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (Object.keys(cart).length === 0) {
                     showToast("ההזמנה ריקה");
                     return;
+                }
+                // דף הסוכן: שורה בלי מחיר נכנסת לקובץ ריווחית ב-0 — שואלים לפני ששולחים
+                if (CONFIG.agentMode) {
+                    const noPrice = getCartItemsData().items.filter(it => !(it.price > 0)).length;
+                    if (noPrice && !confirm(noPrice === 1
+                        ? 'יש שורה אחת בלי מחיר — לשלוח בכל זאת?'
+                        : `יש ${noPrice} שורות בלי מחיר — לשלוח בכל זאת?`)) return;
                 }
                 submitOrderBtn.disabled = true;
                 const method = CONFIG.agentMode ? 'agent' : 'direct';
@@ -2938,7 +2987,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 total: itemTotal,
                 // מבצע חבילה — כדי שבמייל/בגיליון יהיה ברור כמה יחידות לתת חינם
                 bundle: product.bundle || "",
-                free: freeQty(product, qty)
+                free: freeQty(product, qty),
+                // פריט מרשימת ריווחית (דף הסוכן) נושא את המק"ט שלו לקובצי הקליטה. מוצר אתר לא:
+                // המק"ט שלו נקרא מ-products.csv החי, כך שתיקון בעורך חל גם על קבצים שמופקים אחר כך
+                ...(product.fromRivhit ? { rivhit: product.rivhit } : {})
             });
             totalItems += qty;
             totalPrice += itemTotal;
@@ -3167,9 +3219,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         qvCategory.textContent = product.category;
         qvTitle.textContent = product.name;
-        qvSku.textContent = "מק״ט: " + product.id;
+        qvSku.textContent = product.fromRivhit ? "מק״ט בריווחית: " + product.rivhit : "מק״ט: " + product.id;
 
-        if (CONFIG.showPrices) {
+        if (CONFIG.showPrices && !(product.fromRivhit && !(product.price > 0))) {
             qvPrice.style.display = 'block';
             qvPrice.textContent = product.price.toFixed(2) + " ₪";
             if (product.original_price > product.price) {
@@ -3328,7 +3380,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <img src="${product.image || '/images/logo.png'}" alt="">
                 <div class="s-info">
                     <span class="s-name">${product.name}</span>
-                    <span class="s-sku">${product.id}</span>
+                    <span class="s-sku">${product.fromRivhit ? 'מריווחית · ' + product.rivhit : product.id}</span>
                 </div>
             `;
             div.onclick = () => selectSuggestion(product);

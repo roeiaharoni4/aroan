@@ -2800,3 +2800,16 @@ body.agent-gate-open {
 [data-theme="dark"] .product-price {
     color: var(--primary-pastel);
 }
+
+/* פריטים מריווחית בדף הסוכן (אפיון 2026-11-09) */
+.product-rivhit {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.15rem;
+}
+.rivhit-more {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 0.75rem 0.5rem;
+}
