@@ -19,12 +19,17 @@
     const OUTBOX_KEY = 'aroam_agent_outbox';
     const QUOTE_KEY = 'aroam_qh_key';          // סיסמת הענן, נשמרת ע"י app.js
     const FORGOTTEN_DAYS = 21;
+    // פריטים מריווחית (אפיון 2026-11-09): הרשימה בגיליון ה-CRM, מאחורי הסיסמה שה-CRM שומר במכשיר
+    const CRM_API = 'https://script.google.com/macros/s/AKfycbzs-jtpiy0yH6MnGjy_B2wULKZ56fpQ67UgtCDDPe9o0IZH_gjYb36RBqW7vVt8wGRcbw/exec';
+    const CRM_KEY = 'aroam_crm_key';
+    const RIVHIT_KEY = 'aroam_agent_rivhit_items';
 
     // מחירי המחירון כפי שנטענו מ-products.csv, לפני החלת מחירי לקוח.
     // בלעדיהם מעבר מלקוח א' ללקוח ב' היה משאיר את המחירים של א'.
     let BASE_PRICES = {};
     let ACTIVE = null;
     let gateEl = null;
+    let rivhitLoaded = false;   // יש רשימת פריטים מריווחית (מהעותק במכשיר או מה-CRM)
 
     // ---------- עזרים ----------
 
@@ -91,6 +96,78 @@
         rec.name = String(rec.name).trim();
         saveCustomers(list);
         return rec;
+    }
+
+    // ---------- פריטים מריווחית (אפיון 2026-11-09) ----------
+    // הפריטים נכנסים ל-PRODUCTS עם fromRivhit, ו-app.js מציג אותם רק בחיפוש.
+    // מספר שכבר משויך למוצר באתר (עמודת rivhit) לא נכנס פעמיים — מוצג מוצר האתר.
+
+    function siteRivhitCodes(products) {
+        const set = new Set();
+        products.forEach(p => {
+            if (p.fromRivhit) return;
+            String(p.rivhit || '').split('|').forEach(c => { c = c.trim(); if (c) set.add(c); });
+        });
+        return set;
+    }
+
+    // מוסיף פריטים שעוד לא קיימים. מחיר הבסיס 0 — מחיר הלקוח מוחל מעליו.
+    function addRivhitItems(items) {
+        const products = window.APP.getProducts() || [];
+        const taken = siteRivhitCodes(products);
+        const have = new Set(products.filter(p => p.fromRivhit).map(p => p.rivhit));
+        let added = 0;
+        (items || []).forEach(it => {
+            const num = String((it && it[0]) || '').trim();
+            const name = String((it && it[1]) || '').trim();
+            if (!/^\d{1,15}$/.test(num) || !name || taken.has(num) || have.has(num)) return;
+            have.add(num);
+            products.push({
+                id: 'RV-' + num, name: name, price: 0, unit: '', image: '', rawImage: '',
+                category: 'מריווחית', rivhit: num, fromRivhit: true
+            });
+            BASE_PRICES['RV-' + num] = 0;
+            added++;
+        });
+        if (items && items.length) rivhitLoaded = true;
+        return added;
+    }
+
+    function crmPassword() {
+        try { return localStorage.getItem(CRM_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    // ברקע: הרשימה העדכנית מה-CRM. כשל רשת — בשקט; העותק במכשיר נשאר.
+    async function refreshRivhitItems() {
+        const password = crmPassword();
+        if (!password || navigator.onLine === false) return;
+        let data = null;
+        try {
+            const res = await fetch(CRM_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'items', password: password })
+            });
+            data = await res.json();
+        } catch (e) { return; }
+        if (!data || !data.ok) {
+            if (data && data.error === 'unauthorized') toast('לא ניתן לעדכן את פריטי ריווחית — צריך להיכנס מחדש ל-CRM');
+            return;
+        }
+        const items = Array.isArray(data.items) ? data.items : [];
+        const cached = readJson(RIVHIT_KEY, null);
+        if (cached && cached.updated === (data.updated || '') &&
+            Array.isArray(cached.items) && cached.items.length === items.length) return;
+        writeJson(RIVHIT_KEY, { updated: data.updated || '', items: items });
+        if (addRivhitItems(items)) applyCustomerPrices(ACTIVE);
+    }
+
+    // ההסבר שמופיע בדף הסוכן כשחיפוש לא מצא כלום ואין רשימה במכשיר
+    function rivhitHint() {
+        if (rivhitLoaded) return '';
+        return crmPassword()
+            ? 'רשימת הפריטים מריווחית עוד לא נטענה — בתפריט של ה-CRM: "פריטים מריווחית".'
+            : 'פריטים מריווחית יופיעו בחיפוש אחרי כניסה ל-CRM במכשיר הזה.';
     }
 
     // ---------- מחירי הלקוח ----------
@@ -562,12 +639,22 @@
         learnFromQuote((e.detail || {}).quote);
     });
 
-    window.AGENT = { activeName: () => (ACTIVE ? ACTIVE.name : '') };
+    window.AGENT = {
+        activeName: () => (ACTIVE ? ACTIVE.name : ''),
+        rivhitHint: rivhitHint,
+        refreshRivhit: refreshRivhitItems
+    };
 
     document.addEventListener('aroam:app-ready', () => {
         if (!window.APP || !window.APP.getConfig().agentMode) return;
 
+        // פריטים מריווחית מהעותק במכשיר — לפני צילום מחירי הבסיס, כדי שמחירי
+        // הלקוח (שנשמרו לפי RV-<מספר>) יחולו עליהם כבר בטעינה
+        const cachedRivhit = readJson(RIVHIT_KEY, null);
+        if (cachedRivhit && Array.isArray(cachedRivhit.items)) addRivhitItems(cachedRivhit.items);
+
         snapshotBasePrices();
+        refreshRivhitItems();
 
         hookOrderModalHistory();
 
