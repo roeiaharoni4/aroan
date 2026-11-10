@@ -50,9 +50,52 @@ PRICELIST_CATALOGS = {
 PRODUCT_IMAGE_MAX_SIDE = 1000
 PRODUCT_IMAGE_WEBP_QUALITY = 82
 
+# סימן המים של הקטלוג העסקי: הלוגו (העלה הירוק) בפינה הימנית התחתונה, באותו
+# גודל ומיקום כמו בתמונות שרועי העלה עם הסימן מהטלפון — רוחב 19.6% מהתמונה,
+# קצה ימני ב-94.8% וקצה תחתון ב-95%. הלוגו מרונדר מהקובץ הווקטורי.
+WATERMARK_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              'tools', 'assets', 'aroam_watermark.png')
+WATERMARK_WIDTH, WATERMARK_RIGHT, WATERMARK_BOTTOM = 0.196, 0.948, 0.95
+WATERMARK_MAX_HEIGHT = 0.30      # בתמונה רחבה מאוד — שהעלה לא ישתלט עליה
 
-def optimize_product_image(raw):
-    """מחזיר bytes של WebP מוקטן, או None אם אי אפשר (אין Pillow / לא תמונה)."""
+
+def _watermark_box(size, logo_size):
+    w, h = size
+    lw = round(w * WATERMARK_WIDTH)
+    lh = round(lw * logo_size[1] / logo_size[0])
+    if lh > WATERMARK_MAX_HEIGHT * h:
+        lh = round(WATERMARK_MAX_HEIGHT * h)
+        lw = round(lh * logo_size[0] / logo_size[1])
+    x2, y2 = round(w * WATERMARK_RIGHT), round(h * WATERMARK_BOTTOM)
+    return x2 - lw, y2 - lh, lw, lh
+
+
+def _has_watermark(im, box):
+    """צילום שכבר יצא מהטלפון עם העלה: בתוך המלבן ~50% פיקסלים בירוק העלה,
+    בתמונה בלי סימן — כמעט אפס (נמדד על 197 תמונות). בלי הבדיקה הזאת היה נוסף
+    עלה שני מעל הראשון, ובהזזה קטנה ביניהם רואים כפילות."""
+    x, y, lw, lh = box
+    region = im.convert('RGBA').crop((x, y, x + lw, y + lh))
+    leaf = sum(1 for r, g, b, a in region.getdata()
+               if a > 30 and 95 <= r <= 165 and 145 <= g <= 200 and b <= 90)
+    return leaf / max(1, lw * lh) > 0.25
+
+
+def add_watermark(im):
+    """מחזיר את התמונה עם העלה בפינה (RGB או RGBA, כמו שנכנסה)."""
+    from PIL import Image
+    logo = Image.open(WATERMARK_FILE).convert('RGBA')
+    x, y, lw, lh = _watermark_box(im.size, logo.size)
+    if lw < 8 or _has_watermark(im, (x, y, lw, lh)):
+        return im
+    base = im.convert('RGBA')
+    base.alpha_composite(logo.resize((lw, lh), Image.LANCZOS), (x, y))
+    return base if im.mode == 'RGBA' else base.convert('RGB')
+
+
+def optimize_product_image(raw, watermark=False):
+    """מחזיר bytes של WebP מוקטן, או None אם אי אפשר (אין Pillow / לא תמונה).
+    watermark=True — מוסיף את סימן המים (רק בהעלאה מעורך הקטלוג העסקי)."""
     try:
         from io import BytesIO
         from PIL import Image, ImageOps
@@ -61,6 +104,8 @@ def optimize_product_image(raw):
         if im.mode not in ('RGB', 'RGBA'):
             im = im.convert('RGBA' if 'A' in im.getbands() or im.mode == 'P' else 'RGB')
         im.thumbnail((PRODUCT_IMAGE_MAX_SIDE, PRODUCT_IMAGE_MAX_SIDE), Image.LANCZOS)
+        if watermark:
+            im = add_watermark(im)
         out = BytesIO()
         im.save(out, 'WEBP', quality=PRODUCT_IMAGE_WEBP_QUALITY, method=6)
         return out.getvalue()
@@ -1837,11 +1882,12 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == '/api/ping':
             # סימן חיים לסקריפטי ההפעלה: שרת ישן שנשאר פתוח מיום קודם לא מכיר
             # את הנתיב הזה, ולכן הם יודעים לדלג עליו במקום להתחבר אליו ולהיכשל
-            # רק כשמנסים לשמור. VERSION עולה כשנוסף endpoint חדש.
+            # רק כשמנסים לשמור. VERSION עולה כשנוסף endpoint חדש או כשהתנהגות
+            # השרת משתנה (3 = סימן מים בהעלאת תמונה), וסקריפטי ההפעלה דורשים את המינימום.
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'ok': True, 'app': 'aroam', 'version': 2}).encode('utf-8'))
+            self.wfile.write(json.dumps({'ok': True, 'app': 'aroam', 'version': 3}).encode('utf-8'))
         elif parsed.path == '/api/list-images':
             self.handle_list_images()
         elif parsed.path == '/api/fetch-sheet':
@@ -2221,7 +2267,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # שם קובץ בלבד — בלי נתיב, כדי שבקשה לא תוכל לכתוב מחוץ לתיקיית התמונות
             filename = os.path.basename(filename)
             raw = base64.b64decode(base64_data)
-            optimized = optimize_product_image(raw)
+            optimized = optimize_product_image(raw, watermark=bool(data.get('watermark')))
             if optimized is not None:
                 filename = os.path.splitext(filename)[0] + '.webp'
                 raw = optimized

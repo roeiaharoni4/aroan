@@ -273,12 +273,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     filename: safeFilename,
-                    data: dataUrl
+                    data: dataUrl,
+                    // השרת מוסיף את העלה בפינה (ומדלג אם הצילום כבר הגיע איתו)
+                    watermark: true
                 })
             });
             const result = await res.json();
             if (result.success) {
                 urlInput.value = result.path;
+                // התצוגה המקדימה מראה את הקובץ ששמור באתר — עם סימן המים
+                imgPreview.src = result.path + '?t=' + Date.now();
                 showToast('התמונה הועלתה בהצלחה', 'success');
             } else {
                 throw new Error(result.error);

@@ -12,7 +12,8 @@ echo "========================================"
 # נתיבי API חדשים — והשמירה נכשלת עם שגיאה לא ברורה.
 find_live_server() {
     for port in {8080..8090}; do
-        if curl -s -m 1 "http://localhost:$port/api/ping" 2>/dev/null | grep -q '"aroam"'; then
+        # גרסה 3 ומעלה = שרת שמוסיף סימן מים בהעלאת תמונה (9.11.26)
+        if curl -s -m 1 "http://localhost:$port/api/ping" 2>/dev/null | grep -Eq '"version": *([3-9]|[1-9][0-9]+)[^0-9]'; then
             echo $port
             return
         fi
