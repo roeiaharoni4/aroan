@@ -43,6 +43,29 @@ test('CSV: שורה ריקה בסוף לא הופכת לרשומה', () => {
   assert.strictEqual(S.parseCsv('a,b\n1,2\n').length, 1);
 });
 
+// ריווחית לא עוטפת שם שיש בו רק מירכאות (1 ק"ג, 30 ס"מ), ועוטפת רק כשיש בו פסיק.
+// מירכאות באמצע שדה לא עטוף הן תו רגיל, כמו בפייתון ובאקסל. נמצא 10.11.26: המפענח
+// פתח בהן שדה עטוף, בלע את השורות שאחריהן, ומקובץ הייצוא עלו 870 פריטים מתוך 1,838.
+test('CSV: מירכאות באמצע שדה לא עטוף הן תו רגיל ולא בולעות שורות', () => {
+  const text = 'item_num,item_name,item_cost_nis\r\n' +
+    '10,שמן 1 ק"ג,7.5\r\n' +
+    '11,"קרטון 20 יח׳, לבן",3\r\n' +
+    '12,מגבת 30 ס"מ,2\r\n' +
+    '13,"שקית 50/60, חזקה - ק""ג",1\r\n' +
+    '14,כפפות 12",1\r\n' +
+    '15,מגב,4\r\n';
+  const rows = S.parseCsv(text);
+  assert.deepStrictEqual(rows.map(r => r.item_name),
+    ['שמן 1 ק"ג', 'קרטון 20 יח׳, לבן', 'מגבת 30 ס"מ', 'שקית 50/60, חזקה - ק"ג', 'כפפות 12"', 'מגב']);
+  assert.deepStrictEqual(rows.map(r => r.item_cost_nis), ['7.5', '3', '2', '1', '1', '4']);
+  assert.strictEqual(S.itemExportRows(rows).items.length, 6);
+});
+
+test('CSV: שדה ריק במירכאות, ותווים אחרי מירכאות סוגרות', () => {
+  assert.deepStrictEqual(S.parseCsv('a,b\r\n"",x\r\n"ab"c,y\r\n'),
+    [{ a: '', b: 'x' }, { a: 'abc', b: 'y' }]);
+});
+
 test('מפת מק"טים: ריק לא נכנס, כמה מק"טים ⇒ הראשון', () => {
   const m = S.rivhitCodeMap(S.parseCsv(CSV));
   assert.deepStrictEqual(m, { 'ניק001': '56', 'חדפ002': '1148', 'אבי004': '1489' });

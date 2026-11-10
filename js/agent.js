@@ -112,20 +112,28 @@
     }
 
     // מוסיף פריטים שעוד לא קיימים. מחיר הבסיס 0 — מחיר הלקוח מוחל מעליו.
+    // פריט שכבר בזיכרון מקבל את השם מהרשימה החדשה: תיקון שם בריווחית, או שם
+    // שהמפענח הישן הדביק אליו שורות אחרות (10.11.26) — בלי זה העותק הישן במכשיר
+    // היה מוצג עד הטעינה הבאה.
     function addRivhitItems(items) {
         const products = window.APP.getProducts() || [];
         const taken = siteRivhitCodes(products);
-        const have = new Set(products.filter(p => p.fromRivhit).map(p => p.rivhit));
+        const have = new Map(products.filter(p => p.fromRivhit).map(p => [p.rivhit, p]));
+        const seen = new Set();
         let added = 0;
         (items || []).forEach(it => {
             const num = String((it && it[0]) || '').trim();
             const name = String((it && it[1]) || '').trim();
-            if (!/^\d{1,15}$/.test(num) || !name || taken.has(num) || have.has(num)) return;
-            have.add(num);
-            products.push({
+            if (!/^\d{1,15}$/.test(num) || !name || taken.has(num) || seen.has(num)) return;
+            seen.add(num);
+            const existing = have.get(num);
+            if (existing) { existing.name = name; return; }
+            const p = {
                 id: 'RV-' + num, name: name, price: 0, unit: '', image: '', rawImage: '',
                 category: 'מריווחית', rivhit: num, fromRivhit: true
-            });
+            };
+            have.set(num, p);
+            products.push(p);
             BASE_PRICES['RV-' + num] = 0;
             added++;
         });

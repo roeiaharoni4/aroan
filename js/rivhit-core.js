@@ -319,20 +319,22 @@
   // CSV לפי RFC 4180: מירכאות, "" בתוך מירכאות, פסיקים וירידות שורה בתוך שדה
   function parseCsv(text) {
     var s = String(text || '').replace(/^﻿/, '');
-    var rows = [], row = [], field = '', q = false;
+    // start: בתחילת שדה. רק שם מירכאות פותחות שדה עטוף; באמצע שדה לא עטוף הן תו
+    // רגיל (1 ק"ג) — כך ריווחית מייצאת, וכך פייתון ואקסל קוראים.
+    var rows = [], row = [], field = '', q = false, start = true;
     for (var i = 0; i < s.length; i++) {
       var c = s.charAt(i);
       if (q) {
         if (c === '"') {
           if (s.charAt(i + 1) === '"') { field += '"'; i++; } else q = false;
         } else field += c;
-      } else if (c === '"') q = true;
-      else if (c === ',') { row.push(field); field = ''; }
+      } else if (c === '"' && start) { q = true; start = false; }
+      else if (c === ',') { row.push(field); field = ''; start = true; }
       else if (c === '\n' || c === '\r') {
         if (c === '\r' && s.charAt(i + 1) === '\n') i++;
-        row.push(field); field = '';
+        row.push(field); field = ''; start = true;
         rows.push(row); row = [];
-      } else field += c;
+      } else { field += c; start = false; }
     }
     if (field !== '' || row.length) { row.push(field); rows.push(row); }
     var head = rows.shift() || [];
