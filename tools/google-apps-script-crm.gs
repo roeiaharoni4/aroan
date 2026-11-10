@@ -500,8 +500,13 @@ function rowOf_(o, keys) {
   });
 }
 
+// getRange לא מרחיב את הגיליון: לשונית חדשה היא 1,000 שורות, ושורה מעבר לזה זורקת
+// "The coordinates of the range are outside the dimensions of the sheet" (נמצא
+// 10.11.26 — 1,838 פריטים מריווחית; כך גם אנשי קשר ופעולות כשיעברו 1,000).
 function writeRows_(sh, startRow, rows, width) {
   if (!rows.length) return;
+  var missing = startRow + rows.length - 1 - sh.getMaxRows();
+  if (missing > 0) sh.insertRowsAfter(sh.getMaxRows(), missing);
   sh.getRange(startRow, 1, rows.length, width).setNumberFormat('@').setValues(rows);
 }
 

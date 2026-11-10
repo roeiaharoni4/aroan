@@ -446,11 +446,19 @@ test('ייבוא: מיפוי לפי שמות העמודות ופירמוט תא�
 
 // גיליון בזיכרון — מספיק מה-API של SpreadsheetApp כדי להריץ את הסקריפט.
 // untyped נדלק כשכותבים בלי פורמט טקסט ('@') — אצל גוגל זה היה מוחק את ה-0 בטלפון.
+// כמו אצל גוגל: לשונית חדשה היא 1,000 שורות, ו-getRange מעבר להן זורק — getRange
+// לא מרחיב את הגיליון (נמצא 10.11.26: רשימה של 1,838 פריטים מריווחית).
 function fakeSheet() {
   const rows = [];
+  let maxRows = 1000;
   const sh = {
     rows,
     untyped: false,
+    getMaxRows() { return maxRows; },
+    insertRowsAfter(after, n) {
+      if (after < rows.length) rows.splice(after, 0, ...Array.from({ length: n }, () => []));
+      maxRows += n;
+    },
     getLastRow() {
       for (let i = rows.length; i > 0; i--) {
         if ((rows[i - 1] || []).some(v => v !== '' && v != null)) return i;
@@ -459,6 +467,10 @@ function fakeSheet() {
     },
     getLastColumn() { return rows.reduce((m, r) => Math.max(m, (r || []).length), 0); },
     getRange(r, c, nr, nc) {
+      nr = nr || 1; nc = nc || 1;
+      if (r < 1 || c < 1 || r + nr - 1 > maxRows || c + nc - 1 > 26) {
+        throw new Error('The coordinates of the range are outside the dimensions of the sheet.');
+      }
       let fmt = null;
       const range = {
         setNumberFormat(f) { fmt = f; return range; },
@@ -479,7 +491,7 @@ function fakeSheet() {
       };
       return range;
     },
-    deleteRow(r) { rows.splice(r - 1, 1); },
+    deleteRow(r) { rows.splice(r - 1, 1); maxRows--; },
     setFrozenRows() {},
     setRightToLeft() {}
   };
@@ -1124,6 +1136,20 @@ test('פריטים מריווחית: שם שמתחיל בסימן נוסחה נ�
   app.call({ action: 'items_set', password: P, items: [['5', '=SUM(A1)']] });
   assert.strictEqual(app.crm.sheets['פריטי ריווחית'].rows[1][1], "'=SUM(A1)");
   assert.deepStrictEqual(app.call({ action: 'items', password: P }).items, [['5', '=SUM(A1)']]);
+});
+
+test('פריטים מריווחית: 1,838 פריטים — הלשונית (1,000 שורות) מתרחבת; העלאה קצרה אחריה מרוקנת את השאר', () => {
+  const app = loadApp();
+  const items = Array.from({ length: 1838 }, (_, i) => [String(i + 1), 'פריט ' + (i + 1)]);
+  const r = app.call({ action: 'items_set', password: P, items: items });
+  assert.strictEqual(r.ok, true, JSON.stringify(r));
+  assert.strictEqual(r.count, 1838);
+  assert.ok(app.crm.sheets['פריטי ריווחית'].getMaxRows() >= 1839, 'הלשונית התרחבה');
+  const back = app.call({ action: 'items', password: P }).items;
+  assert.strictEqual(back.length, 1838);
+  assert.deepStrictEqual(back[1837], ['1838', 'פריט 1838']);
+  assert.strictEqual(app.call({ action: 'items_set', password: P, items: items.slice(0, 870) }).count, 870);
+  assert.strictEqual(app.call({ action: 'items', password: P }).items.length, 870);
 });
 
 test('פריטים מריווחית: רשימה ריקה לא מוחקת את הקיימת; מעל 5,000 נדחה; בקשה גדולה עוברת', () => {
