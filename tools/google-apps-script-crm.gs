@@ -40,11 +40,19 @@ var ITEMS_MAX_LEN = 20000;
 var TASKS_SHEET = 'משימות';
 var TASK_HEADERS = ['מזהה', 'מזהה איש קשר', 'משימה', 'תאריך', 'שעה', 'בוצעה', 'נוצרה', 'תזכורת נשלחה'];
 var TASK_KEYS = ['id', 'contactId', 'text', 'due', 'time', 'done', 'created', 'reminded'];
-// פריטים מריווחית לדף הסוכן (אפיון 2026-11-09): מספר ושם בלבד, בלי מחירים
+// פריטים מריווחית לדף הסוכן (אפיון 2026-11-09): מספר, שם ומספר קטלוגי, בלי מחירים.
+// המספר הקטלוגי הוא מה שנכנס לשדה 5 בקובץ הקליטה (אפיון 2026-11-12).
 var ITEMS_SHEET = 'פריטי ריווחית';
-var ITEM_HEADERS = ['מספר פריט', 'שם'];
+var ITEM_HEADERS = ['מספר פריט', 'שם', 'מספר קטלוגי'];
 var ITEMS_MAX = 5000;
 var ITEM_NAME_MAX = 100;
+var CATALOG_MAX = 15;
+
+// מספר קטלוגי תקין או ''. אותו כלל כמו catalogCode ב-js/rivhit-core.js.
+function catalogCode_(v) {
+  var s = trim_(v);
+  return s.length <= CATALOG_MAX && /^[^\t\r\n"|]+$/.test(s) ? s : '';
+}
 
 var STAGES = ['חדש', 'חזרתי', 'נשלחה הצעה', 'לקוח', 'לא רלוונטי'];
 var MANUAL_SOURCES = ['וואטסאפ', 'טלפון', 'מודעה בפייסבוק', 'הפניה', 'אחר'];
@@ -141,9 +149,9 @@ function itemsJson_(items) {
     var price = Number(it.price);
     var o = { id: trim_(it.id).slice(0, 40), name: trim_(it.name).slice(0, 120),
       qty: qty, price: price > 0 ? price : 0 };
-    // פריט מרשימת ריווחית בדף הסוכן נושא את המק"ט שלו (אפיון 2026-11-09)
-    var rv = trim_(it.rivhit);
-    if (/^\d{1,15}$/.test(rv)) o.rivhit = rv;
+    // פריט מרשימת ריווחית בדף הסוכן נושא את המספר הקטלוגי שלו (אפיון 2026-11-12)
+    var rv = catalogCode_(it.rivhit);
+    if (rv) o.rivhit = rv;
     out.push(o);
   }
   if (!out.length) return '';
@@ -1158,21 +1166,24 @@ function cleanItems_(items) {
     var name = trim_(it[1]).replace(/\s+/g, ' ');
     if (!/^\d{1,15}$/.test(n) || !name || seen[n]) return;
     seen[n] = true;
-    out.push([n, name.slice(0, ITEM_NAME_MAX)]);
+    // זוג [מספר, שם] מעמוד ישן ⇒ בלי מספר קטלוגי (דף הסוכן לא מציג פריט כזה)
+    out.push([n, name.slice(0, ITEM_NAME_MAX), catalogCode_(it[2])]);
   });
   return out.length ? { items: out } : { error: 'no items' };
 }
 
 // מחליף את כל הרשימה. שורות ישנות שמעבר לחדשה מתרוקנות (getLastRow מתעלם מהן).
-// sanitize_ מקבל תקרה של 101: הגרש שהוא מוסיף לשם שמתחיל בסימן נוסחה לא יחתוך
-// את התו האחרון של שם באורך 100 (השם עצמו כבר נחתך ב-cleanItems_).
+// sanitize_ מקבל תקרה של אורך+1: הגרש שהוא מוסיף לערך שמתחיל בסימן נוסחה לא יחתוך
+// את התו האחרון (הערך עצמו כבר נחתך ב-cleanItems_).
 function handleItemsSet_(items) {
   var clean = cleanItems_(items);
   if (clean.error) return { ok: false, error: clean.error };
   var sh = sheet_(book_(), ITEMS_SHEET, ITEM_HEADERS);
   var old = Math.max(0, sh.getLastRow() - 1);
-  var rows = clean.items.map(function (it) { return [it[0], sanitize_(it[1], ITEM_NAME_MAX + 1)]; });
-  for (var i = rows.length; i < old; i++) rows.push(['', '']);
+  var rows = clean.items.map(function (it) {
+    return [it[0], sanitize_(it[1], ITEM_NAME_MAX + 1), sanitize_(it[2], CATALOG_MAX + 1)];
+  });
+  for (var i = rows.length; i < old; i++) rows.push(['', '', '']);
   writeRows_(sh, 2, rows, ITEM_HEADERS.length);
   var updated = now_().stamp;
   PropertiesService.getScriptProperties().setProperty('ITEMS_UPDATED', updated);
@@ -1181,9 +1192,9 @@ function handleItemsSet_(items) {
 
 function handleItems_() {
   var sh = book_().getSheetByName(ITEMS_SHEET);
-  var items = sh ? readRows_(sh, ['num', 'name'])
+  var items = sh ? readRows_(sh, ['num', 'name', 'catalog'])
     .filter(function (r) { return /^\d{1,15}$/.test(r.num) && r.name; })
-    .map(function (r) { return [r.num, r.name]; }) : [];
+    .map(function (r) { return [r.num, r.name, catalogCode_(r.catalog)]; }) : [];
   var updated = items.length ? (PropertiesService.getScriptProperties().getProperty('ITEMS_UPDATED') || '') : '';
   return { ok: true, items: items, updated: updated };
 }
