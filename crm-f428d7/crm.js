@@ -43,7 +43,7 @@
         password: '', contacts: [], activities: [], tasks: [], filter: 'todo', query: '',
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
         outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
-        rivhit: null, rivhitCodes: null,
+        rivhit: null, rivhitCodes: null, rivhitCatalogs: null,
         itemsUpload: null
     };
 
@@ -776,8 +776,9 @@
     }
 
     // ---------- קובץ לריווחית ----------
-    // הקובץ נבנה ברגע הלחיצה: מספר הלקוח העדכני מהכרטיס, מק"טי הפריטים מ-products.csv
-    // (אותו מקור שסקריפט ההזמנות משתמש בו), וסוג המסמך שנבחר כאן.
+    // הקובץ נבנה ברגע הלחיצה: מספר הלקוח העדכני מהכרטיס, המספרים הקטלוגיים של מוצרי
+    // האתר מ-products.csv (אותו מקור שסקריפט ההזמנות משתמש בו), וסוג המסמך שנבחר כאן.
+    // שדה 5 בקובץ הוא המספר הקטלוגי, לא מספר הפריט (אפיון 2026-11-12).
 
     function rivhitItems(a) {
         try {
@@ -794,11 +795,26 @@
         return S.rivhitCodes;
     }
 
-    function rivhitOrder(a, c) {
+    // פריט מריווחית (RV-<מספר>) מקבל את המספר הקטלוגי העדכני מהרשימה שב-CRM. כך גם
+    // הזמנה מלפני 12.11.26, שנשמר בה מספר הפריט, יוצאת עם המספר הקטלוגי.
+    async function rivhitCatalogs() {
+        if (S.rivhitCatalogs) return S.rivhitCatalogs;
+        const res = await api('items');
+        if (!res || !res.ok) return {};
+        const map = {};
+        (res.items || []).forEach(it => { if (it && it[0] && it[2]) map[it[0]] = it[2]; });
+        S.rivhitCatalogs = map;
+        return map;
+    }
+
+    function rivhitOrder(a, c, catalogs) {
         return {
             orderId: a.orderId,
             customer: { business: c.business, contact: c.name, address: c.address },
-            items: rivhitItems(a)
+            items: rivhitItems(a).map(it => {
+                const m = /^RV-(\d{1,15})$/.exec(String((it && it.id) || ''));
+                return m && catalogs && catalogs[m[1]] ? Object.assign({}, it, { rivhit: catalogs[m[1]] }) : it;
+            })
         };
     }
 
@@ -821,16 +837,21 @@
             $('r-error').textContent = 'רשימת המוצרים לא נטענה — בדקו את החיבור ונסו שוב.';
             return;
         }
+        let catalogs = {};
+        if (rivhitItems(a).some(it => /^RV-/.test(String((it && it.id) || '')))) {
+            try { catalogs = await rivhitCatalogs(); } catch (e) { catalogs = {}; }
+        }
         if (!S.rivhit || S.rivhit.activity !== a) return;
-        const doc = R.siteOrderDocument(rivhitOrder(a, c), codes, { docType: 7, customerNo: '', today: new Date() });
+        S.rivhit.catalogs = catalogs;
+        const doc = R.siteOrderDocument(rivhitOrder(a, c, catalogs), codes, { docType: 7, customerNo: '', today: new Date() });
         if (doc.missing.length) {
-            $('r-missing').textContent = 'לא ייכנסו לקובץ (אין מק"ט בריווחית): ' + doc.missing.join(', ');
+            $('r-missing').textContent = 'לא ייכנסו לקובץ (אין מספר קטלוגי בריווחית): ' + doc.missing.join(', ');
             $('r-missing').hidden = false;
         }
         if (doc.error || !doc.records.length) {
             $('r-error').textContent = doc.error
                 ? 'מספר ההזמנה לא בפורמט הצפוי — אי אפשר להפיק קובץ.'
-                : 'לאף מוצר בהזמנה אין מק"ט בריווחית.';
+                : 'לאף מוצר בהזמנה אין מספר קטלוגי בריווחית.';
             return;
         }
         $('r-download').disabled = false;
@@ -841,7 +862,7 @@
         if (!r || !S.rivhitCodes) return;
         const c = byId(r.activity.contactId);
         if (!c) return;
-        const doc = R.siteOrderDocument(rivhitOrder(r.activity, c), S.rivhitCodes,
+        const doc = R.siteOrderDocument(rivhitOrder(r.activity, c, r.catalogs), S.rivhitCodes,
             { docType: r.docType, customerNo: c.rivhitNo || '', today: new Date() });
         if (!doc.records.length) return;
         const blob = new Blob([R.encodeCp1255(doc.text).bytes], { type: 'text/plain' });
@@ -1081,9 +1102,21 @@
         }
     }
 
-    // ---------- פריטים מריווחית (אפיון 2026-11-09) ----------
-    // הקובץ נקרא כאן בדפדפן. לסקריפט נשלחים רק מספר הפריט והשם —
-    // מחירי העלות ושאר העמודות של הייצוא לא יוצאים מהמכשיר.
+    // ---------- פריטים מריווחית (אפיונים 2026-11-09, 2026-11-12) ----------
+    // הקובץ נקרא כאן בדפדפן. לסקריפט נשלחים רק מספר הפריט, השם והמספר הקטלוגי —
+    // מחירי העלות ושאר העמודות של הייצוא לא יוצאים מהמכשיר. פריט בקבוצה "לא פעיל"
+    // ופריט בלי מספר קטלוגי לא נשמרים: בלי מספר קטלוגי ריווחית לא מזהה אותו בקליטה.
+
+    function itemsFoundText(parsed) {
+        const n = (x) => x.toLocaleString('he-IL');
+        const parts = ['נמצאו ' + n(parsed.items.length) + ' פריטים עם מספר קטלוגי.'];
+        if (parsed.inactive) parts.push(n(parsed.inactive) + ' פריטים בקבוצה "לא פעיל" לא יישמרו.');
+        if (parsed.noCatalog) {
+            parts.push(n(parsed.noCatalog) + ' פריטים בלי מספר קטלוגי לא יישמרו — כדי שיופיעו בדף הסוכן, ' +
+                'צריך לתת להם מספר קטלוגי בריווחית ולהעלות שוב.');
+        }
+        return parts.join(' ');
+    }
 
     function itemsStatusText(res) {
         if (!res || !res.ok) return errorText(res, 'לא ניתן לבדוק מה שמור — נסו שוב.');
@@ -1131,7 +1164,7 @@
         const parsed = await readItemsFile(file);
         if (parsed.error) { $('i-error').textContent = parsed.error; return; }
         S.itemsUpload = parsed.items;
-        $('i-found').textContent = 'נמצאו ' + parsed.items.length.toLocaleString('he-IL') + ' פריטים.';
+        $('i-found').textContent = itemsFoundText(parsed);
         $('i-save').disabled = false;
     }
 
@@ -1151,6 +1184,7 @@
             return;
         }
         resetItemsForm();
+        S.rivhitCatalogs = null;
         $('i-status').textContent = 'נשמרו ' + res.count.toLocaleString('he-IL') + ' פריטים · עודכן ' + C.formatStamp(res.updated);
         toast('רשימת הפריטים מריווחית עודכנה.');
     }

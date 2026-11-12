@@ -210,9 +210,9 @@
         <div class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-items-title">
             <h2 id="crm-items-title" tabindex="-1">פריטים מריווחית</h2>
             <p id="i-status" class="crm-card-meta" aria-live="polite"></p>
-            <p class="crm-hint">הרשימה מופיעה בחיפוש בדף הסוכן. בוחרים את קובץ ייצוא הפריטים מריווחית (פריטים.csv). נשמרים רק מספר הפריט והשם — מחירי העלות לא יוצאים מהמחשב.</p>
+            <p class="crm-hint">הרשימה מופיעה בחיפוש בדף הסוכן. בוחרים את קובץ ייצוא הפריטים מריווחית (פריטים.csv או פריטים.txt). נשמרים רק מספר הפריט, השם והמספר הקטלוגי — מחירי העלות לא יוצאים מהמחשב. פריט בקבוצה "לא פעיל" ופריט בלי מספר קטלוגי לא נשמרים.</p>
             <label for="i-file" class="crm-label">קובץ ייצוא מריווחית</label>
-            <input type="file" id="i-file" class="crm-input" accept=".csv,text/csv">
+            <input type="file" id="i-file" class="crm-input" accept=".csv,.txt,text/csv,text/plain">
             <p id="i-found" class="crm-card-meta" aria-live="polite"></p>
             <p id="i-error" class="crm-error" role="alert"></p>
             <div class="crm-form-actions">
@@ -228,8 +228,8 @@
     </div>
 
     <script src="crm-core.js?v=2"></script>
-    <script src="/js/rivhit-core.js?v=3"></script>
-    <script src="crm.js?v=5"></script>
+    <script src="/js/rivhit-core.js?v=4"></script>
+    <script src="crm.js?v=6"></script>
 </body>
 
 </html>

@@ -321,8 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
             carton_qty: cartonQtyInput.value.trim(),
             packaging: packagingInput.value.trim(),
             description: descInput.value.trim(),
-            // מספרים בלבד; כמה מק"טים נשמרים מופרדים ב-|
-            rivhit: (rivhitInput.value.match(/\d+/g) || []).join('|')
+            // המספר הקטלוגי בריווחית (כמו C203) — מה שנכנס לשדה 5 בקובץ הקליטה.
+            // מפרידים בפסיק, ברווח או ב-|; עד 15 תווים למספר; נשמרים מופרדים ב-|
+            rivhit: rivhitInput.value.split(/[\s,|]+/)
+                .map(s => s.replace(/["\t]/g, '').trim().slice(0, 15)).filter(Boolean).join('|')
         };
         
         const originalId = originalIdInput.value;

@@ -98,9 +98,18 @@
         return rec;
     }
 
-    // ---------- פריטים מריווחית (אפיון 2026-11-09) ----------
+    // ---------- פריטים מריווחית (אפיונים 2026-11-09, 2026-11-12) ----------
     // הפריטים נכנסים ל-PRODUCTS עם fromRivhit, ו-app.js מציג אותם רק בחיפוש.
-    // מספר שכבר משויך למוצר באתר (עמודת rivhit) לא נכנס פעמיים — מוצג מוצר האתר.
+    // פריט שכבר משויך למוצר באתר (עמודת rivhit) לא נכנס פעמיים — מוצג מוצר האתר.
+    // הרשימה מה-CRM היא שלשות [מספר פריט, שם, מספר קטלוגי]. rivhit של הפריט הוא
+    // המספר הקטלוגי — זה מה שנכנס לשדה 5 בקובץ הקליטה. המזהה נשאר RV-<מספר פריט>,
+    // כי לפיו נשמרים המחירים של הלקוחות.
+
+    // אותו כלל כמו catalogCode ב-js/rivhit-core.js (דף הסוכן לא טוען אותו)
+    function catalogCode(v) {
+        const s = String(v == null ? '' : v).trim();
+        return s.length <= 15 && /^[^\t\r\n"|]+$/.test(s) ? s : '';
+    }
 
     function siteRivhitCodes(products) {
         const set = new Set();
@@ -112,32 +121,38 @@
     }
 
     // מוסיף פריטים שעוד לא קיימים. מחיר הבסיס 0 — מחיר הלקוח מוחל מעליו.
-    // פריט שכבר בזיכרון מקבל את השם מהרשימה החדשה: תיקון שם בריווחית, או שם
-    // שהמפענח הישן הדביק אליו שורות אחרות (10.11.26) — בלי זה העותק הישן במכשיר
-    // היה מוצג עד הטעינה הבאה.
+    // פריט שכבר בזיכרון מקבל את השם ואת המספר הקטלוגי מהרשימה החדשה: תיקון בריווחית,
+    // או שם שהמפענח הישן הדביק אליו שורות אחרות (10.11.26).
+    // פריט בלי מספר קטלוגי לא נכנס: בלי מספר קטלוגי ריווחית לא מזהה אותו בקליטה ופותחת
+    // פריט חדש. כך גם עותק ישן במכשיר (זוגות, לפני 12.11.26) לא מוסיף אף פריט עד
+    // שהרשימה החדשה מגיעה מה-CRM.
     function addRivhitItems(items) {
         const products = window.APP.getProducts() || [];
         const taken = siteRivhitCodes(products);
-        const have = new Map(products.filter(p => p.fromRivhit).map(p => [p.rivhit, p]));
+        const have = new Map(products.filter(p => p.fromRivhit).map(p => [p.id, p]));
         const seen = new Set();
         let added = 0;
         (items || []).forEach(it => {
             const num = String((it && it[0]) || '').trim();
             const name = String((it && it[1]) || '').trim();
-            if (!/^\d{1,15}$/.test(num) || !name || taken.has(num) || seen.has(num)) return;
+            const code = catalogCode(it && it[2]);
+            if (!/^\d{1,15}$/.test(num) || !name || !code || seen.has(num)) return;
+            if (taken.has(code) || taken.has(num)) return;
             seen.add(num);
-            const existing = have.get(num);
-            if (existing) { existing.name = name; return; }
+            const id = 'RV-' + num;
+            const existing = have.get(id);
+            if (existing) { existing.name = name; existing.rivhit = code; return; }
             const p = {
-                id: 'RV-' + num, name: name, price: 0, unit: '', image: '', rawImage: '',
-                category: 'מריווחית', rivhit: num, fromRivhit: true
+                id: id, name: name, price: 0, unit: '', image: '', rawImage: '',
+                category: 'מריווחית', rivhit: code, fromRivhit: true
             };
-            have.set(num, p);
+            have.set(id, p);
             products.push(p);
-            BASE_PRICES['RV-' + num] = 0;
+            BASE_PRICES[id] = 0;
             added++;
         });
-        if (items && items.length) rivhitLoaded = true;
+        // רשימה ישנה בלי מספרים קטלוגיים לא נחשבת טעונה — כך ההסבר בחיפוש מפנה להעלאה ב-CRM
+        if (items && items.some(it => catalogCode(it && it[2]))) rivhitLoaded = true;
         return added;
     }
 
