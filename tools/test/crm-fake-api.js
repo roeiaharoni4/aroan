@@ -208,6 +208,32 @@
                 db.contacts = db.contacts.filter(x => x.id !== c.id);
                 return { ok: true, deleted: n };
             }
+            // מיזוג כרטיסים — כמו handleMerge_ בסקריפט, בקיצור (סבב 93)
+            case 'merge': {
+                const from = db.contacts.find(x => x.id === b.from);
+                const to = db.contacts.find(x => x.id === b.to);
+                if (!from || !to) return { ok: false, error: 'not found' };
+                if (from.id === to.id) return { ok: false, error: 'same contact' };
+                ['name', 'business', 'email', 'address', 'rivhitNo'].forEach(k => { if (!to[k] && from[k]) to[k] = from[k]; });
+                const extra = String(to.phones || '').split(/\s+/).filter(Boolean);
+                [from.phone].concat(String(from.phones || '').split(/\s+/)).filter(Boolean).forEach(p => {
+                    if (p === to.phone || extra.includes(p)) return;
+                    if (!to.phone) to.phone = p; else extra.push(p);
+                });
+                to.phones = extra.slice(0, 5).join(' ');
+                let moved = 0;
+                db.activities.forEach(a => { if (a.contactId === from.id) { a.contactId = to.id; moved++; } });
+                const tasks = db.tasks.filter(t => t.contactId === from.id);
+                tasks.forEach(t => { t.contactId = to.id; });
+                if (from.stage === 'לקוח' || db.activities.some(a => a.contactId === to.id && a.type === 'הזמנה')) to.stage = 'לקוח';
+                to.orders = String(db.activities.filter(a => a.contactId === to.id && a.type === 'הזמנה').length);
+                db.activities.push({ id: nextId('A'), contactId: to.id, at: at(0, '12:00'), type: 'מיזוג',
+                    text: 'מוזג מהכרטיס של ' + (from.business || from.name) + (from.phone ? ' (' + from.phone + ')' : '') +
+                        ' — ' + moved + ' פעולות ו-' + tasks.length + ' משימות',
+                    orderId: '', pdf: '', quoteLink: '', by: 'עמוד' });
+                db.contacts = db.contacts.filter(x => x.id !== from.id);
+                return { ok: true, id: to.id, moved: moved, tasks: tasks.length };
+            }
             case 'import':
                 return { ok: true, dryRun: b.dryRun !== false, summary: { rows: 75, created: 2, updated: 1,
                     activities: 3, skipped: { chain: 63, committee: 0, consumer: 5, test: 2, noKey: 0,

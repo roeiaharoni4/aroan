@@ -45,8 +45,8 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js"></script>
-    <script src="/js/app.js?v=71" defer></script>
-    <script src="/js/agent.js?v=6" defer></script>
+    <script src="/js/app.js?v=72" defer></script>
+    <script src="/js/agent.js?v=7" defer></script>
 </head>
 
 <body>
@@ -210,6 +210,16 @@
                         onclick="window.APP.shareCartLink()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>שתף קישור (סנכרון)
                     </button>
+                    <!-- סוג קובץ הקליטה לריווחית שמצורף למייל, על מספר הלקוח מה-CRM (סבב 93; js/agent.js) -->
+                    <label for="rivhit-doc-type" style="display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; color:var(--text-main);">
+                        מסמך בריווחית
+                        <select id="rivhit-doc-type" style="font:inherit; font-size:16px; padding:0.45rem 0.5rem; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-surface); color:var(--text-main);">
+                            <option value="7">הזמנה</option>
+                            <option value="4">תעודת משלוח</option>
+                            <option value="1">חשבונית מס</option>
+                            <option value="6">הצעת מחיר</option>
+                        </select>
+                    </label>
                     <button id="submit-order-btn" class="btn btn-success"
                         style="background:var(--primary); color:white; min-width: 170px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4z"></path></svg>שלח הזמנה

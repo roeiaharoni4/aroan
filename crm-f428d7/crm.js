@@ -32,6 +32,7 @@
         'text required': 'צריך לכתוב מה המשימה.',
         'not cancellable': 'אפשר לבטל רק הזמנה שנרשמה כאן ידנית.',
         'bad rivhit': 'מספר הלקוח בריווחית — ספרות בלבד, עד 5.',
+        'same contact': 'אי אפשר לקשר כרטיס לעצמו.',
         'no items': 'לא נמצאו פריטים לשמירה.',
         'too many items': 'יותר מ-5,000 פריטים — זה לא נראה כמו קובץ הייצוא של ריווחית.'
     };
@@ -44,7 +45,7 @@
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
         outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
         rivhit: null, rivhitCodes: null, rivhitCatalogs: null,
-        itemsUpload: null
+        itemsUpload: null, merge: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -290,12 +291,29 @@
 
         const who = [c.business ? c.name : '', C.formatPhone(c.phone)].filter(Boolean).join(' · ');
         if (who) host.appendChild(el('p', 'crm-card-who', who));
+        // טלפונים מכרטיסים שמוזגו לכרטיס הזה — הזמנה מהם מגיעה לכאן (סבב 93)
+        const extra = String(c.phones || '').split(/\s+/).filter(Boolean);
+        if (extra.length) host.appendChild(el('p', 'crm-card-meta', 'טלפונים נוספים: ' + extra.map(C.formatPhone).join(', ')));
         if (c.email) host.appendChild(el('p', 'crm-card-meta', c.email));
         if (c.address) host.appendChild(el('p', 'crm-card-meta', c.address));
         host.appendChild(el('p', 'crm-card-meta', 'מקור: ' + (c.source || '—')));
-        host.appendChild(el('p', 'crm-card-meta', c.rivhitNo
+        // הקבצים לריווחית יוצאים על מספר הלקוח שבכרטיס; בלי מספר — על 118 (סבב 93)
+        const rv = el('p', 'crm-card-meta', c.rivhitNo
             ? 'ריווחית: לקוח ' + c.rivhitNo
-            : 'ריווחית: אין מספר לקוח (יוצא כלקוח מזדמן 118)'));
+            : 'ריווחית: אין מספר לקוח — הקבצים יוצאים על 118 (לקוחות שונים). ');
+        if (!c.rivhitNo) {
+            const add = el('button', 'crm-link-btn crm-inline-link', 'הוספת מספר לקוח בריווחית');
+            add.type = 'button';
+            add.addEventListener('click', () => { openForm('edit', c.id); $('f-rivhit').focus(); });
+            rv.appendChild(add);
+        }
+        host.appendChild(rv);
+        const mergeLine = el('p', 'crm-card-meta');
+        const mergeBtn = el('button', 'crm-link-btn crm-inline-link', 'קישור ללקוח קיים');
+        mergeBtn.type = 'button';
+        mergeBtn.addEventListener('click', openMerge);
+        mergeLine.appendChild(mergeBtn);
+        host.appendChild(mergeLine);
         host.appendChild(actions(c, false));
         host.appendChild(ordersBlock(c));
 
@@ -821,7 +839,8 @@
     async function openRivhit(a) {
         const c = byId(a.contactId);
         if (!c) return;
-        S.rivhit = { activity: a, docType: a.type === 'בקשת הצעת מחיר' ? 6 : 7 };
+        // הזמנה מהאתר יוצאת כהצעת מחיר, והזמנה מדף הסוכן כהזמנה (סבב 93)
+        S.rivhit = { activity: a, docType: /^SL-/.test(String(a.orderId || '')) ? 7 : 6 };
         $('r-customer').textContent = (C.displayName(c) + ' · ' + a.orderId + ' · ') +
             (c.rivhitNo ? 'לקוח ' + c.rivhitNo : 'לקוח מזדמן (118) — אין מספר בכרטיס');
         chipGroup($('r-type'), R.SITE_DOC_TYPES.map(t => [t.code, t.label]), S.rivhit.docType,
@@ -875,6 +894,76 @@
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         closeOverlay('crm-rivhit-wrap', () => toast('הקובץ ירד: ' + doc.fileName));
+    }
+
+    // ---------- קישור ללקוח קיים (סבב 93) ----------
+    // הזמנה מהאתר מטלפון שה-CRM לא הכיר פתחה כרטיס חדש. הכרטיס הזה מתמזג לכרטיס הקיים:
+    // ההזמנות, הפעולות והמשימות עוברות, הטלפון נשמר שם כטלפון נוסף, והכרטיס הזה נמחק.
+
+    function openMerge() {
+        const c = byId(S.openId);
+        if (!c) return;
+        S.merge = { from: c.id, to: null };
+        $('m-from').textContent = 'מקשרים את: ' + C.displayName(c) + (c.phone ? ' · ' + C.formatPhone(c.phone) : '');
+        $('m-search').value = '';
+        $('m-error').textContent = '';
+        renderMergeResults();
+        openOverlay('crm-merge', 'm-search');
+    }
+
+    function renderMergeResults() {
+        const m = S.merge;
+        const host = $('m-results');
+        host.textContent = '';
+        const q = $('m-search').value.trim();
+        const to = m && m.to ? byId(m.to) : null;
+        $('m-confirm').hidden = !to;
+        $('m-go').hidden = !to;
+        if (to) {
+            const from = byId(m.from);
+            const acts = S.activities.filter(a => a.contactId === m.from).length;
+            const tasks = S.tasks.filter(t => t.contactId === m.from).length;
+            $('m-confirm').textContent = 'הכרטיס של ' + C.displayName(from) + ' יימחק. ' +
+                acts + ' פעולות ו-' + tasks + ' משימות יעברו ל' + C.displayName(to) +
+                (from.phone ? ', והטלפון ' + C.formatPhone(from.phone) + ' יישמר אצלו כטלפון נוסף' : '') +
+                '. אי אפשר לבטל את זה.';
+        }
+        if (!m || !q) return;
+        const found = C.filterContacts(S.contacts, 'all', q, S.today).filter(x => x.id !== m.from).slice(0, 8);
+        if (!found.length) { host.appendChild(el('li', 'crm-card-meta', 'לא נמצא לקוח בשם או בטלפון הזה.')); return; }
+        found.forEach(x => {
+            const li = el('li');
+            const b = el('button', 'crm-merge-pick' + (m.to === x.id ? ' is-on' : ''),
+                C.displayName(x) + (x.phone ? ' · ' + C.formatPhone(x.phone) : '') +
+                (x.rivhitNo ? ' · ריווחית ' + x.rivhitNo : ''));
+            b.type = 'button';
+            b.setAttribute('aria-pressed', String(m.to === x.id));
+            b.addEventListener('click', () => { m.to = x.id; renderMergeResults(); $('m-go').focus(); });
+            li.appendChild(b);
+            host.appendChild(li);
+        });
+    }
+
+    async function runMerge() {
+        const m = S.merge;
+        if (!m || !m.to) return;
+        if (offline()) { $('m-error').textContent = ERRORS.network; return; }
+        const btn = $('m-go');
+        btn.disabled = true;
+        btn.textContent = 'מקשר…';
+        $('m-error').textContent = '';
+        const res = await api('merge', { from: m.from, to: m.to });
+        btn.disabled = false;
+        btn.textContent = 'קישור';
+        if (!res.ok) { $('m-error').textContent = errorText(res, 'הקישור נכשל — נסו שוב.'); return; }
+        S.merge = null;
+        closeOverlay('crm-merge', async () => {
+            await refresh(true);
+            // הכרטיס שנמחק כבר לא קיים — ההיסטוריה מצביעה על הכרטיס שנשאר
+            history.replaceState({ crm: 'card', id: res.id }, '', '#c=' + encodeURIComponent(res.id));
+            showCard(res.id);
+            toast('הכרטיסים קושרו.');
+        });
     }
 
     // ---------- חלונות ----------
@@ -1315,6 +1404,9 @@
         $('i-save').addEventListener('click', saveItems);
         $('i-close').addEventListener('click', () => { S.itemsUpload = null; closeOverlay('crm-items'); });
         $('r-download').addEventListener('click', downloadRivhit);
+        $('m-search').addEventListener('input', () => { if (S.merge) { S.merge.to = null; renderMergeResults(); } });
+        $('m-go').addEventListener('click', runMerge);
+        $('m-cancel').addEventListener('click', () => { S.merge = null; closeOverlay('crm-merge'); });
         $('r-cancel').addEventListener('click', () => { S.rivhit = null; closeOverlay('crm-rivhit-wrap'); });
         document.querySelectorAll('.crm-overlay').forEach(o => o.addEventListener('click', (e) => {
             if (e.target !== o) return;

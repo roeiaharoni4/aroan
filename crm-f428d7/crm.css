@@ -189,6 +189,25 @@ h2.crm-label, p.crm-label, label.crm-label {
 .crm-hint { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--crm-muted); }
 /* "קובץ לריווחית" בשורת הקישורים של ההיסטוריה — נראה כמו הקישורים לצדו */
 .crm-history-links .crm-link-btn { padding: 0; font-size: inherit; }
+/* קישור בתוך שורת פרטים בכרטיס ("הוספת מספר לקוח בריווחית", "קישור ללקוח קיים") */
+.crm-inline-link { padding: 0.15rem 0; font-size: inherit; min-height: 32px; }
+
+/* קישור ללקוח קיים (סבב 93) */
+.crm-merge-results {
+    list-style: none; margin: 0.5rem 0 0; padding: 0;
+    display: grid; gap: 0.4rem; max-height: 40vh; overflow-y: auto;
+}
+.crm-merge-pick {
+    width: 100%; min-height: 44px; padding: 0.55rem 0.75rem; text-align: start;
+    border: 1px solid var(--crm-border); border-radius: 8px;
+    background: var(--crm-surface); color: var(--crm-text); font: inherit; cursor: pointer;
+}
+.crm-merge-pick.is-on { border-color: var(--crm-primary); box-shadow: inset 0 0 0 2px var(--crm-primary); font-weight: 700; }
+.crm-merge-confirm {
+    margin: 0.6rem 0 0; padding: 0.6rem 0.75rem; border-radius: 8px;
+    background: #FDF0D5; color: #7A4A00; font-size: 0.9rem;
+}
+[data-theme="dark"] .crm-merge-confirm { background: #4A3200; color: #FAD89A; }
 
 /* --- חלונות --- */
 .crm-overlay {

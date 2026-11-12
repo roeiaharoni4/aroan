@@ -72,6 +72,13 @@ test('חיפוש: שם, עסק וספרות מהטלפון בכל צורה', () 
   assert.strictEqual(C.filterContacts(list, 'all', '12', TODAY).length, 0);
 });
 
+test('חיפוש: גם לפי טלפון נוסף (מכרטיס שמוזג, סבב 93)', () => {
+  const list = [mk({ id: 'a' }), mk({ id: 'b', business: 'מוסך הגליל', phone: '0547781203', phones: '0549998888 036346000' })];
+  assert.deepStrictEqual(C.filterContacts(list, 'all', '054-999', TODAY).map(c => c.id), ['b']);
+  assert.deepStrictEqual(C.filterContacts(list, 'all', '03-6346000', TODAY).map(c => c.id), ['b']);
+  assert.strictEqual(C.filterContacts([mk({ phones: '' })], 'all', '0549998888', TODAY).length, 0);
+});
+
 test('תוצאה: לא ענה — חדש הופך לחזרתי ולחזור מחר; לקוח לא משתנה', () => {
   let r = C.applyOutcome(mk({}), 'no_answer', 'call', TODAY, null, '');
   assert.deepStrictEqual(r.fields, { stage: 'חזרתי', followUp: '2026-11-03' });

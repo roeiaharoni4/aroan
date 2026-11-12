@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="crm.css?v=4">
+    <link rel="stylesheet" href="crm.css?v=5">
 </head>
 
 <body class="crm-page">
@@ -222,14 +222,31 @@
         </div>
     </div>
 
+    <div id="crm-merge" class="crm-overlay" hidden>
+        <div class="crm-sheet" role="dialog" aria-modal="true" aria-labelledby="crm-merge-title">
+            <h2 id="crm-merge-title" tabindex="-1">קישור ללקוח קיים</h2>
+            <p id="m-from" class="crm-card-meta"></p>
+            <p class="crm-hint">הכרטיס הזה יתמזג לכרטיס שתבחרו: ההזמנות, הפעולות והמשימות עוברות אליו, הטלפון נשמר שם כטלפון נוסף — הזמנה הבאה ממנו תגיע לשם לבד — והכרטיס הזה נמחק.</p>
+            <label for="m-search" class="crm-label">חיפוש הלקוח הקיים</label>
+            <input type="search" id="m-search" class="crm-input" placeholder="שם, עסק או טלפון" autocomplete="off">
+            <ul id="m-results" class="crm-merge-results" aria-label="לקוחות שנמצאו"></ul>
+            <p id="m-confirm" class="crm-merge-confirm" hidden></p>
+            <p id="m-error" class="crm-error" role="alert"></p>
+            <div class="crm-form-actions">
+                <button type="button" id="m-go" class="crm-btn crm-btn-primary" hidden>קישור</button>
+                <button type="button" id="m-cancel" class="crm-btn">ביטול</button>
+            </div>
+        </div>
+    </div>
+
     <div id="crm-toast" class="crm-toast" role="status" aria-live="polite">
         <span id="crm-toast-text"></span>
         <button type="button" id="crm-toast-action" class="crm-toast-action" hidden></button>
     </div>
 
-    <script src="crm-core.js?v=2"></script>
+    <script src="crm-core.js?v=3"></script>
     <script src="/js/rivhit-core.js?v=4"></script>
-    <script src="crm.js?v=6"></script>
+    <script src="crm.js?v=7"></script>
 </body>
 
 </html>

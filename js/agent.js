@@ -662,14 +662,40 @@
         learnFromQuote((e.detail || {}).quote);
     });
 
+    // ---------- סוג המסמך לריווחית (סבב 93) ----------
+    // הבורר ליד "שלח הזמנה" קובע את סוג קובץ הקליטה שמצורף למייל — על מספר הלקוח
+    // מהכרטיס ב-CRM. הבחירה נזכרת במכשיר. app.js קורא אותה כשהוא בונה את הפיילוד.
+    const DOC_KEY = 'aroam_agent_rivhit_doc';
+    const DOC_TYPES = ['7', '4', '1', '6'];
+
+    function setupDocType() {
+        const sel = document.getElementById('rivhit-doc-type');
+        if (!sel) return;
+        let saved = '';
+        try { saved = localStorage.getItem(DOC_KEY) || ''; } catch (e) { saved = ''; }
+        if (DOC_TYPES.includes(saved)) sel.value = saved;
+        sel.addEventListener('change', () => {
+            try { localStorage.setItem(DOC_KEY, sel.value); } catch (e) { /* בלי זיכרון — רק לפעם הזאת */ }
+        });
+    }
+
+    function rivhitDocType() {
+        const sel = document.getElementById('rivhit-doc-type');
+        const v = sel ? sel.value : '';
+        return Number(DOC_TYPES.includes(v) ? v : '7');
+    }
+
     window.AGENT = {
         activeName: () => (ACTIVE ? ACTIVE.name : ''),
         rivhitHint: rivhitHint,
-        refreshRivhit: refreshRivhitItems
+        refreshRivhit: refreshRivhitItems,
+        rivhitDocType: rivhitDocType
     };
 
     document.addEventListener('aroam:app-ready', () => {
         if (!window.APP || !window.APP.getConfig().agentMode) return;
+
+        setupDocType();
 
         // פריטים מריווחית מהעותק במכשיר — לפני צילום מחירי הבסיס, כדי שמחירי
         // הלקוח (שנשמרו לפי RV-<מספר>) יחולו עליהם כבר בטעינה

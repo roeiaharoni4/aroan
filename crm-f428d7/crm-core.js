@@ -115,8 +115,11 @@
         var digits = q.replace(/\D/g, '');
         if (digits.length < 3) return false;
         if (digits.indexOf('972') === 0) digits = '0' + digits.slice(3);
-        var phone = String(c.phone || '');
-        return phone.indexOf(digits) >= 0 || phone.replace(/^0/, '').indexOf(digits) >= 0;
+        // הטלפון הראשי, וגם הטלפונים הנוספים מכרטיסים שמוזגו (סבב 93)
+        var phones = [String(c.phone || '')].concat(String(c.phones || '').split(/\s+/)).filter(Boolean);
+        return phones.some(function (phone) {
+            return phone.indexOf(digits) >= 0 || phone.replace(/^0/, '').indexOf(digits) >= 0;
+        });
     }
     function cmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
     // "לטיפול": חדשים (החדש למעלה), באיחור (הישן למעלה), של היום. "לא הזמינו": המאחר ביותר

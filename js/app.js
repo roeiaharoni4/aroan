@@ -3022,7 +3022,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             // business נושא את החדש והשדה הזה את המקורי — אחרת אי אפשר לדעת
             // במשלוח לאיזו חנות ההזמנה נועדה במקור.
             originalBranch: ORIGINAL_BRANCH || '',
-            customer: getCustomerDetails() // פרטי הלקוח (null בגרסת סוכן)
+            customer: getCustomerDetails(), // פרטי הלקוח (null בגרסת סוכן)
+            // דף הסוכן: סוג קובץ הקליטה לריווחית שמצורף למייל (סבב 93; js/agent.js)
+            ...(CONFIG.agentMode && window.AGENT && window.AGENT.rivhitDocType
+                ? { rivhitDocType: window.AGENT.rivhitDocType() } : {})
         };
     }
 
