@@ -803,10 +803,12 @@ function handleMerge_(fromId, toId) {
   recomputeOrders_(model, to);
 
   var label = trim_(from.business) || trim_(from.name) || from.phone || from.id;
+  var count = function (n, one, many) { return n === 1 ? one : n + ' ' + many; };
+  var what = [moved ? count(moved, 'פעולה אחת', 'פעולות') : '',
+    tasks.length ? count(tasks.length, 'משימה אחת', 'משימות') : ''].filter(Boolean).join(' ו');
   var log = {
     id: newId_('A'), contactId: to.id, at: now.stamp, type: 'מיזוג',
-    text: 'מוזג מהכרטיס של ' + label + (from.phone ? ' (' + from.phone + ')' : '') +
-      ' — ' + moved + ' פעולות ו-' + tasks.length + ' משימות',
+    text: 'מוזג מהכרטיס של ' + label + (from.phone ? ' (' + from.phone + ')' : '') + (what ? ' — ' + what : ''),
     orderId: '', pdf: '', quoteLink: '', by: 'עמוד', items: ''
   };
   // קודם כותבים, ורק אחר כך מוחקים את השורה של from — מחיקה מזיזה את השורות שמתחתיה

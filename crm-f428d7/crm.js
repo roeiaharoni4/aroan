@@ -923,10 +923,13 @@
             const from = byId(m.from);
             const acts = S.activities.filter(a => a.contactId === m.from).length;
             const tasks = S.tasks.filter(t => t.contactId === m.from).length;
-            $('m-confirm').textContent = 'הכרטיס של ' + C.displayName(from) + ' יימחק. ' +
-                acts + ' פעולות ו-' + tasks + ' משימות יעברו ל' + C.displayName(to) +
-                (from.phone ? ', והטלפון ' + C.formatPhone(from.phone) + ' יישמר אצלו כטלפון נוסף' : '') +
-                '. אי אפשר לבטל את זה.';
+            const count = (n, one, many) => n === 1 ? one : n + ' ' + many;
+            const what = [acts ? count(acts, 'פעולה אחת', 'פעולות') : '',
+                tasks ? count(tasks, 'משימה אחת', 'משימות') : ''].filter(Boolean).join(' ו');
+            $('m-confirm').textContent = 'הכרטיס של ' + C.displayName(from) + ' יימחק.' +
+                (what ? ' ' + what + (acts + tasks === 1 ? ' תעבור' : ' יעברו') + ' ל' + C.displayName(to) + '.' : '') +
+                (from.phone ? ' הטלפון ' + C.formatPhone(from.phone) + ' יישמר שם כטלפון נוסף.' : '') +
+                ' אי אפשר לבטל את זה.';
         }
         if (!m || !q) return;
         const found = C.filterContacts(S.contacts, 'all', q, S.today).filter(x => x.id !== m.from).slice(0, 8);

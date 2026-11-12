@@ -229,7 +229,9 @@
                 to.orders = String(db.activities.filter(a => a.contactId === to.id && a.type === 'הזמנה').length);
                 db.activities.push({ id: nextId('A'), contactId: to.id, at: at(0, '12:00'), type: 'מיזוג',
                     text: 'מוזג מהכרטיס של ' + (from.business || from.name) + (from.phone ? ' (' + from.phone + ')' : '') +
-                        ' — ' + moved + ' פעולות ו-' + tasks.length + ' משימות',
+                        ' — ' + [moved ? (moved === 1 ? 'פעולה אחת' : moved + ' פעולות') : '',
+                            tasks.length ? (tasks.length === 1 ? 'משימה אחת' : tasks.length + ' משימות') : '']
+                            .filter(Boolean).join(' ו'),
                     orderId: '', pdf: '', quoteLink: '', by: 'עמוד' });
                 db.contacts = db.contacts.filter(x => x.id !== from.id);
                 return { ok: true, id: to.id, moved: moved, tasks: tasks.length };
