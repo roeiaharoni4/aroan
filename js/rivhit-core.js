@@ -316,9 +316,12 @@
     { code: 6, label: 'הצעת מחיר' }
   ];
 
-  // CSV לפי RFC 4180: מירכאות, "" בתוך מירכאות, פסיקים וירידות שורה בתוך שדה
+  // CSV לפי RFC 4180: מירכאות, "" בתוך מירכאות, מפרידים וירידות שורה בתוך שדה.
+  // המפריד נקבע לפי שורת הכותרת: ייצוא הפריטים של ריווחית מגיע גם מופרד בטאבים (12.11.26).
   function parseCsv(text) {
     var s = String(text || '').replace(/^﻿/, '');
+    var nl = s.search(/[\r\n]/);
+    var sep = (nl < 0 ? s : s.slice(0, nl)).indexOf('\t') >= 0 ? '\t' : ',';
     // start: בתחילת שדה. רק שם מירכאות פותחות שדה עטוף; באמצע שדה לא עטוף הן תו
     // רגיל (1 ק"ג) — כך ריווחית מייצאת, וכך פייתון ואקסל קוראים.
     var rows = [], row = [], field = '', q = false, start = true;
@@ -329,7 +332,7 @@
           if (s.charAt(i + 1) === '"') { field += '"'; i++; } else q = false;
         } else field += c;
       } else if (c === '"' && start) { q = true; start = false; }
-      else if (c === ',') { row.push(field); field = ''; start = true; }
+      else if (c === sep) { row.push(field); field = ''; start = true; }
       else if (c === '\n' || c === '\r') {
         if (c === '\r' && s.charAt(i + 1) === '\n') i++;
         row.push(field); field = ''; start = true;
@@ -347,11 +350,19 @@
       });
   }
 
-  // {מזהה באתר: מק"ט בריווחית}. עמודת rivhit יכולה להכיל כמה מק"טים מופרדים ב-| — הראשון.
+  // מק"ט בריווחית = המספר הקטלוגי של הפריט (item_part_num). זה מה שריווחית מחפשת
+  // בשדה 5, ולא מספר הפריט (item_num) — שליחת מספר הפריט פתחה פריטים כפולים (סבב 91).
+  // 1–15 תווים; טאב, ירידת שורה ומירכאות שוברים את קובץ הקליטה, ו-| הוא המפריד בעמודת rivhit.
+  function catalogCode(v) {
+    var s = String(v == null ? '' : v).trim();
+    return s.length <= 15 && /^[^\t\r\n"|]+$/.test(s) ? s : '';
+  }
+
+  // {מזהה באתר: מספר קטלוגי בריווחית}. עמודת rivhit יכולה להכיל כמה מספרים מופרדים ב-| — הראשון.
   function rivhitCodeMap(rows) {
     var m = {};
     (rows || []).forEach(function (r) {
-      var code = String(r.rivhit || '').split('|')[0].trim();
+      var code = catalogCode(String(r.rivhit || '').split('|')[0]);
       if (r.id && code) m[String(r.id).trim()] = code;
     });
     return m;
@@ -402,26 +413,43 @@
   }
 
   function rivhitOf(it) {
-    var c = String((it && it.rivhit) || '').trim();
-    return /^\d{1,15}$/.test(c) ? c : '';
+    return catalogCode(it && it.rivhit);
   }
 
-  // ייצוא הפריטים של ריווחית (פריטים.csv) ⇒ [[מספר, שם], ...]. רק שתי העמודות
+  // קבוצה "לא פעיל" בריווחית: לשם רועי מעביר פריטים כפולים (12.11.26). int1 הוא מספר
+  // הקבוצה, ו-compute_0037 השם שלה.
+  function isInactiveItem(r) {
+    return String(r.int1 == null ? '' : r.int1).trim() === '9999' ||
+      T.normalizeText(r.compute_0037) === 'לא פעיל';
+  }
+
+  // ייצוא הפריטים של ריווחית ⇒ [[מספר, שם, מספר קטלוגי], ...]. רק שלוש העמודות
   // האלה יוצאות מהמכשיר — מחירי העלות ושאר העמודות נשארים בקובץ.
+  // פריט בקבוצה "לא פעיל" ופריט בלי מספר קטלוגי לא נכנסים: בלי מספר קטלוגי
+  // ריווחית לא מזהה את הפריט בקליטה, ופותחת פריט חדש.
   function itemExportRows(rows) {
     rows = rows || [];
     if (!rows.length || !('item_num' in rows[0]) || !('item_name' in rows[0])) {
-      return { items: [], error: 'זה לא קובץ ייצוא הפריטים של ריווחית (חסרות העמודות item_num ו-item_name).' };
+      return { items: [], inactive: 0, noCatalog: 0,
+        error: 'זה לא קובץ ייצוא הפריטים של ריווחית (חסרות העמודות item_num ו-item_name).' };
     }
-    var seen = {}, items = [];
+    if (!('item_part_num' in rows[0])) {
+      return { items: [], inactive: 0, noCatalog: 0,
+        error: 'בקובץ אין את עמודת המספר הקטלוגי (item_part_num) — צריך את הייצוא המלא מריווחית.' };
+    }
+    var seen = {}, items = [], inactive = 0, noCatalog = 0;
     rows.forEach(function (r) {
       var n = String(r.item_num == null ? '' : r.item_num).trim();
       var name = T.normalizeText(r.item_name).slice(0, 100);
       if (!/^\d{1,15}$/.test(n) || !name || seen[n]) return;
       seen[n] = true;
-      items.push([n, name]);
+      if (isInactiveItem(r)) { inactive++; return; }
+      var cat = catalogCode(r.item_part_num);
+      if (!cat) { noCatalog++; return; }
+      items.push([n, name, cat]);
     });
-    return { items: items, error: items.length ? '' : 'לא נמצאו בקובץ פריטים עם מספר ושם.' };
+    return { items: items, inactive: inactive, noCatalog: noCatalog,
+      error: items.length ? '' : 'לא נמצאו בקובץ פריטים פעילים עם מספר, שם ומספר קטלוגי.' };
   }
 
   // order = {orderId, customer:{business, contact, address}, items:[{id, name, qty, price, rivhit?}]}
@@ -442,16 +470,17 @@
     var internalNo = siteInternalNo(order.orderId);
     if (internalNo === null) { out.error = 'bad order id'; return out; }
     if (!lines.length) return out;
-    var business = T.normalizeText(customer.business);
-    var contact = T.normalizeText(customer.contact);
+    // שם העסק בשני שדות השם (12.11.26): על לקוח 118 ("לקוחות שונים") זה מה שמזהה את
+    // הלקוח במסמך. בלי שם עסק — איש הקשר בשניהם. החיתוך ל-30/20 תווים ב-buildDocument.
+    var who = T.normalizeText(customer.business) || T.normalizeText(customer.contact);
     out.records = F.buildDocument({
       docType: opts.docType,
       today: opts.today,
       date: siteOrderDate(order.orderId),
       customerNo: /^\d{1,5}$/.test(String(opts.customerNo || '').trim()) && Number(opts.customerNo) > 0
         ? String(opts.customerNo).trim() : OCCASIONAL_CUSTOMER,
-      lastName: business || contact,
-      firstName: business ? contact : '',
+      lastName: who,
+      firstName: who,
       street: customer.address,
       internalNo: internalNo,
       lines: lines
@@ -464,6 +493,7 @@
     OCCASIONAL_CUSTOMER: OCCASIONAL_CUSTOMER,
     SITE_DOC_TYPES: SITE_DOC_TYPES,
     parseCsv: parseCsv,
+    catalogCode: catalogCode,
     itemExportRows: itemExportRows,
     rivhitCodeMap: rivhitCodeMap,
     siteOrderDate: siteOrderDate,

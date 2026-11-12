@@ -47,13 +47,13 @@ test('CSV: שורה ריקה בסוף לא הופכת לרשומה', () => {
 // מירכאות באמצע שדה לא עטוף הן תו רגיל, כמו בפייתון ובאקסל. נמצא 10.11.26: המפענח
 // פתח בהן שדה עטוף, בלע את השורות שאחריהן, ומקובץ הייצוא עלו 870 פריטים מתוך 1,838.
 test('CSV: מירכאות באמצע שדה לא עטוף הן תו רגיל ולא בולעות שורות', () => {
-  const text = 'item_num,item_name,item_cost_nis\r\n' +
-    '10,שמן 1 ק"ג,7.5\r\n' +
-    '11,"קרטון 20 יח׳, לבן",3\r\n' +
-    '12,מגבת 30 ס"מ,2\r\n' +
-    '13,"שקית 50/60, חזקה - ק""ג",1\r\n' +
-    '14,כפפות 12",1\r\n' +
-    '15,מגב,4\r\n';
+  const text = 'item_num,item_name,item_cost_nis,item_part_num\r\n' +
+    '10,שמן 1 ק"ג,7.5,10\r\n' +
+    '11,"קרטון 20 יח׳, לבן",3,11\r\n' +
+    '12,מגבת 30 ס"מ,2,12\r\n' +
+    '13,"שקית 50/60, חזקה - ק""ג",1,13\r\n' +
+    '14,כפפות 12",1,14\r\n' +
+    '15,מגב,4,15\r\n';
   const rows = S.parseCsv(text);
   assert.deepStrictEqual(rows.map(r => r.item_name),
     ['שמן 1 ק"ג', 'קרטון 20 יח׳, לבן', 'מגבת 30 ס"מ', 'שקית 50/60, חזקה - ק"ג', 'כפפות 12"', 'מגב']);
@@ -69,6 +69,19 @@ test('CSV: שדה ריק במירכאות, ותווים אחרי מירכאות 
 test('מפת מק"טים: ריק לא נכנס, כמה מק"טים ⇒ הראשון', () => {
   const m = S.rivhitCodeMap(S.parseCsv(CSV));
   assert.deepStrictEqual(m, { 'ניק001': '56', 'חדפ002': '1148', 'אבי004': '1489' });
+});
+
+test('מספר קטלוגי: אותיות, ספרות ומקף; ריק, ארוך, טאב, מירכאות ו-| נפסלים', () => {
+  assert.strictEqual(S.catalogCode(' C203 '), 'C203');
+  assert.strictEqual(S.catalogCode('A999-9'), 'A999-9');
+  assert.strictEqual(S.catalogCode(1612), '1612');
+  ['', '   ', null, undefined, 'A'.repeat(16), 'C2\t03', 'C"2', '1|2', 'a\nb'].forEach(v =>
+    assert.strictEqual(S.catalogCode(v), '', JSON.stringify(v)));
+});
+
+test('מפת מק"טים: מספר קטלוגי עם אותיות, ולא תקין לא נכנס', () => {
+  const m = S.rivhitCodeMap(S.parseCsv('id,rivhit\r\nמגב1,C203|C204\r\nשגוי,"C2""03"\r\nארוך,ABCDEFGHIJKLMNOP\r\n'));
+  assert.deepStrictEqual(m, { 'מגב1': 'C203' });
 });
 
 test('מספר פנימי: יום בשנה + 6 ספרות', () => {
@@ -111,7 +124,7 @@ test('מסמך: רשומה לכל פריט משויך, 28 שדות, השדות �
   assert.strictEqual(r[8], '30');
   assert.strictEqual(r[9], '118');                   // אין מספר ⇒ לקוח מזדמן
   assert.strictEqual(r[10], 'מסעדת הגן הירוק בע״מ');  // מירכאות ⇒ גרשיים
-  assert.strictEqual(r[11], 'דנה לוי');
+  assert.strictEqual(r[11], 'מסעדת הגן הירוק בע״מ');  // שם העסק גם בשם הפרטי (12.11.26)
   assert.strictEqual(r[12], 'המלאכה 8, אור יהודה');
   assert.strictEqual(r[14], '308123456');
   assert.strictEqual(r[25], '1');
@@ -138,11 +151,19 @@ test('מסמך: מספר לקוח מהכרטיס', () => {
   assert.strictEqual(r[3], '4');
 });
 
-test('מסמך: בלי שם עסק ⇒ איש הקשר בשדה 11 ושדה 12 ריק', () => {
+test('מסמך: בלי שם עסק ⇒ איש הקשר בשני שדות השם', () => {
   const o = Object.assign({}, ORDER, { customer: { business: '', contact: 'רותי כהן', address: '' } });
   const r = S.siteOrderDocument(o, CODES, { docType: 7, customerNo: '', today: TODAY }).records[0];
   assert.strictEqual(r[10], 'רותי כהן');
-  assert.strictEqual(r[11], '');
+  assert.strictEqual(r[11], 'רותי כהן');
+});
+
+test('מסמך: שם עסק ארוך נחתך ל-30 בשם המשפחה ול-20 בשם הפרטי', () => {
+  const name = 'חברת הניקיון והאחזקה המאוחדת של גוש דן';
+  const o = Object.assign({}, ORDER, { customer: { business: name, contact: 'רותי', address: '' } });
+  const r = S.siteOrderDocument(o, CODES, { docType: 6, customerNo: '', today: TODAY }).records[0];
+  assert.strictEqual(r[10], name.slice(0, 30));
+  assert.strictEqual(r[11], name.slice(0, 20));
 });
 
 test('מסמך: הצעת מחיר ⇒ סוג 6 ושם קובץ', () => {
@@ -208,27 +229,53 @@ test('js/rivhit-core.js נטען כסקריפט קלאסי ומגדיר RivhitCo
   assert.strictEqual(res.records.length, 2);
   assert.strictEqual(typeof ctx.RivhitCore.encodeCp1255, 'function');
   assert.strictEqual(typeof ctx.RivhitCore.itemExportRows, 'function');
+  assert.strictEqual(typeof ctx.RivhitCore.catalogCode, 'function');
 });
 
 // ---------- פריטים מריווחית בדף הסוכן (אפיון 2026-11-09) ----------
 
-const EXPORT_CSV = 'item_num,item_name,item_part_num,sapak,item_cost_nis,item_sale_nis\r\n' +
-  '56,אקונומיקה 4 ליטר,,,7.5,12\r\n' +
-  '1500,"כפפות ניטריל ""M""",,,20,35\r\n' +
-  '1501,,,,1,2\r\n' +
-  '15a,שגוי,,,1,2\r\n' +
-  '56,כפול,,,1,2\r\n' +
-  '9001,  מגב   תעשייתי  ,,,30,45\r\n';
+const EXPORT_CSV = 'item_num,item_name,item_part_num,sapak,item_cost_nis,item_sale_nis,int1,compute_0037\r\n' +
+  '56,אקונומיקה 4 ליטר,56,,7.5,12,1,קבוצה א\r\n' +
+  '1500,"כפפות ניטריל ""M""",C203,,20,35,2,קבוצה ב\r\n' +
+  '1501,,,,1,2,1,קבוצה א\r\n' +
+  '15a,שגוי,X1,,1,2,1,קבוצה א\r\n' +
+  '56,כפול,56,,1,2,1,קבוצה א\r\n' +
+  '9001,  מגב   תעשייתי  ,9001,,30,45,1,קבוצה א\r\n' +
+  '1880,כפול של 895,0,,1,2,9999,לא פעיל\r\n' +
+  '1866,כפול בלי מספר,,,1,2,1,קבוצה א\r\n' +
+  '1921,כפול שהועבר,1921,,1,2,9999,\r\n';
 
-test('ייצוא פריטים: רק מספר ושם; בלי שם, מספר לא תקין וכפילות נופלים', () => {
+test('ייצוא פריטים: מספר, שם ומספר קטלוגי; בלי שם, מספר לא תקין וכפילות נופלים', () => {
   const r = S.itemExportRows(S.parseCsv(EXPORT_CSV));
   assert.strictEqual(r.error, '');
   assert.deepStrictEqual(r.items, [
-    ['56', 'אקונומיקה 4 ליטר'],
-    ['1500', 'כפפות ניטריל "M"'],
-    ['9001', 'מגב תעשייתי']
+    ['56', 'אקונומיקה 4 ליטר', '56'],
+    ['1500', 'כפפות ניטריל "M"', 'C203'],
+    ['9001', 'מגב תעשייתי', '9001']
   ]);
   assert.ok(!JSON.stringify(r.items).includes('7.5'), 'מחיר העלות לא נכנס לרשימה');
+});
+
+test('ייצוא פריטים: קבוצה "לא פעיל" ופריט בלי מספר קטלוגי לא נכנסים, ונספרים', () => {
+  const r = S.itemExportRows(S.parseCsv(EXPORT_CSV));
+  assert.strictEqual(r.inactive, 2, 'לפי int1=9999, גם כששם הקבוצה ריק');
+  assert.strictEqual(r.noCatalog, 1);
+  assert.ok(!r.items.some(it => ['1880', '1866', '1921'].includes(it[0])));
+});
+
+test('ייצוא פריטים: מופרד בטאבים (כך הגיע הייצוא של 12.11), עם מירכאות ופסיק בתוך שם', () => {
+  const tsv = 'item_num\titem_name\titem_part_num\tint1\r\n' +
+    '56\tאקונומיקה 1 ק"ג\t56\t1\r\n' +
+    '60\tמגבות, 6 גלילים\tC203\t2\r\n';
+  const r = S.itemExportRows(S.parseCsv(tsv));
+  assert.strictEqual(r.error, '');
+  assert.deepStrictEqual(r.items, [['56', 'אקונומיקה 1 ק"ג', '56'], ['60', 'מגבות, 6 גלילים', 'C203']]);
+});
+
+test('ייצוא פריטים: בלי עמודת item_part_num ⇒ שגיאה מסבירה', () => {
+  const r = S.itemExportRows(S.parseCsv('item_num,item_name\r\n1,א\r\n'));
+  assert.deepStrictEqual(r.items, []);
+  assert.ok(/item_part_num/.test(r.error), r.error);
 });
 
 test('ייצוא פריטים: קובץ בלי item_num/item_name ⇒ שגיאה מסבירה; קובץ ריק', () => {
@@ -250,19 +297,19 @@ test('ייצוא פריטים: UTF-16 עם BOM (כך ריווחית מייצאת
 });
 
 test('ייצוא פריטים: שם ארוך נחתך ל-100 תווים (שדה 6 בריווחית)', () => {
-  const r = S.itemExportRows([{ item_num: '7', item_name: 'א'.repeat(150) }]);
+  const r = S.itemExportRows([{ item_num: '7', item_name: 'א'.repeat(150), item_part_num: '7' }]);
   assert.strictEqual(r.items[0][1].length, 100);
 });
 
-test('מסמך: פריט מריווחית נושא את המק"ט שלו; המפה החיה גוברת; מק"ט לא תקין ⇒ חסר', () => {
+test('מסמך: פריט מריווחית נושא את המספר הקטלוגי שלו; המפה החיה גוברת; לא תקין ⇒ חסר', () => {
   const order = Object.assign({}, ORDER, { items: [
-    { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: '1500' },
+    { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: 'C203' },
     { id: 'ניק001', name: 'אקונומיקה 4 ליטר', qty: 1, price: 5, rivhit: '999' },
-    { id: 'RV-x', name: 'מק"ט שגוי', qty: 1, price: 1, rivhit: '15a' }
+    { id: 'RV-x', name: 'מספר קטלוגי שגוי', qty: 1, price: 1, rivhit: 'A'.repeat(16) }
   ] });
   const res = S.siteOrderDocument(order, CODES, { docType: 7, customerNo: '', today: TODAY });
-  assert.deepStrictEqual(res.records.map(r => r[4]), ['1500', '56']);
-  assert.deepStrictEqual(res.missing, ['מק"ט שגוי']);
+  assert.deepStrictEqual(res.records.map(r => r[4]), ['C203', '56']);
+  assert.deepStrictEqual(res.missing, ['מספר קטלוגי שגוי']);
 });
 
 let failed = 0;
