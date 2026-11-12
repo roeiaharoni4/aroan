@@ -28,10 +28,13 @@ var ORDERS_SHEET = 'הזמנות';
 
 // עמודות חדשות — רק בסוף השורה, כדי שגיליון קיים לא יזוז (sheet_ משלים את הכותרות).
 // rivhitNo = מספר הלקוח בריווחית; items = פריטי הזמנה מהאתר (JSON מקוצר) לקובץ הקליטה (סבב 88).
+// phones = טלפונים נוספים, מנורמלים ומופרדים ברווח — מכרטיסים שמוזגו לכרטיס הזה (סבב 93).
 var CONTACT_HEADERS = ['מזהה', 'שם', 'עסק', 'טלפון', 'אימייל', 'כתובת', 'שלב',
-  'לחזור בתאריך', 'מקור', 'נוצר', 'פעולה אחרונה', 'הזמנות', 'הזמנה אחרונה', 'מספר לקוח בריווחית'];
+  'לחזור בתאריך', 'מקור', 'נוצר', 'פעולה אחרונה', 'הזמנות', 'הזמנה אחרונה', 'מספר לקוח בריווחית',
+  'טלפונים נוספים'];
 var CONTACT_KEYS = ['id', 'name', 'business', 'phone', 'email', 'address', 'stage',
-  'followUp', 'source', 'created', 'lastActivity', 'orders', 'lastOrder', 'rivhitNo'];
+  'followUp', 'source', 'created', 'lastActivity', 'orders', 'lastOrder', 'rivhitNo', 'phones'];
+var PHONES_MAX = 5;
 var ACTIVITY_HEADERS = ['מזהה פעולה', 'מזהה איש קשר', 'תאריך', 'סוג', 'פירוט',
   'מספר הזמנה', 'PDF', 'קישור הצעה', 'נוצר ע"י', 'פריטים'];
 var ACTIVITY_KEYS = ['id', 'contactId', 'at', 'type', 'text', 'orderId', 'pdf',
@@ -133,8 +136,18 @@ function blankContact_(at) {
   return {
     id: newId_('C'), name: '', business: '', phone: '', email: '', address: '',
     stage: 'חדש', followUp: '', source: '', created: at, lastActivity: at,
-    orders: '0', lastOrder: '', rivhitNo: ''
+    orders: '0', lastOrder: '', rivhitNo: '', phones: ''
   };
+}
+
+// הטלפונים הנוספים של איש קשר (סבב 93), מנורמלים
+function extraPhones_(c) {
+  return trim_(c && c.phones).split(/[\s,]+/).map(normalizePhone_).filter(Boolean);
+}
+
+// הטלפון הראשי או אחד הנוספים
+function hasPhone_(c, phone) {
+  return !!phone && (c.phone === phone || extraPhones_(c).indexOf(phone) >= 0);
 }
 
 // פריטי ההזמנה כפי שסקריפט ההזמנות שולח אותם ⇒ JSON מקוצר לעמודת "פריטים".
@@ -167,14 +180,15 @@ function contactById_(model, id) {
   return null;
 }
 
-// טלפון קודם. בלי טלפון — לפי שם העסק (הזמנות מדף הסוכן מגיעות לפעמים בלי
-// טלפון). יש טלפון ואין התאמה — מחפשים לפי השם רק בין אנשי קשר שאין להם
-// טלפון, כדי שלקוח שנוצר מהזמנה בלי טלפון לא ישוכפל כשהטלפון מגיע.
+// טלפון קודם — הראשי או אחד הנוספים (מכרטיס שמוזג). בלי טלפון — לפי שם העסק
+// (הזמנות מדף הסוכן מגיעות לפעמים בלי טלפון). יש טלפון ואין התאמה — מחפשים לפי
+// השם רק בין אנשי קשר שאין להם טלפון, כדי שלקוח שנוצר מהזמנה בלי טלפון לא ישוכפל
+// כשהטלפון מגיע.
 function findContact_(contacts, phone, label) {
   var i;
   if (phone) {
     for (i = 0; i < contacts.length; i++) {
-      if (contacts[i].phone === phone) return contacts[i];
+      if (hasPhone_(contacts[i], phone)) return contacts[i];
     }
   }
   var key = nameKey_(label);
@@ -749,6 +763,59 @@ function handleDelete_(id) {
   return { ok: true, deleted: rows.length };
 }
 
+// ---------- מיזוג כרטיסים (סבב 93) ----------
+// הזמנה מהאתר מטלפון שה-CRM לא הכיר פתחה כרטיס חדש, ורועי מקשר אותה ללקוח הקיים.
+// הפעולות והמשימות עוברות, שדות ריקים מושלמים, והטלפונים של הכרטיס שנמחק נשמרים
+// כטלפונים נוספים: ההזמנה הבאה מהם מגיעה לכרטיס הקיים, עם מספר הלקוח שלו בריווחית.
+function handleMerge_(fromId, toId) {
+  var model = readModel_(book_());
+  var from = contactById_(model, trim_(fromId));
+  var to = contactById_(model, trim_(toId));
+  if (!from || !to) return { ok: false, error: 'not found' };
+  if (from.id === to.id) return { ok: false, error: 'same contact' };
+  var now = now_();
+  ['name', 'business', 'email', 'address', 'rivhitNo'].forEach(function (k) {
+    if (!trim_(to[k]) && trim_(from[k])) to[k] = from[k];
+  });
+  var extra = extraPhones_(to);
+  [normalizePhone_(from.phone)].concat(extraPhones_(from)).forEach(function (p) {
+    if (!p || p === to.phone || extra.indexOf(p) >= 0) return;
+    if (!to.phone) to.phone = p;
+    else extra.push(p);
+  });
+  to.phones = extra.slice(0, PHONES_MAX).join(' ');
+
+  var moved = 0, movedOrders = 0;
+  model.activities.forEach(function (a) {
+    if (a.contactId !== from.id) return;
+    a.contactId = to.id;
+    a._dirty = true;
+    moved++;
+    if (a.type === 'הזמנה') movedOrders++;
+  });
+  var tasks = model.tasks.filter(function (t) { return t.contactId === from.id; });
+  tasks.forEach(function (t) { t.contactId = to.id; });
+
+  if (from.stage === 'לקוח' || movedOrders) to.stage = 'לקוח';
+  if (trim_(from.followUp) && (!trim_(to.followUp) || from.followUp < to.followUp)) to.followUp = from.followUp;
+  if (trim_(from.created) && (!trim_(to.created) || from.created < to.created)) to.created = from.created;
+  if (trim_(from.lastActivity) > trim_(to.lastActivity)) to.lastActivity = from.lastActivity;
+  recomputeOrders_(model, to);
+
+  var label = trim_(from.business) || trim_(from.name) || from.phone || from.id;
+  var log = {
+    id: newId_('A'), contactId: to.id, at: now.stamp, type: 'מיזוג',
+    text: 'מוזג מהכרטיס של ' + label + (from.phone ? ' (' + from.phone + ')' : '') +
+      ' — ' + moved + ' פעולות ו-' + tasks.length + ' משימות',
+    orderId: '', pdf: '', quoteLink: '', by: 'עמוד', items: ''
+  };
+  // קודם כותבים, ורק אחר כך מוחקים את השורה של from — מחיקה מזיזה את השורות שמתחתיה
+  save_(model, [to], [log]);
+  if (tasks.length) saveTasks_(model, tasks);
+  model.cs.deleteRow(from._row);
+  return { ok: true, id: to.id, moved: moved, tasks: tasks.length };
+}
+
 // ---------- משימות ----------
 
 function taskById_(model, id) {
@@ -1253,6 +1320,7 @@ function doPost(e) {
       case 'update': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, null); }));
       case 'log': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, body.activity || null); }));
       case 'delete': return json_(withLock_(function () { return handleDelete_(body.id); }));
+      case 'merge': return json_(withLock_(function () { return handleMerge_(body.from, body.to); }));
       case 'import': return json_(withLock_(function () { return handleImport_(body.dryRun !== false); }));
       case 'order': return json_(withLock_(function () { return handleOrder_(body.id, body.order || {}); }));
       case 'order_cancel': return json_(withLock_(function () { return handleOrderCancel_(body.activityId); }));

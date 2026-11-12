@@ -1209,6 +1209,114 @@ test('פריטים מריווחית: itemsJson_ שומר מספר קטלוגי �
   assert.strictEqual(out[3].rivhit, '56');
 });
 
+// ---------- מיזוג כרטיסים (אפיון 2026-11-12-crm-merge) ----------
+// לקוח קיים עם מספר בריווחית; הזמנה מהאתר מטלפון אחר פתחה כרטיס חדש, ועליו משימה.
+
+function mergeSetup() {
+  const app = loadApp();
+  const existing = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER,
+    { orderId: 'AR-20261001-111111', at: '2026-10-01 09:00' }) }).id;
+  app.call({ action: 'update', password: P, id: existing, fields: { rivhitNo: '1234' } });
+  const fresh = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER,
+    { orderId: 'AR-20261102-222222', phone: '054-999-8888', business: 'מסעדת הגפן — סניף',
+      contact: 'יוסי', address: 'הרצל 5' }) }).id;
+  app.call({ action: 'task_add', password: P, task: { text: 'לחזור ליוסי', due: '2026-11-03', contactId: fresh } });
+  return { app, existing, fresh };
+}
+
+test('מיזוג: פעולות ומשימות עוברות, שדות נשמרים, טלפון נוסף, מונה הזמנות, והכרטיס נמחק', () => {
+  const { app, existing, fresh } = mergeSetup();
+  assert.notStrictEqual(existing, fresh);
+  const r = app.call({ action: 'merge', password: P, from: fresh, to: existing });
+  assert.strictEqual(r.ok, true, JSON.stringify(r));
+  const list = app.call({ action: 'list', password: P });
+  assert.strictEqual(list.contacts.length, 1);
+  const c = list.contacts[0];
+  assert.strictEqual(c.id, existing);
+  assert.strictEqual(c.phone, '0501234567');
+  assert.strictEqual(c.phones, '0549998888');
+  assert.strictEqual(c.rivhitNo, '1234');
+  assert.strictEqual(c.business, 'מסעדת הגפן', 'שדה מלא בכרטיס הקיים לא נדרס');
+  assert.strictEqual(c.address, 'המלאכה 8, אור יהודה');
+  assert.strictEqual(c.orders, '2');
+  assert.strictEqual(c.lastOrder, '2026-11-02');
+  assert.ok(list.activities.every(a => a.contactId === existing));
+  const log = list.activities.filter(a => a.type === 'מיזוג');
+  assert.strictEqual(log.length, 1);
+  assert.ok(/מסעדת הגפן — סניף/.test(log[0].text) && /0549998888/.test(log[0].text), log[0].text);
+  assert.strictEqual(list.tasks.length, 1);
+  assert.strictEqual(list.tasks[0].contactId, existing);
+  assert.deepStrictEqual(app.crm.sheets['אנשי קשר'].rows[0].slice(-1), ['טלפונים נוספים']);
+});
+
+test('מיזוג: הזמנה הבאה מהטלפון שמוזג מגיעה לכרטיס הקיים, עם מספר הלקוח שלו', () => {
+  const { app, existing, fresh } = mergeSetup();
+  app.call({ action: 'merge', password: P, from: fresh, to: existing });
+  const r = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER,
+    { orderId: 'AR-20261103-333333', phone: '+972 54-999-8888', business: 'שם אחר לגמרי' }) });
+  assert.strictEqual(r.id, existing);
+  assert.strictEqual(r.rivhitNo, '1234');
+  assert.strictEqual(app.call({ action: 'list', password: P }).contacts.length, 1);
+});
+
+test('מיזוג: כרטיס שנמצא מעל הכרטיס היעד בגיליון — השורות לא מתבלבלות', () => {
+  const { app, existing, fresh } = mergeSetup();
+  const r = app.call({ action: 'merge', password: P, from: existing, to: fresh });
+  assert.strictEqual(r.ok, true, JSON.stringify(r));
+  assert.strictEqual(app.crm.sheets['אנשי קשר'].rows.length, 2, 'כותרת ושורה אחת');
+  const c = app.call({ action: 'list', password: P }).contacts[0];
+  assert.strictEqual(c.id, fresh);
+  assert.strictEqual(c.phone, '0549998888');
+  assert.strictEqual(c.phones, '0501234567');
+  assert.strictEqual(c.rivhitNo, '1234', 'מספר הלקוח עובר כשבכרטיס היעד אין');
+  assert.strictEqual(c.orders, '2');
+});
+
+test('מיזוג: כרטיס בלי טלפון ראשי מקבל את הטלפון של הכרטיס הממוזג כראשי', () => {
+  const app = loadApp();
+  const noPhone = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER,
+    { orderId: 'SL-20261001-111111', via: 'דף הסוכן', phone: '', business: 'מאפיית השקד' }) }).id;
+  const withPhone = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER,
+    { orderId: 'AR-20261102-222222', phone: '0527776655', business: 'מאפיית השקד בע"מ' }) }).id;
+  assert.notStrictEqual(noPhone, withPhone);
+  app.call({ action: 'merge', password: P, from: withPhone, to: noPhone });
+  const c = app.call({ action: 'list', password: P }).contacts[0];
+  assert.strictEqual(c.phone, '0527776655');
+  assert.strictEqual(c.phones, '');
+});
+
+test('מיזוג: שלב "לקוח" ו"לחזור בתאריך" המוקדם מבין השניים', () => {
+  const app = loadApp();
+  const lead = app.call({ action: 'event', secret: S, event: LEAD }).id;
+  const order = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER,
+    { phone: '0549998888', business: 'מסעדת הגפן — סניף' }) }).id;
+  app.call({ action: 'merge', password: P, from: order, to: lead });
+  const c = app.call({ action: 'list', password: P }).contacts[0];
+  assert.strictEqual(c.id, lead);
+  assert.strictEqual(c.stage, 'לקוח');
+  assert.strictEqual(c.followUp, '2026-11-02');
+});
+
+test('מיזוג: טלפון נוסף נחשב כפילות — בהוספה ובעדכון טלפון', () => {
+  const { app, existing, fresh } = mergeSetup();
+  app.call({ action: 'merge', password: P, from: fresh, to: existing });
+  const dup = app.call({ action: 'add', password: P, contact: { phone: '054-9998888', name: 'מישהו' } });
+  assert.strictEqual(dup.error, 'duplicate');
+  assert.strictEqual(dup.id, existing);
+  const other = app.call({ action: 'add', password: P, contact: { phone: '0521112222', name: 'אחר' } }).contact.id;
+  const upd = app.call({ action: 'update', password: P, id: other, fields: { phone: '0549998888' } });
+  assert.strictEqual(upd.error, 'duplicate');
+});
+
+test('מיזוג: שגיאות — כרטיס לא קיים, אותו כרטיס, סיסמה שגויה; כלום לא משתנה', () => {
+  const { app, existing, fresh } = mergeSetup();
+  assert.strictEqual(app.call({ action: 'merge', password: P, from: 'C-none', to: existing }).error, 'not found');
+  assert.strictEqual(app.call({ action: 'merge', password: P, from: fresh, to: 'C-none' }).error, 'not found');
+  assert.strictEqual(app.call({ action: 'merge', password: P, from: existing, to: existing }).error, 'same contact');
+  assert.strictEqual(app.call({ action: 'merge', password: 'wrong', from: fresh, to: existing }).error, 'unauthorized');
+  assert.strictEqual(app.call({ action: 'list', password: P }).contacts.length, 2);
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

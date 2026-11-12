@@ -703,14 +703,30 @@ function rivhitCodes_() {
   return map;
 }
 
-// קובץ אחד לכל הזמנה: הצעת מחיר (6) על לקוח 118 — "לקוחות שונים" — עם שם העסק
-// בשני שדות השם (אפיון 2026-11-12). רועי מושך אותו לריווחית ומשם ממשיך כרגיל.
+// סוג המסמך (סבב 93): בהזמנה מדף הסוכן (SL) — מה שרועי בחר ליד כפתור השליחה, ובלי
+// בחירה תקינה (למשל app.js ישן במטמון) — הזמנה. כל שאר ההזמנות מהאתר — הצעת מחיר.
+function rivhitDocType_(data) {
+  if (String((data && data.orderId) || '').indexOf('SL-') !== 0) return 6;
+  var t = Number(data.rivhitDocType);
+  return [7, 4, 1, 6].indexOf(t) >= 0 ? t : 7;
+}
+
+function rivhitDocLabel_(code) {
+  var list = RivhitCore.SITE_DOC_TYPES || [];
+  for (var i = 0; i < list.length; i++) if (list[i].code === Number(code)) return list[i].label;
+  return 'מסמך';
+}
+
+// קובץ אחד לכל הזמנה, עם שם העסק בשני שדות השם (אפיונים 2026-11-12). מספר הלקוח:
+// מה שבכרטיס ב-CRM (סבב 93), ובלי מספר תקין — 118 ("לקוחות שונים").
 // לעולם לא זורק: כשל כאן לא יכול להפיל את המייל או את ההזמנה.
-function rivhitAttachments_(data, codes, today) {
-  var out = { files: [], missing: [], error: '' };
+function rivhitAttachments_(data, customerNo, codes, today) {
+  var no = String(customerNo == null ? '' : customerNo).trim();
+  if (!/^\d{1,5}$/.test(no) || !(Number(no) > 0)) no = String(RivhitCore.OCCASIONAL_CUSTOMER);
+  var out = { files: [], missing: [], error: '', docType: rivhitDocType_(data), customerNo: no };
   try {
     var doc = RivhitCore.siteOrderDocument(data, codes || rivhitCodes_(), {
-      docType: 6, customerNo: RivhitCore.OCCASIONAL_CUSTOMER, today: today || new Date()
+      docType: out.docType, customerNo: no, today: today || new Date()
     });
     out.missing = doc.missing;
     if (doc.error) out.error = doc.error;
@@ -726,17 +742,21 @@ function rivhitAttachments_(data, codes, today) {
   return out;
 }
 
-// הפסקה במייל: מה מצורף, ומה לא נכנס
-function rivhitMailText_(r) {
+// הפסקה במייל: מה מצורף, על איזה לקוח, ומה לא נכנס
+function rivhitMailText_(r, crm) {
   var lines = ['', '— ריווחית —'];
   if (r.files.length) {
-    lines.push('מצורף קובץ לקליטה בריווחית כהצעת מחיר — לקוח 118 (לקוחות שונים).');
+    lines.push('מצורף קובץ לקליטה בריווחית כ' + rivhitDocLabel_(r.docType) + ' — לקוח ' + r.customerNo +
+      (r.customerNo === String(RivhitCore.OCCASIONAL_CUSTOMER) ? ' (לקוחות שונים)' : '') + '.');
   } else {
     lines.push('לא נוצר קובץ לריווחית' + (r.error === 'bad order id' ? ' — מספר ההזמנה לא בפורמט הצפוי.'
       : r.error ? ' (' + r.error + '). אפשר להוריד אותו מהכרטיס ב-CRM.'
       : ' — לאף מוצר בהזמנה אין מספר קטלוגי בריווחית.'));
   }
   if (r.missing.length) lines.push('לא נכללו בקובץ (אין מספר קטלוגי בריווחית): ' + r.missing.join(', '));
+  if (r.files.length && crm && !crm.ok) {
+    lines.push('ה-CRM לא ענה, ולכן הקובץ על לקוח 118 — אם יש ללקוח מספר בריווחית, אפשר להוריד את הקובץ מהכרטיס ב-CRM.');
+  }
   return lines.join('\n') + '\n';
 }
 // ===== RIVHIT-END =====
@@ -855,8 +875,8 @@ function doPost(e) {
           '\n' + consumerDoc_(data) + '\n';
       }
       // קובץ קליטה לריווחית — רק להזמנות שנכנסות ל-CRM (עסקיות, בלי הרשת והצרכן)
-      var rivhit = crmEvent ? rivhitAttachments_(data) : null;
-      if (rivhit) body += rivhitMailText_(rivhit);
+      var rivhit = crmEvent ? rivhitAttachments_(data, crm && crm.ok ? crm.rivhitNo : '') : null;
+      if (rivhit) body += rivhitMailText_(rivhit, crm);
       var attachments = (pdf ? [pdf.blob] : []).concat(rivhit ? rivhit.files : []);
       var mailOpts = attachments.length ? { attachments: attachments } : {};
       // ההזמנה כבר נכתבה לגיליון למעלה — כשל בשליחת המייל (מכסת שליחה,
