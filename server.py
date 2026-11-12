@@ -1318,10 +1318,29 @@ def generate_catalog_category_schema():
 # להן הופעות ולא היה להן דף תואם באתר. ההופעות בהערה הן הבסיס לבחירה.
 # 'groups' = ערכי עמודת subcategory (תת-הקטגוריה בעברית, אותה אחת שמופיעה
 # כסינון בקטלוג) שהמוצרים שלהם נכנסים לדף. דף אחד יכול לאגד כמה תת-קטגוריות.
+# דף אחד לכל חיפוש (12.11.26): ב-Search Console הופיעו 4–5 דפים שלנו על אותו חיפוש,
+# ודף תת-הקטגוריה עקף את דף הקטגוריה על "חד פעמי בסיטונאות". לכן:
+# - 'anchor' הוא הטקסט של כל קישור פנימי אל דף תת-הקטגוריה (קצר, רק המוצר שלו);
+# - CATALOG_PARENT_ANCHORS הוא הטקסט של הקישור חזרה לדף הקטגוריה — החיפוש הרחב שלה.
+CATALOG_PARENT_ANCHORS = {
+    'disposables': 'חד פעמי בסיטונאות',
+    'paper': 'מוצרי נייר בסיטונאות',
+}
+
+
+def _subcategory_for(row):
+    """(slug, cfg) של דף תת-הקטגוריה שהמוצר מופיע בו, או None."""
+    for slug in CATALOG_SUBCATEGORIES:
+        if _in_subcategory_page(row, slug):
+            return slug, CATALOG_SUBCATEGORIES[slug]
+    return None
+
+
 CATALOG_SUBCATEGORIES = {
     'hand-towels': {
         'parent': 'paper',
         'groups': ['נייר ניגוב ידיים', 'גליל תעשייתי', 'צץ רץ'],
+        'anchor': 'נייר מגבת וניגוב ידיים',
         'h1': 'נייר ניגוב ידיים ומגבות נייר בסיטונאות',
         'title': 'נייר מגבת בסיטונאות | נייר ניגוב ידיים תעשייתי לעסקים | אהרוני',
         'description': 'נייר מגבת ונייר ניגוב ידיים תעשייתי בסיטונאות: גלילים תעשייתיים, '
@@ -1334,6 +1353,7 @@ CATALOG_SUBCATEGORIES = {
     'toilet-paper': {
         'parent': 'paper',
         'groups': ['נייר טואלט'],
+        'anchor': 'נייר טואלט בסיטונאות',
         'h1': 'נייר טואלט מוסדי בסיטונאות',
         'title': 'נייר טואלט בסיטונאות | נייר טואלט מוסדי לעסקים | אהרוני שיווק והפצה',
         'description': 'נייר טואלט מוסדי בסיטונאות לעסקים ומוסדות: גלילי ג׳מבו, מארזים גדולים '
@@ -1346,6 +1366,7 @@ CATALOG_SUBCATEGORIES = {
     'cups': {
         'parent': 'disposables',
         'groups': ['כוסות'],
+        'anchor': 'כוסות חד פעמיות',
         'h1': 'כוסות חד פעמיות בסיטונאות',
         'title': 'כוסות חד פעמיות בסיטונאות | כוסות נייר ופלסטיק לעסקים | אהרוני',
         'description': 'כוסות חד פעמיות בסיטונאות: כוסות נייר לשתייה חמה, כוסות אספרסו, '
@@ -1358,6 +1379,7 @@ CATALOG_SUBCATEGORIES = {
     'containers': {
         'parent': 'disposables',
         'groups': ['קופסאות ואריזות מזון'],
+        'anchor': 'קופסאות חד פעמי ואריזות מזון',
         'h1': 'קופסאות אוכל ואריזות מזון חד פעמיות בסיטונאות',
         'title': 'קופסאות חד פעמי בסיטונאות | אריזות מזון לעסקי משלוחים | אהרוני',
         'description': 'קופסאות פלסטיק חד פעמיות ואריזות מזון בסיטונאות: קופסאות אוכל מחולקות, '
@@ -1370,9 +1392,10 @@ CATALOG_SUBCATEGORIES = {
     'tableware': {
         'parent': 'disposables',
         'groups': ['סכו״ם', 'צלחות'],
-        'h1': 'צלחות וסכו״ם חד פעמי בסיטונאות',
-        'title': 'צלחות חד פעמי בסיטונאות | סכו״ם חד פעמי לעסקים ומסעדות | אהרוני',
-        'description': 'צלחות וסכו״ם חד פעמי בסיטונאות: צלחות מתכלות, סכו״ם קשיח וסכו״ם רגיל '
+        'anchor': 'צלחות וסכו״ם חד פעמיים',
+        'h1': 'צלחות וסכו״ם חד פעמיים לעסקים ולמסעדות',
+        'title': 'צלחות חד פעמיות וסכו״ם חד פעמי במחיר סיטונאי | אהרוני',
+        'description': 'צלחות חד פעמיות וסכו״ם חד פעמי במחיר סיטונאי: צלחות מתכלות, סכו״ם קשיח וסכו״ם רגיל '
                        'במארזים — למסעדות, לקייטרינג, לאירועים ולמטבחונים משרדיים.',
         'intro': 'סכו״ם קשיח וצלחות מתכלות משנים את מראה ההגשה לעומת חד-פעמי בסיסי, ולכן הרבה '
                  'מסעדות וקייטרינג עוברים אליהם. בקטלוג צלחות מתכלות בשלושה גדלים, צלחות '
@@ -1420,8 +1443,9 @@ def generate_catalog_subcategory_pages():
                 </article>''' for r in items)
 
         siblings = '\n'.join(
-            f'                <a href="/catalog/{c["parent"]}/{s}/">{escape(c["h1"])}</a>'
+            f'                <a href="/catalog/{c["parent"]}/{s}/">{escape(c["anchor"])}</a>'
             for s, c in CATALOG_SUBCATEGORIES.items() if s != slug)
+        parent_anchor = CATALOG_PARENT_ANCHORS.get(parent, parent_name)
 
         schema = {
             '@context': 'https://schema.org', '@type': 'CollectionPage',
@@ -1530,7 +1554,7 @@ def generate_catalog_subcategory_pages():
             <div class="sc-grid">
 {cards}
             </div>
-            <a class="more" href="/catalog/{parent}/">לכל המוצרים ב{escape(parent_name)} &laquo;</a>
+            <a class="more" href="/catalog/{parent}/">{escape(parent_anchor)} – לכל המוצרים &laquo;</a>
         </section>
 
         <section class="sc-more">
@@ -1639,7 +1663,7 @@ def bake_catalog_product_index():
         subs_html = ''
         if subs:
             sub_links = '\n'.join(
-                f'                <a href="/catalog/{slug}/{s}/">{escape(c["h1"])}</a>' for s, c in subs)
+                f'                <a href="/catalog/{slug}/{s}/">{escape(c["anchor"])}</a>' for s, c in subs)
             subs_html = f'''            <p style="margin-top:24px;">לפי סוג מוצר:</p>
             <div class="cat-links">
 {sub_links}
@@ -1711,17 +1735,24 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
     if img_abs:
         schema['image'] = img_abs
 
+    # מוצר ששייך לדף תת-קטגוריה מקשר אליו בפירורים — כך דפי המוצר מפנים את
+    # החיפוש הרחב ("נייר טואלט בסיטונאות") לדף אחד במקום להתחרות בו.
+    sub = _subcategory_for(r)
+    sub_url = f'/catalog/{sub[1]["parent"]}/{sub[0]}/' if sub else ''
+    crumb_items = [('דף הבית', f'{SITE_BASE_URL}/'), ('קטלוג מוצרים', f'{SITE_BASE_URL}/catalog/'),
+                   (cat or 'מוצרים', f'{SITE_BASE_URL}{cat_url}')]
+    if sub:
+        crumb_items.append((sub[1]['anchor'], f'{SITE_BASE_URL}{sub_url}'))
+    crumb_items.append((name, page_url))
     breadcrumb = {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         'itemListElement': [
-            {'@type': 'ListItem', 'position': 1, 'name': 'דף הבית', 'item': f'{SITE_BASE_URL}/'},
-            {'@type': 'ListItem', 'position': 2, 'name': 'קטלוג מוצרים', 'item': f'{SITE_BASE_URL}/catalog/'},
-            {'@type': 'ListItem', 'position': 3, 'name': cat or 'מוצרים',
-             'item': f'{SITE_BASE_URL}{cat_url}'},
-            {'@type': 'ListItem', 'position': 4, 'name': name, 'item': page_url},
-        ],
+            {'@type': 'ListItem', 'position': i, 'name': n, 'item': u}
+            for i, (n, u) in enumerate(crumb_items, 1)],
     }
+    sub_crumb_html = (f'<a href="{escape(sub_url)}">{escape(sub[1]["anchor"])}</a> &laquo; '
+                      if sub else '')
 
     img_html = (f'<img class="p-img" src="/{quote(img_rel.lstrip("/"))}" alt="{escape(name)}" '
                 f'width="420" height="420" loading="eager">'
@@ -1839,7 +1870,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
     <main id="main-content" class="container pp" tabindex="-1">
         <nav class="crumbs" aria-label="breadcrumb">
             <a href="/">דף הבית</a> &laquo; <a href="/catalog/">קטלוג מוצרים</a> &laquo;
-            <a href="{escape(cat_url)}">{escape(cat or 'מוצרים')}</a> &laquo; {escape(name)}
+            <a href="{escape(cat_url)}">{escape(cat or 'מוצרים')}</a> &laquo; {sub_crumb_html}{escape(name)}
         </nav>
 
         <article class="p-main">
