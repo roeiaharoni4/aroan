@@ -1349,6 +1349,24 @@ CATALOG_SUBCATEGORIES = {
                  'בין מחיר קמעונאי למחיר סיטונאי מצטבר לסכום משמעותי בשנה. אנחנו מספקים גלילים '
                  'תעשייתיים, נייר צץ רץ בשליפה יחידנית ונייר תאית דו-שכבתי — באריזות מוסדיות. '
                  'אספקה קבועה למפעלים, למשרדים, למסעדות ולמוסדות חינוך.',
+        # תוכן לפי החיפושים שהדף כבר מופיע בהם במיקום 10–25 ("נייר ניגוב ידיים תעשייתי",
+        # "נייר תעשייתי לניגוב ידיים", "... מחיר"). רק עובדות שנובעות מהמוצרים עצמם.
+        'sections': [
+            ('איזה נייר ניגוב ידיים מתאים לעסק', [
+                'גליל נייר תעשייתי משמש לניגוב ידיים, משטחים וציוד, והוא הפורמט המקובל '
+                'במפעלים, במוסכים ובמטבחים מסחריים. יש גליל חד-שכבתי בסיסי, גליל תאית '
+                'דו-שכבתי סופג יותר, וגליל צר לעמדות עבודה שאין בהן מקום לגליל מלא.',
+                'נייר צץ רץ נשלף דף אחד בכל פעם, בלי מגע בשאר הניירות, ולכן הוא הנפוץ '
+                'בשירותים של משרדים ומוסדות. הוא מגיע בקרטונים של 2,500 ושל 4,000 יחידות, '
+                'חד-שכבתי או דו-שכבתי, ויש גם צץ רץ חתוך מראש לשימוש בשבת.',
+                'נייר ניגוב ידיים בגלילים קטנים – מארזי 6 גלילים וסלים רול – מתאים '
+                'למטבחונים, לשירותים קטנים ולעמדות עם מקום מצומצם.',
+            ]),
+            ('נייר ניגוב ידיים תעשייתי – מחיר', [
+                'המחירון שלנו סיטונאי ואינו מפורסם באתר. המחיר נקבע לפי סוג הנייר ולפי '
+                'הכמות: שולחים לנו בוואטסאפ איזה נייר העסק צורך וכמה בחודש, ומקבלים הצעת מחיר.',
+            ]),
+        ],
     },
     'toilet-paper': {
         'parent': 'paper',
@@ -1446,6 +1464,13 @@ def generate_catalog_subcategory_pages():
             f'                <a href="/catalog/{c["parent"]}/{s}/">{escape(c["anchor"])}</a>'
             for s, c in CATALOG_SUBCATEGORIES.items() if s != slug)
         parent_anchor = CATALOG_PARENT_ANCHORS.get(parent, parent_name)
+        info_html = ''.join(
+            f'''
+        <section class="sc-info">
+            <h2>{escape(h)}</h2>
+''' + '\n'.join(f'            <p>{escape(t)}</p>' for t in paras) + '''
+        </section>
+''' for h, paras in cfg.get('sections', []))
 
         schema = {
             '@context': 'https://schema.org', '@type': 'CollectionPage',
@@ -1519,6 +1544,9 @@ def generate_catalog_subcategory_pages():
         .sc-item p {{ margin: 0; color: var(--text-color); font-size: .9rem; line-height: 1.55; }}
         .more {{ display: inline-block; margin-top: 18px; font-weight: 700; color: var(--secondary-color); }}
         .sc-more {{ margin-top: 40px; }}
+        .sc-info {{ margin-top: 40px; max-width: 860px; }}
+        .sc-info h2 {{ font-size: 1.35rem; color: var(--secondary-color); margin-bottom: 12px; }}
+        .sc-info p {{ line-height: 1.75; color: var(--text-color); margin-bottom: 12px; }}
         .chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
         .chips a {{ padding: 7px 14px; border: 1px solid rgba(0, 0, 0, .08); border-radius: 999px;
                    background: var(--white); color: var(--secondary-color); font-size: .92rem; font-weight: 600; }}
@@ -1556,7 +1584,7 @@ def generate_catalog_subcategory_pages():
             </div>
             <a class="more" href="/catalog/{parent}/">{escape(parent_anchor)} – לכל המוצרים &laquo;</a>
         </section>
-
+{info_html}
         <section class="sc-more">
             <h2>קטגוריות נוספות</h2>
             <div class="chips">
