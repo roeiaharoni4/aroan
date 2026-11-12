@@ -83,7 +83,12 @@
 - [Institutional Toilet Paper](https://aroam.co.il/catalog/paper/toilet-paper/): נייר טואלט מוסדי בסיטונאות — גלילי ג׳מבו, מארזים גדולים ונייר קומפקט.
 - [Disposable Cups](https://aroam.co.il/catalog/disposables/cups/): כוסות חד פעמיות בסיטונאות — כוסות נייר לשתייה חמה, אספרסו, פלסטיק לשתייה קרה וכוסות בירה.
 - [Food Containers & Packaging](https://aroam.co.il/catalog/disposables/containers/): קופסאות אוכל ואריזות מזון חד פעמיות — קופסאות מחולקות, קופסאות סלט וקערות חומוס.
-- [Disposable Plates & Cutlery](https://aroam.co.il/catalog/disposables/tableware/): צלחות וסכו״ם חד פעמי בסיטונאות — צלחות מתכלות וסכו״ם קשיח.
+- [Disposable Plates & Cutlery](https://aroam.co.il/catalog/disposables/tableware/): צלחות חד פעמיות וסכו״ם חד פעמי במחיר סיטונאי — צלחות מתכלות, סכו״ם קשיח וסכו״ם רגיל.
+- [Industrial Paper Rolls](https://aroam.co.il/catalog/paper/industrial-rolls/): גלילי נייר תעשייתי בסיטונאות — חד-שכבתי, תאית דו-שכבתי וגליל צר, למפעלים ולמטבחים מסחריים.
+- [Copy Paper & Sheets](https://aroam.co.il/catalog/office-supplies/copy-paper/): נייר צילום A4 לבן וצבעוני, דפי למינציה, דפי ממו ונייר שרטוט.
+- [Office Writing Supplies](https://aroam.co.il/catalog/office-supplies/writing/): כלי כתיבה למשרד — עטים, עטי מחט, טושים, מרקרים וטיפקס.
+- [Binders & Filing](https://aroam.co.il/catalog/office-supplies/filing/): קלסרים, חוצצים, שמרדפים ותיקי תיוק.
+- [Staplers, Staples & Tape](https://aroam.co.il/catalog/office-supplies/fastening/): שדכנים, סיכות, מנקב וסלוטייפ.
 
 ## Consumer (B2C) Catalog
 
