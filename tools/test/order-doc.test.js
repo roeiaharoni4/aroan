@@ -375,10 +375,14 @@ test('CRM: הפיילוד שהאתר שולח בפועל (נלכד בדפדפן)
 // הסקריפט טוען את RivhitCore מקובץ שני בפרויקט (ריווחית.js = js/rivhit-core.js).
 // כאן נטענים שניהם יחד, עם דמויות לרשת, למטמון, לגיליון ולמייל.
 
+// הקבצים לריווחית נכתבים ב-Windows-1255
+const decode1255 = (bytes) => new TextDecoder('windows-1255').decode(Buffer.from(bytes.map(x => x & 255)));
+
 const PRODUCTS_CSV = 'id,name,category,rivhit\n' +
   'חדפ003,כוס בירה 330 40 יח׳,חד פעמי ואריזות,1415\n' +
   'ניק001,אקונומיקה 4 ליטר,ניקיון,56\n' +
   'חדפ002,גביע 150 מ״ל - 100 יח׳,חד פעמי ואריזות,1148\n' +
+  'אבי004,כפפות ניטריל,אביזרי ניקיון,C203|C204\n' +
   'טיפ001,DOVE סבון,טיפוח,\n';
 
 function loadOrdersApp(opts) {
@@ -443,64 +447,73 @@ const AR_ORDER = {
 };
 const TODAY = new Date(2026, 10, 4);
 
-test('ריווחית: הזמנה ⇒ שלושה קבצים (הזמנה, תעודת משלוח, חשבונית) בבייטים חתומים', () => {
+test('ריווחית: הזמנה ⇒ קובץ אחד: הצעת מחיר, לקוח 118, שם העסק בשני שדות השם (12.11.26)', () => {
   const app = loadOrdersApp();
-  const r = app.rivhitAttachments_(AR_ORDER, '1234', null, TODAY);
-  assert.deepStrictEqual(r.files.map(f => f.name), [
-    'מסעדת הגן הירוק בע״מ - הזמנה.txt',
-    'מסעדת הגן הירוק בע״מ - תעודת משלוח.txt',
-    'מסעדת הגן הירוק בע״מ - חשבונית מס.txt'
-  ]);
+  const r = app.rivhitAttachments_(AR_ORDER, null, TODAY);
+  assert.deepStrictEqual(r.files.map(f => f.name), ['מסעדת הגן הירוק בע״מ - הצעת מחיר.txt']);
   const b = r.files[0].bytes;
   assert.ok(b.every(x => x >= -128 && x <= 127), 'בייטים חתומים כמו ש-Utilities.newBlob מצפה');
-  const text = Buffer.from(b.map(x => x & 255)).toString('latin1');
-  assert.strictEqual(text.split('\r\n').length, 2, 'שני פריטים משויכים');
-  assert.strictEqual(text.split('\r\n')[0].split('\t')[9], '1234');
+  const lines = decode1255(b).split('\r\n');
+  assert.strictEqual(lines.length, 2, 'שני פריטים משויכים');
+  const f = lines[0].split('\t');
+  assert.strictEqual(f[3], '6');
+  assert.strictEqual(f[9], '118');
+  assert.strictEqual(f[10], 'מסעדת הגן הירוק בע״מ');
+  assert.strictEqual(f[11], 'מסעדת הגן הירוק בע״מ');
   assert.deepStrictEqual(r.missing, ['DOVE סבון']);
   assert.strictEqual(r.error, '');
 });
 
-test('ריווחית: בקשת הצעת מחיר ⇒ קובץ אחד מסוג הצעת מחיר', () => {
+test('ריווחית: בקשת הצעת מחיר ⇒ אותו קובץ אחד מסוג הצעת מחיר', () => {
   const app = loadOrdersApp();
-  const r = app.rivhitAttachments_(Object.assign({}, AR_ORDER, { orderId: 'HM-20261104-654321' }), '', null, TODAY);
+  const r = app.rivhitAttachments_(Object.assign({}, AR_ORDER, { orderId: 'HM-20261104-654321' }), null, TODAY);
   assert.deepStrictEqual(r.files.map(f => f.name), ['מסעדת הגן הירוק בע״מ - הצעת מחיר.txt']);
-  const text = Buffer.from(r.files[0].bytes.map(x => x & 255)).toString('latin1');
-  assert.strictEqual(text.split('\t')[3], '6');
-  assert.strictEqual(text.split('\t')[9], '118', 'בלי מספר בכרטיס ⇒ לקוח מזדמן');
+  const f = decode1255(r.files[0].bytes).split('\t');
+  assert.strictEqual(f[3], '6');
+  assert.strictEqual(f[9], '118');
+});
+
+test('ריווחית: מוצר באתר עם מספר קטלוגי אמיתי (C203) נכנס בשדה 5', () => {
+  const app = loadOrdersApp();
+  const o = Object.assign({}, AR_ORDER, { items: [
+    { id: 'אבי004', name: 'כפפות ניטריל', category: 'אביזרי ניקיון', qty: 4, unit: 'יחידה', image: '', price: 7, total: 28 }
+  ] });
+  const r = app.rivhitAttachments_(o, null, TODAY);
+  assert.strictEqual(decode1255(r.files[0].bytes).split('\t')[4], 'C203');
 });
 
 test('ריווחית: מק"טים נשמרים במטמון — הורדה אחת של products.csv לשתי הזמנות', () => {
   const app = loadOrdersApp();
-  app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
-  app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
+  app.rivhitAttachments_(AR_ORDER, null, TODAY);
+  app.rivhitAttachments_(AR_ORDER, null, TODAY);
   assert.strictEqual(app.sent.fetches.filter(u => u.indexOf('products.csv') >= 0).length, 1);
 });
 
 test('ריווחית: products.csv לא נטען ⇒ אין קבצים, אין חריגה, וההסבר מפנה ל-CRM', () => {
   const app = loadOrdersApp({ csvDown: true });
-  const r = app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
+  const r = app.rivhitAttachments_(AR_ORDER, null, TODAY);
   assert.strictEqual(r.files.length, 0);
   assert.ok(r.error);
-  assert.ok(/CRM/.test(app.rivhitMailText_(r, { ok: true })));
+  assert.ok(/CRM/.test(app.rivhitMailText_(r)));
 });
 
 test('ריווחית: אף פריט לא משויך ⇒ בלי קבצים, והמייל מסביר למה', () => {
   const app = loadOrdersApp();
   const o = Object.assign({}, AR_ORDER, { items: [AR_ORDER.items[2]] });
-  const r = app.rivhitAttachments_(o, '', null, TODAY);
+  const r = app.rivhitAttachments_(o, null, TODAY);
   assert.strictEqual(r.files.length, 0);
-  const t = app.rivhitMailText_(r, { ok: true });
+  const t = app.rivhitMailText_(r);
   assert.ok(/לא נוצר קובץ/.test(t), t);
+  assert.ok(/מספר קטלוגי/.test(t), t);
   assert.ok(/DOVE סבון/.test(t), t);
 });
 
-test('ריווחית: שורת המייל — מספר מהכרטיס, לקוח מזדמן, CRM לא ענה', () => {
+test('ריווחית: שורת המייל — הצעת מחיר על לקוח 118, ומה לא נכנס', () => {
   const app = loadOrdersApp();
-  const r = app.rivhitAttachments_(AR_ORDER, '1234', null, TODAY);
-  assert.ok(/לקוח 1234/.test(app.rivhitMailText_(r, { ok: true, rivhitNo: '1234' })));
-  const occ = app.rivhitAttachments_(AR_ORDER, '', null, TODAY);
-  assert.ok(/118/.test(app.rivhitMailText_(occ, { ok: true, rivhitNo: '' })));
-  assert.ok(/ה-CRM לא ענה/.test(app.rivhitMailText_(occ, { ok: false })));
+  const t = app.rivhitMailText_(app.rivhitAttachments_(AR_ORDER, null, TODAY));
+  assert.ok(/מצורף קובץ לקליטה בריווחית כהצעת מחיר — לקוח 118 \(לקוחות שונים\)\./.test(t), t);
+  assert.ok(/לא נכללו בקובץ \(אין מספר קטלוגי בריווחית\): DOVE סבון/.test(t), t);
+  assert.ok(!/CRM/.test(t), 'כשיש קובץ אין צורך להפנות ל-CRM: ' + t);
 });
 
 test('ריווחית: האירוע ל-CRM נושא את פריטי ההזמנה, ו-notifyCrm_ מחזיר את מספר הלקוח', () => {
@@ -510,12 +523,15 @@ test('ריווחית: האירוע ל-CRM נושא את פריטי ההזמנה,
   assert.deepStrictEqual(app.notifyCrm_(ev), { ok: true, id: 'C1', rivhitNo: '1234' });
 });
 
-test('ריווחית: doPost — המייל של הזמנה עסקית מגיע עם שלושת הקבצים ומספר הלקוח', () => {
+test('ריווחית: doPost — צרופה אחת, הצעת מחיר על 118, גם כשבכרטיס ב-CRM יש מספר לקוח', () => {
   const app = loadOrdersApp({ rivhitNo: '1234' });
   assert.strictEqual(app.post(AR_ORDER).success, true);
   const m = app.sent.mails[0];
-  assert.strictEqual(m.o.attachments.length, 3, 'ה-PDF נכשל בדמויות — רק קובצי ריווחית');
-  assert.ok(/לקוח 1234/.test(m.body), m.body);
+  assert.strictEqual(m.o.attachments.length, 1, 'ה-PDF נכשל בדמויות — רק קובץ ריווחית');
+  assert.strictEqual(m.o.attachments[0].name, 'מסעדת הגן הירוק בע״מ - הצעת מחיר.txt');
+  assert.strictEqual(decode1255(m.o.attachments[0].bytes).split('\t')[9], '118');
+  assert.ok(/לקוח 118 \(לקוחות שונים\)/.test(m.body), m.body);
+  assert.ok(!/לקוח 1234/.test(m.body), m.body);
   assert.strictEqual(app.sent.rows.length, 1);
 });
 
@@ -537,23 +553,36 @@ const SL_WITH_RV = Object.assign({}, AR_ORDER, {
   orderId: 'SL-20261109-123456', showPrices: true,
   items: AR_ORDER.items.concat([
     { id: 'RV-1500', name: 'כפפות ניטריל M', category: 'מריווחית', qty: 3, unit: '', image: '',
-      price: 7, total: 21, rivhit: '1500' }
+      price: 7, total: 21, rivhit: 'C203' }
   ])
 });
 
-test('ריווחית: האירוע ל-CRM מעביר את המק"ט של פריט מריווחית, ורק שלו', () => {
+test('ריווחית: האירוע ל-CRM מעביר את המספר הקטלוגי של פריט מריווחית, ורק שלו', () => {
   const app = loadOrdersApp();
   const ev = app.crmEventFor_(SL_WITH_RV, null);
-  assert.deepStrictEqual(ev.items[3], { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: '1500' });
+  assert.deepStrictEqual(ev.items[3], { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: 'C203' });
   assert.ok(!('rivhit' in ev.items[1]));
 });
 
-test('ריווחית: קובץ הקליטה כולל פריט מריווחית לפי המק"ט שהוא נושא', () => {
+test('ריווחית: האירוע ל-CRM לא מעביר מספר קטלוגי לא תקין', () => {
   const app = loadOrdersApp();
-  const r = app.rivhitAttachments_(SL_WITH_RV, '1234', null, TODAY);
-  const lines = Buffer.from(r.files[0].bytes.map(x => x & 255)).toString('latin1').split('\r\n');
+  const o = Object.assign({}, SL_WITH_RV, { items: [
+    { id: 'RV-1', name: 'א', qty: 1, price: 1, rivhit: 'C2"03' },
+    { id: 'RV-2', name: 'ב', qty: 1, price: 1, rivhit: 'A'.repeat(16) },
+    { id: 'RV-3', name: 'ג', qty: 1, price: 1, rivhit: ' 1612 ' }
+  ] });
+  const ev = app.crmEventFor_(o, null);
+  assert.ok(!('rivhit' in ev.items[0]));
+  assert.ok(!('rivhit' in ev.items[1]));
+  assert.strictEqual(ev.items[2].rivhit, '1612');
+});
+
+test('ריווחית: קובץ הקליטה כולל פריט מריווחית לפי המספר הקטלוגי שהוא נושא', () => {
+  const app = loadOrdersApp();
+  const r = app.rivhitAttachments_(SL_WITH_RV, null, TODAY);
+  const lines = decode1255(r.files[0].bytes).split('\r\n');
   assert.strictEqual(lines.length, 3, 'שני מוצרי אתר משויכים + פריט מריווחית');
-  assert.strictEqual(lines[2].split('\t')[4], '1500');
+  assert.strictEqual(lines[2].split('\t')[4], 'C203');
   assert.deepStrictEqual(r.missing, ['DOVE סבון']);
 });
 
@@ -561,9 +590,9 @@ test('ריווחית: doPost — הזמנה מדף הסוכן עם פריט מר
   const app = loadOrdersApp({ rivhitNo: '1234' });
   assert.strictEqual(app.post(SL_WITH_RV).success, true);
   const m = app.sent.mails[0];
-  assert.strictEqual(m.o.attachments.length, 3);
-  const text = Buffer.from(m.o.attachments[0].bytes.map(x => x & 255)).toString('latin1');
-  assert.ok(text.split('\r\n').some(l => l.split('\t')[4] === '1500'), 'המק"ט של הפריט מריווחית בקובץ');
+  assert.strictEqual(m.o.attachments.length, 1);
+  const text = decode1255(m.o.attachments[0].bytes);
+  assert.ok(text.split('\r\n').some(l => l.split('\t')[4] === 'C203'), 'המספר הקטלוגי של הפריט מריווחית בקובץ');
 });
 
 let failed = 0;
