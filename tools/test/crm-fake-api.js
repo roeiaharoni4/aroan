@@ -69,8 +69,11 @@
                   { id: 'מוצ020', name: 'גליל תעשייתי חד שכבתי 5012', qty: 4, price: 44 },
                   { id: 'טיפ001', name: 'DOVE סבון מוצק', qty: 2, price: 12 }
               ]) },
+            // פריט מריווחית שנשמר לפני 12.11.26 עם מספר הפריט (1500) — בכרטיס הוא צריך לקבל
+            // את המספר הקטלוגי מהרשימה שהועלתה (אפיון 2026-11-12)
             Object.assign(order('A5', 'C6', -10, 'SL-' + day(-10).replace(/-/g, '') + '-654321'), {
-              items: JSON.stringify([{ id: 'חדפ006', name: 'כוסות נייר 8B - 1000 יח׳', qty: 2, price: 68 }]) }),
+              items: JSON.stringify([{ id: 'חדפ006', name: 'כוסות נייר 8B - 1000 יח׳', qty: 2, price: 68 },
+                  { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: '1500' }]) }),
             order('A6', 'C8', -100, 'AR-' + day(-100).replace(/-/g, '') + '-111111'),
             order('A7', 'C8', -70, 'AR-' + day(-70).replace(/-/g, '') + '-222222'),
             order('A8', 'C8', -50, 'AR-' + day(-50).replace(/-/g, '') + '-333333')
@@ -142,7 +145,12 @@
             case 'items_set': {
                 const items = (Array.isArray(b.items) ? b.items : [])
                     .filter(x => Array.isArray(x) && /^\d{1,15}$/.test(String(x[0]).trim()) && String(x[1] || '').trim())
-                    .map(x => [String(x[0]).trim(), String(x[1]).trim().slice(0, 100)]);
+                    // שלשות [מספר, שם, מספר קטלוגי] כמו cleanItems_ בסקריפט (אפיון 2026-11-12)
+                    .map(x => {
+                        const cat = String(x[2] == null ? '' : x[2]).trim();
+                        return [String(x[0]).trim(), String(x[1]).trim().slice(0, 100),
+                            cat.length <= 15 && /^[^\t\r\n"|]+$/.test(cat) ? cat : ''];
+                    });
                 if (!items.length) return { ok: false, error: 'no items' };
                 db.items = items;
                 db.itemsUpdated = at(0, '12:00');

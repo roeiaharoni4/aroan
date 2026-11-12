@@ -902,9 +902,17 @@ window.RIVHIT_MAPPING = {"customer": {"no": "", "name": ""}, "map": [{"desc": "�
             var mig = C.migrateLearned(state.learned, res.items);
             state.learned = mig.learned;
             state.catalogList = true;
-            if (mig.changed) msg += ' · ' + mig.changed + ' שיוכים עודכנו למספר הקטלוגי';
-            if (res.inactive) msg += ' · ' + res.inactive + ' בקבוצה "לא פעיל" לא נטענו';
-            if (res.noCatalog) msg += ' · ' + res.noCatalog + ' בלי מספר קטלוגי לא נטענו';
+            if (mig.changed) {
+              msg += ' · ' + (mig.changed === 1 ? 'שיוך אחד עודכן' : mig.changed + ' שיוכים עודכנו') + ' למספר הקטלוגי';
+            }
+            if (res.inactive) {
+              msg += ' · ' + (res.inactive === 1 ? 'פריט אחד בקבוצה "לא פעיל" לא נטען'
+                : res.inactive + ' פריטים בקבוצה "לא פעיל" לא נטענו');
+            }
+            if (res.noCatalog) {
+              msg += ' · ' + (res.noCatalog === 1 ? 'פריט אחד בלי מספר קטלוגי לא נטען'
+                : res.noCatalog + ' פריטים בלי מספר קטלוגי לא נטענו');
+            }
           }
           saveState();
           render();

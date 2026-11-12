@@ -1108,12 +1108,17 @@
     // ופריט בלי מספר קטלוגי לא נשמרים: בלי מספר קטלוגי ריווחית לא מזהה אותו בקליטה.
 
     function itemsFoundText(parsed) {
-        const n = (x) => x.toLocaleString('he-IL');
-        const parts = ['נמצאו ' + n(parsed.items.length) + ' פריטים עם מספר קטלוגי.'];
-        if (parsed.inactive) parts.push(n(parsed.inactive) + ' פריטים בקבוצה "לא פעיל" לא יישמרו.');
+        const count = (x, one, many) => x === 1 ? one : x.toLocaleString('he-IL') + ' ' + many;
+        const parts = ['נמצאו ' + count(parsed.items.length, 'פריט אחד', 'פריטים') + ' עם מספר קטלוגי.'];
+        if (parsed.inactive) {
+            parts.push(count(parsed.inactive, 'פריט אחד בקבוצה "לא פעיל" לא יישמר.',
+                'פריטים בקבוצה "לא פעיל" לא יישמרו.'));
+        }
         if (parsed.noCatalog) {
-            parts.push(n(parsed.noCatalog) + ' פריטים בלי מספר קטלוגי לא יישמרו — כדי שיופיעו בדף הסוכן, ' +
-                'צריך לתת להם מספר קטלוגי בריווחית ולהעלות שוב.');
+            parts.push(parsed.noCatalog === 1
+                ? 'פריט אחד בלי מספר קטלוגי לא יישמר — כדי שיופיע בדף הסוכן, צריך לתת לו מספר קטלוגי בריווחית ולהעלות שוב.'
+                : count(parsed.noCatalog, '', 'פריטים בלי מספר קטלוגי לא יישמרו') +
+                  ' — כדי שיופיעו בדף הסוכן, צריך לתת להם מספר קטלוגי בריווחית ולהעלות שוב.');
         }
         return parts.join(' ');
     }
