@@ -35,16 +35,56 @@ test('רשימת פריטים: "מק״ט" גובר על "קוד מיון"', () =
   assert.deepStrictEqual(res.items, [{ code: 'Z9', name: 'ספוג' }]);
 });
 
-test('רשימת פריטים: הייצוא של ריווחית (item_num, item_name, item_part_num)', () => {
+test('רשימת פריטים: הייצוא של ריווחית — המק"ט הוא המספר הקטלוגי, ומספר הפריט נשמר ב-num', () => {
   const res = M.parseItemList([
-    ['item_num', 'item_name', 'item_part_num', 'sapak', 'item_cost_nis'],
-    [1, "צץ רץ 4000 יח'", 'P101', 0, 30],
-    [693, 'מים מזוקקים 4 ליטר', '', 0, 0]
+    ['item_num', 'item_name', 'item_part_num', 'sapak', 'item_cost_nis', 'int1', 'compute_0037'],
+    [1, "צץ רץ 4000 יח'", 'P101', 0, 30, 1, 'קבוצה א'],
+    [693, 'מים מזוקקים 4 ליטר', 693, 0, 0, 1, 'קבוצה א'],
+    [1880, 'כפול', '0', 0, 0, 9999, 'לא פעיל'],
+    [1921, 'כפול בלי שם קבוצה', 1921, 0, 0, 9999, ''],
+    [1866, 'בלי מספר קטלוגי', '', 0, 0, 1, 'קבוצה א'],
+    [5, 'מספר קטלוגי שגוי', 'C2"03', 0, 0, 1, 'קבוצה א']
   ]);
+  assert.strictEqual(res.catalogList, true);
   assert.deepStrictEqual(res.items, [
-    { code: '1', name: "צץ רץ 4000 יח'" },
-    { code: '693', name: 'מים מזוקקים 4 ליטר' }
+    { code: 'P101', name: "צץ רץ 4000 יח'", num: '1' },
+    { code: '693', name: 'מים מזוקקים 4 ליטר', num: '693' }
   ]);
+  assert.strictEqual(res.inactive, 2);
+  assert.strictEqual(res.noCatalog, 2);
+});
+
+test('רשימת פריטים: ייצוא מופרד בטאבים נקרא דרך SheetJS כמו בממיר', () => {
+  const XLSX = require('../rivhit/vendor/xlsx.full.min.js');
+  const tsv = 'item_num\titem_name\titem_part_num\tint1\r\n60\tמגבות 1 ק"ג\tC203\t2\r\n895\tגליל\t895\t1\r\n';
+  const wb = XLSX.read(tsv, { type: 'string' });
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null, blankrows: true });
+  const res = M.parseItemList(rows);
+  assert.deepStrictEqual(res.items, [
+    { code: 'C203', name: 'מגבות 1 ק"ג', num: '60' },
+    { code: '895', name: 'גליל', num: '895' }
+  ]);
+});
+
+test('רשימה שאינה הייצוא של ריווחית לא מסומנת כרשימה לפי מספר קטלוגי', () => {
+  assert.strictEqual(M.parseItemList([['מק״ט', 'שם'], ['K-1', 'כפפות']]).catalogList, false);
+});
+
+test('שיוכים ישנים (מספר פריט) מתורגמים למספר הקטלוגי לפי הייצוא', () => {
+  const items = [{ code: 'C203', name: 'מגבות', num: '60' }, { code: '895', name: 'גליל', num: '895' }];
+  const learned = {
+    'מגבות נייר': { code: '60', name: 'מגבות' },
+    'גליל 5012': { code: '895', name: 'גליל' },
+    'כבר קטלוגי': { code: 'C203', name: 'מגבות' },
+    'לא ברשימה': { code: '1862', name: '' }
+  };
+  const r = M.migrateLearned(learned, items);
+  assert.strictEqual(r.changed, 1);
+  assert.deepStrictEqual(r.learned['מגבות נייר'], { code: 'C203', name: 'מגבות' });
+  assert.deepStrictEqual(r.learned['גליל 5012'], learned['גליל 5012']);
+  assert.deepStrictEqual(r.learned['כבר קטלוגי'], learned['כבר קטלוגי']);
+  assert.deepStrictEqual(r.learned['לא ברשימה'], learned['לא ברשימה']);
+  assert.deepStrictEqual(M.migrateLearned({}, items), { learned: {}, changed: 0 });
 });
 
 test('רשימת פריטים בלי כותרת ⇒ שגיאה', () => {
@@ -128,7 +168,8 @@ test('השיוך המובנה מכסה את טופס הרשת (36 מתוך 39 �
   const unmapped = M.resolveLines(formLines, map, {}).filter(l => !l.code).map(l => l.desc);
   assert.strictEqual(unmapped.length, 3, unmapped.join(' | '));
   const ordered = M.resolveLines(F.parseWorkbook([{ name: 's', rows, firstRow: 1 }]), map, {});
-  assert.deepStrictEqual(ordered.map(l => l.code), ['693', '851', '1489', '295', '1305', '944']);
+  // מספרים קטלוגיים (12.11.26): לפריטים 851, 1489 ו-295 יש מספר קטלוגי משלהם; לשאר הוא מספר הפריט
+  assert.deepStrictEqual(ordered.map(l => l.code), ['693', 'P1272', 'E400M', 'H801-1', '1305', '944']);
 });
 
 // שיוך שנשמר ידנית כשרשימת הפריטים לא הייתה טעונה נשמר בלי שם — ואז יצא לריווחית

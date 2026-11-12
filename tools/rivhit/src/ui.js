@@ -54,6 +54,8 @@
       docType: C.DOC_TYPES.some(function (d) { return d.code === Number(s.docType); })
         ? Number(s.docType) : C.DOC_TYPES[0].code,
       items: Array.isArray(s.items) ? s.items : [],
+      // נטען ייצוא של ריווחית שבו המק"ט הוא המספר הקטלוגי, והשיוכים תורגמו (12.11.26)
+      catalogList: s.catalogList === true,
       learned: s.learned && typeof s.learned === 'object' ? s.learned : {},
       counter: s.counter || null,
       history: s.history && typeof s.history === 'object' ? s.history : {}
@@ -77,6 +79,24 @@
 
   function currentMap() { return Object.assign({}, BUILT_IN_MAP, state.learned); }
   function settings() { return { customerNo: state.customerNo, customerName: state.customerName }; }
+
+  // מה צריך לתקן לפני הפקה. ריווחית מזהה פריט לפי המספר הקטלוגי, ומק"ט שלא קיים
+  // אצלה פותח פריט חדש (סבב 91) — לכן בלי רשימה מריווחית אין הפקה, ומק"ט שלא ברשימה
+  // חוסם את ההזמנה.
+  function orderProblems(r) {
+    var p = C.validateOrder(r);
+    if (!state.catalogList) {
+      p.unshift('צריך לטעון את רשימת הפריטים מריווחית (ייצוא חדש, למטה). מ-12.11.26 הממיר מזהה פריטים לפי המספר הקטלוגי');
+      return p;
+    }
+    r.lines.forEach(function (l) {
+      if (l.code && !l.known) {
+        p.push('שורה ' + l.row + ' (' + l.desc + '): המספר הקטלוגי ' + l.code +
+          ' לא נמצא ברשימת הפריטים מריווחית — ריווחית הייתה פותחת פריט חדש');
+      }
+    });
+    return p;
+  }
 
   function resolvedOrder(o, map, by) {
     return {
@@ -130,9 +150,18 @@
         var res = C.parseItemList(sheets[i].rows);
         if (res.items.length) {
           state.items = res.items;
+          var msg = 'נטענו ' + res.items.length + ' פריטים מריווחית';
+          if (res.catalogList) {
+            var mig = C.migrateLearned(state.learned, res.items);
+            state.learned = mig.learned;
+            state.catalogList = true;
+            if (mig.changed) msg += ' · ' + mig.changed + ' שיוכים עודכנו למספר הקטלוגי';
+            if (res.inactive) msg += ' · ' + res.inactive + ' בקבוצה "לא פעיל" לא נטענו';
+            if (res.noCatalog) msg += ' · ' + res.noCatalog + ' בלי מספר קטלוגי לא נטענו';
+          }
           saveState();
           render();
-          toast('נטענו ' + res.items.length + ' פריטים מריווחית');
+          toast(msg);
           return;
         }
         lastError = res.error;
@@ -149,8 +178,11 @@
     var code = value.split(' — ')[0].trim();
     var by = itemsIndex();
     if (code.length > 15) { toast('מק״ט בריווחית מוגבל ל-15 תווים'); return; }
-    if (state.items.length && !by[code] &&
-        !confirm('המק״ט "' + code + '" לא נמצא ברשימת הפריטים מריווחית.\nלהשתמש בו בכל זאת?')) return;
+    // מק"ט שלא קיים בריווחית פותח שם פריט חדש — לכן אחרי שנטענה רשימה הוא לא נשמר
+    if (state.catalogList && !by[code]) {
+      toast('המספר הקטלוגי "' + code + '" לא נמצא ברשימת הפריטים מריווחית');
+      return;
+    }
     var key = C.descKey(desc);
     state.learned[key] = { code: code, name: by[code] ? by[code].name : '' };
     delete editing[key];
@@ -173,9 +205,9 @@
 
   function saveBackup() {
     var data = {
-      app: 'aroam-rivhit', version: 1, savedAt: new Date().toISOString(),
+      app: 'aroam-rivhit', version: 2, savedAt: new Date().toISOString(),
       customerNo: state.customerNo, customerName: state.customerName, encoding: state.encoding,
-      learned: state.learned, items: state.items
+      learned: state.learned, items: state.items, catalogList: state.catalogList
     };
     download(new TextEncoder().encode(JSON.stringify(data, null, 2)), 'rivhit-backup-' + stamp(new Date()) + '.json');
   }
@@ -186,6 +218,8 @@
       if (!d || d.app !== 'aroam-rivhit') throw new Error('not a backup');
       Object.assign(state.learned, d.learned || {});
       if (Array.isArray(d.items) && d.items.length) state.items = d.items;
+      // גיבוי מלפני 12.11.26 שומר מספרי פריט — עד שנטען ייצוא חדש (שמתרגם אותם) אין הפקה
+      if (d.catalogList !== true) state.catalogList = false;
       if (d.customerNo) state.customerNo = String(d.customerNo);
       if (d.customerName) state.customerName = String(d.customerName);
       if (d.encoding) state.encoding = d.encoding === 'utf8' ? 'utf8' : 'cp1255';
@@ -203,7 +237,7 @@
     if (!ready.length || C.validateSettings(settings()).length) return;
     var map = currentMap(), by = itemsIndex();
     var resolved = ready.map(function (o) { return resolvedOrder(o, map, by); });
-    if (resolved.some(function (r) { return C.validateOrder(r).length; })) return;
+    if (resolved.some(function (r) { return orderProblems(r).length; })) return;
 
     var today = new Date(), counter = state.counter, records = [], summary = [];
     try {
@@ -289,7 +323,7 @@
         '<div class="notice bad">' + esc(o.error) + '</div></section>';
     }
     var r = resolvedOrder(o, map, by);
-    var problems = C.validateOrder(r);
+    var problems = orderProblems(r);
     var prev = r.lines.length ? state.history[C.orderFingerprint(r)] : null;
     var total = 0;
     var rows = r.lines.map(function (l, i) {
@@ -324,9 +358,9 @@
   }
 
   function renderStatus() {
-    $('items-status').textContent = state.items.length
-      ? 'נטענו ' + state.items.length + ' פריטים. טוענים מחדש כשנוספים פריטים בריווחית.'
-      : 'עדיין לא נטענה רשימה. מייצאים מריווחית את רשימת הפריטים לאקסל (מק״ט ושם) וטוענים כאן — אז מופיעות הצעות לשיוך.';
+    $('items-status').textContent = !state.catalogList
+      ? 'צריך לטעון את רשימת הפריטים מריווחית (הייצוא המלא, עם המספר הקטלוגי). מ-12.11.26 הממיר מזהה פריטים לפי המספר הקטלוגי, ועד שהרשימה נטענת אי אפשר להפיק קובץ.'
+      : 'נטענו ' + state.items.length + ' פריטים. טוענים מחדש כשנוספים פריטים בריווחית.';
     $('map-status').textContent = Object.keys(BUILT_IN_MAP).length + ' שיוכים מובנים · ' +
       Object.keys(state.learned).length + ' שיוכים שנשמרו בדפדפן הזה. כדאי לשמור גיבוי מדי פעם.';
     var list = $('items-list');
@@ -346,7 +380,7 @@
     var bad = 0, lines = 0;
     ready.forEach(function (o) {
       var r = resolvedOrder(o, map, by);
-      if (C.validateOrder(r).length) bad++;
+      if (orderProblems(r).length) bad++;
       lines += r.lines.length;
     });
     var st;

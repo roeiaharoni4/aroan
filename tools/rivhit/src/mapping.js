@@ -32,11 +32,50 @@
     return -1;
   }
 
+  // מספר קטלוגי תקין או ''. אותו כלל כמו catalogCode בליבת קובצי האתר (site-order.js).
+  function catalogText(v) {
+    var s = codeText(v);
+    return s.length <= 15 && /^[^\t\r\n"|]+$/.test(s) ? s : '';
+  }
+
+  // ייצוא הפריטים של ריווחית (item_num, item_name, item_part_num): המק"ט הוא המספר
+  // הקטלוגי — ממנו ריווחית מזהה את הפריט בקליטה (סבב 91). מספר הפריט נשמר ב-num, לתרגום
+  // שיוכים ישנים. פריט בקבוצה "לא פעיל" (int1 = 9999) ופריט בלי מספר קטלוגי לא נכנסים.
+  function parseRivhitExport(rows, r, texts) {
+    var numCol = indexMatching(texts, [/^item_?num$/i], -1);
+    var nameCol = indexMatching(texts, [/^item_?name$/i], -1);
+    var partCol = indexMatching(texts, [/^item_part_num$/i], -1);
+    var groupCol = indexMatching(texts, [/^int1$/i], -1);
+    var groupNameCol = indexMatching(texts, [/^compute_0037$/i], -1);
+    var seenNum = {}, seenCode = {}, items = [], inactive = 0, noCatalog = 0;
+    for (var i = r + 1; i < rows.length; i++) {
+      var row = rows[i] || [];
+      var num = codeText(row[numCol]);
+      var name = T.normalizeText(row[nameCol]);
+      if (!/^\d{1,15}$/.test(num) || !name || seenNum[num]) continue;
+      seenNum[num] = true;
+      if ((groupCol >= 0 && codeText(row[groupCol]) === '9999') ||
+          (groupNameCol >= 0 && T.normalizeText(row[groupNameCol]) === 'לא פעיל')) { inactive++; continue; }
+      var code = catalogText(row[partCol]);
+      if (!code) { noCatalog++; continue; }
+      if (seenCode[code]) continue;
+      seenCode[code] = true;
+      items.push({ code: code, name: name, num: num });
+    }
+    return {
+      items: items, catalogList: true, inactive: inactive, noCatalog: noCatalog,
+      error: items.length ? '' : 'בייצוא אין פריטים פעילים עם מספר קטלוגי'
+    };
+  }
+
   // רשימת פריטים שיוצאה מריווחית: מחפש בשורות הראשונות כותרת עם מק"ט ושם
   function parseItemList(rows) {
     rows = rows || [];
     for (var r = 0; r < Math.min(rows.length, 15); r++) {
       var texts = (rows[r] || []).map(headerText);
+      if (indexMatching(texts, [/^item_part_num$/i], -1) >= 0 &&
+          indexMatching(texts, [/^item_?num$/i], -1) >= 0 &&
+          indexMatching(texts, [/^item_?name$/i], -1) >= 0) return parseRivhitExport(rows, r, texts);
       var codeCol = indexMatching(texts, CODE_HEADERS, -1);
       if (codeCol < 0) continue;
       var nameCol = indexMatching(texts, NAME_HEADERS, codeCol);
@@ -50,9 +89,27 @@
         seen[code] = true;
         items.push({ code: code, name: name });
       }
-      return { items: items, error: items.length ? '' : 'נמצאה שורת כותרת אבל אין מתחתיה פריטים' };
+      return { items: items, catalogList: false,
+        error: items.length ? '' : 'נמצאה שורת כותרת אבל אין מתחתיה פריטים' };
     }
-    return { items: [], error: 'לא נמצאה שורת כותרת עם עמודת מק״ט ועמודת שם פריט' };
+    return { items: [], catalogList: false, error: 'לא נמצאה שורת כותרת עם עמודת מק״ט ועמודת שם פריט' };
+  }
+
+  // שיוכים שנשמרו בדפדפן לפני 12.11.26 שמרו את מספר הפריט. כשנטען ייצוא של ריווחית
+  // הם מתורגמים למספר הקטלוגי של אותו פריט. מספר שכבר זהה למספר הקטלוגי, או שאין לו
+  // פריט ברשימה, נשאר כמו שהוא.
+  function migrateLearned(learned, items) {
+    var byNum = {};
+    (items || []).forEach(function (it) { if (it && it.num) byNum[String(it.num)] = it; });
+    var out = {}, changed = 0;
+    Object.keys(learned || {}).forEach(function (k) {
+      var e = learned[k] || {};
+      var code = String(e.code == null ? '' : e.code).trim();
+      var it = /^\d{1,15}$/.test(code) ? byNum[code] : null;
+      if (it && it.code !== code) { out[k] = { code: it.code, name: it.name }; changed++; }
+      else out[k] = e;
+    });
+    return { learned: out, changed: changed };
   }
 
   function indexItems(items) {
@@ -129,6 +186,7 @@
 
   return {
     parseItemList: parseItemList,
+    migrateLearned: migrateLearned,
     indexItems: indexItems,
     indexItemsWithMapNames: indexItemsWithMapNames,
     indexMap: indexMap,
