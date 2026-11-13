@@ -1224,7 +1224,7 @@ CATALOG_WHATSAPP = '972526000158'
 # ו-components.js (הדר, פוטר, וואטסאפ צף) כמו בשאר הדפים. דפי /care/ לא משתמשים
 # בהם בכוונה: לקטלוג הטיפוח הדר ופוטר עצמאיים, בלי קישורים לאתר העסקי.
 # גרסת components.js כאן חייבת להתאים להפניות בדפים — להעלות יחד.
-SITE_COMPONENTS_JS = '/js/components.js?v=3'
+SITE_COMPONENTS_JS = '/js/components.js?v=4'
 SITE_HEAD_ASSETS = """    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@400;500;700&display=swap" media="print" onload="this.media='all'">

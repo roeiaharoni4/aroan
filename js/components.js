@@ -189,7 +189,6 @@ class LeadForm extends HTMLElement {
         const heading = this.getAttribute('heading') || 'קבלו הצעת מחיר לעסק';
         const intro = this.getAttribute('intro') || 'השאירו פרטים ונחזור אליכם עם הצעת מחיר סיטונאית לעסק — בלי התחייבות.';
         const subject = this.getAttribute('subject') || 'בקשת הצעת מחיר מהאתר';
-        const switchText = encodeURIComponent('שלום, אנחנו עובדים עם ספק אחר ורוצים הצעה מתחרה. מצרפים צילום של ההזמנה האחרונה:');
         const check = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         this.innerHTML = `
             <section class="lead-section lead-section-compact"${n === 1 ? ' id="quote"' : ''}>
@@ -201,11 +200,6 @@ class LeadForm extends HTMLElement {
                             <div class="benefit-item"><span class="benefit-icon">${check}</span><span>מחירים סיטונאיים לעסקים, בלי מתווכים</span></div>
                             <div class="benefit-item"><span class="benefit-icon">${check}</span><span>משלוח עד בית העסק</span></div>
                             <div class="benefit-item"><span class="benefit-icon">${check}</span><span>מענה אישי ישירות מאיתנו</span></div>
-                        </div>
-                        <div class="switch-offer">
-                            <strong>כבר עובדים עם ספק אחר?</strong>
-                            <p>שלחו לנו בוואטסאפ צילום של ההזמנה או החשבונית האחרונה, ונחזיר אליכם הצעה מתחרה על אותם מוצרים.</p>
-                            <a class="switch-offer-btn" href="https://wa.me/972526000158?text=${switchText}" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.2.6 4.3 1.6 6.2L3.4 28l6.5-1.7c1.8 1 3.9 1.5 6.1 1.5 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3zm0 22.7c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.9 1 1-3.8-.2-.4c-1-1.6-1.5-3.5-1.5-5.4C5.7 9.8 10.3 5.2 16 5.2s10.3 4.6 10.3 10.3S21.7 25.7 16 25.7z"/></svg>שלחו צילום בוואטסאפ</a>
                         </div>
                     </div>
                     <div class="contact-form-container">

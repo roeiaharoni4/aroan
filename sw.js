@@ -3,7 +3,7 @@ const urlsToCache = [
     '/',
     '/catalog/',
     '/css/site.css',
-    '/js/components.js?v=3',
+    '/js/components.js?v=4',
     '/js/app.js',
     '/images/logo.png',
     '/js/lib/papaparse.min.js'
