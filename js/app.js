@@ -1805,6 +1805,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         syncModalScrollLock();
         const items = Object.keys(cart).length;
+        const custForm = document.getElementById('customer-details');
+        if (custForm && !custForm.dataset.tracked) {
+            custForm.dataset.tracked = '1';
+            custForm.addEventListener('input', function onFirst() {
+                custForm.removeEventListener('input', onFirst);
+                trackEvent('checkout_form_start', { order_items: Object.keys(cart).length });
+            });
+        }
         if (items > 0) {
             trackEvent("begin_checkout", { order_items: items });
             if (CONFIG.cartView) {
@@ -2498,6 +2506,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // את שם המזמין בעצמו, במפתח משלו).
         if (CONFIG.customerMode === 'branch') {
             if (!customer.contact) {
+                trackEvent('checkout_error', { error_reason: 'missing_orderer' });
                 showToast("נא למלא את שם המזמין לפני שליחת ההזמנה");
                 markMissingField("cust-contact", "שדה חובה — מי מזמין מהסניף?");
                 return false;
@@ -2510,6 +2519,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const nameField = isB2C ? "cust-contact" : "cust-business";
         const nameValue = isB2C ? customer.contact : customer.business;
         if (!nameValue || !customer.phone) {
+            trackEvent('checkout_error', {
+                error_reason: !nameValue && !customer.phone ? 'missing_name_and_phone'
+                    : (!nameValue ? 'missing_name' : 'missing_phone')
+            });
             showToast(isB2C
                 ? "נא למלא שם מלא וטלפון לפני שליחת ההזמנה"
                 : "נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
@@ -2518,6 +2531,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         // ספרה חסרה או מיותרת — בלי המספר אין דרך לחזור ללקוח שהזמין במייל
         if (!isValidPhone(customer.phone)) {
+            trackEvent('checkout_error', { error_reason: 'invalid_phone' });
             showToast("מספר הטלפון לא תקין — בדקו שהוקלד במלואו");
             markMissingField("cust-phone", "מספר טלפון לא תקין (למשל 050-1234567 או 03-1234567)");
             return false;
@@ -3069,6 +3083,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     // אחרונות", דיווח ל-webhook ולאנליטיקס. הפתיחה של הערוץ (וואטסאפ/מייל)
     // נשארת אצל הקורא. מחזירה null כשהולידציה נכשלה.
     function commitOrder(method) {
+        // מדידה (13.11.26): begin_checkout נורה כבר בפתיחת הסל, ולכן עד עכשיו לא
+        // היה אפשר לדעת מי ניסה לשלוח ונעצר. checkout_attempt = לחיצה על שליחה;
+        // checkout_error (ב-validateCustomerDetails) = מה עצר אותה.
+        trackEvent('checkout_attempt', { order_method: method, order_items: Object.keys(cart).length });
         const customer = getCustomerDetails();
         if (customer && !validateCustomerDetails(customer)) return null;
 
