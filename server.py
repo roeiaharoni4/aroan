@@ -1780,6 +1780,8 @@ def generate_catalog_subcategory_pages():
         </section>
     </main>
 
+    <lead-form heading="{escape('קבלו הצעת מחיר: ' + cfg['anchor'], {'"': '&quot;'})}" subject="{escape('בקשת הצעת מחיר — ' + cfg['anchor'], {'"': '&quot;'})}"></lead-form>
+
     <site-footer></site-footer>
     <script src="{SITE_COMPONENTS_JS}"></script>
 </body>
@@ -1999,6 +2001,10 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
         </section>'''
 
     desc_html = f'    <p class="p-desc">{escape(desc)}</p>\n' if desc else ''
+    # טופס הצעת מחיר בדף המוצר (13.11.26): דפי המוצר הם קבוצת הנחיתה השנייה בגודלה
+    # מגוגל, והיה בהם רק כפתור וואטסאפ. שם המוצר נכנס לנושא, וכך מגיע למייל ול-CRM.
+    lead_heading = f'קבלו הצעת מחיר: {name}'
+    lead_subject = f'בקשת הצעת מחיר — {name}'
 
     return f'''<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -2056,6 +2062,7 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
         .p-btn:hover {{ filter: brightness(1.2); }}
         [data-theme="dark"] .p-btn-wa {{ background: #8FD6A3; color: #1A4231; border-color: #8FD6A3; }}
         .p-note {{ color: var(--text-color); font-size: .95rem; margin-top: 14px; }}
+        .p-quote-link {{ color: var(--link-color); font-weight: 600; white-space: nowrap; }}
         .related {{ margin-top: 48px; padding-top: 28px; border-top: 1px solid rgba(0, 0, 0, .08); }}
         .related h2 {{ font-size: 1.35rem; color: var(--secondary-color); margin-bottom: 16px; }}
         .rel-grid {{ display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }}
@@ -2100,11 +2107,14 @@ def _render_catalog_product_html(r, cat, cat_slug, page_url, slugs, related):
                     <a class="p-btn p-btn-cat" href="{escape(catalog_cta)}">הוסף להזמנה בקטלוג</a>
                 </div>
                 <p class="p-note">אספקה סיטונאית לעסקים, מוסדות ומסעדות באור יהודה, בקעת אונו וגוש דן.
-                    המחירים ניתנים בהצעת מחיר אישית לפי כמות.</p>
+                    המחירים ניתנים בהצעת מחיר אישית לפי כמות.
+                    <a class="p-quote-link" href="#quote">או השאירו פרטים ונחזור אליכם</a></p>
             </div>
         </article>
 {related_html}
     </main>
+
+    <lead-form heading="{escape(lead_heading, {'"': '&quot;'})}" subject="{escape(lead_subject, {'"': '&quot;'})}"></lead-form>
 
     <site-footer></site-footer>
     <script src="{SITE_COMPONENTS_JS}"></script>
