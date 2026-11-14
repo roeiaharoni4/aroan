@@ -31,12 +31,11 @@ jobs:
         run: |
           python3 - <<'PY'
           import xml.dom.minidom, json, re, sys
-          # פיד ו-sitemap חייבים להיות XML תקין — פיד שבור פוסל מוצרים ב-Merchant
-          for f in ('data/merchant-feed.xml', 'sitemap.xml'):
-              xml.dom.minidom.parse(f)
-              print('XML תקין:', f)
-          # כל ה-JSON-LD בעמוד /care/ חייב להיפרס
-          html = open('care/index.html', encoding='utf-8').read()
+          # sitemap חייב להיות XML תקין (הפיד ועמוד /care/ הורדו מהאתר ב-14.11.26)
+          xml.dom.minidom.parse('sitemap.xml')
+          print('XML תקין: sitemap.xml')
+          # כל ה-JSON-LD בדף חומרי הניקוי חייב להיפרס (דף שהגנרטורים נוגעים בו)
+          html = open('catalog/cleaning/index.html', encoding='utf-8').read()
           blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)
           for b in blocks:
               json.loads(b)

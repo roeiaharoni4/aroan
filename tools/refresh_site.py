@@ -23,11 +23,14 @@ import server  # noqa: E402  (חייב לבוא אחרי chdir/sys.path)
 
 # הסדר זהה לסדר שבו הם רצים בשמירה מהעורך
 GENERATORS = [
-    ('סכמת JSON-LD בעמוד /care/', server.update_care_schema),
-    ('כרטיסי המוצרים המוזרקים', server.bake_care_products),
-    ('פיד Google Merchant', server.update_merchant_feed),
-    ('דפי הקטגוריה', server.generate_care_category_pages),
-    ('דפי המוצר + sitemap', server.generate_care_product_pages),
+    # קטלוג הטיפוח (/care/) הורד מהאתר ב-14.11.26 — הגנרטורים שלו רצים רק כש-CARE_ACTIVE
+    *([
+        ('סכמת JSON-LD בעמוד /care/', server.update_care_schema),
+        ('כרטיסי המוצרים המוזרקים', server.bake_care_products),
+        ('פיד Google Merchant', server.update_merchant_feed),
+        ('דפי הקטגוריה', server.generate_care_category_pages),
+        ('דפי המוצר + sitemap', server.generate_care_product_pages),
+    ] if server.CARE_ACTIVE else []),
     # הקטלוג העסקי (products.csv)
     ('סכמת ItemList בדפי הקטגוריה', server.generate_catalog_category_schema),
     ('דפי המוצר של הקטלוג + sitemap', server.generate_catalog_product_pages),

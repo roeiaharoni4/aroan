@@ -17,6 +17,9 @@ PRICELIST_PUBLIC_FILE = 'data/pricelist.csv'
 PRICELIST_PROMO_FILE = 'data/pricelist-promo.json'
 CARE_SHIPPING_FILE = 'data/care-shipping.json'
 CARE_PAGE_FILE = 'care/index.html'
+# קטלוג הטיפוח הורד מהאתר ב-14.11.26 (מוחרג ב-_config.yml). כל עוד False, שמירה בעורך
+# המחירונים לא מריצה את הגנרטורים של /care/ — אחרת הם היו מחזירים 70 כתובות ל-sitemap.
+CARE_ACTIVE = False
 MERCHANT_FEED_FILE = 'data/merchant-feed.xml'
 # עמוד רשת החנויות: מרכזי הקניות, החנויות שבכל מרכז, ורשימת המזהים הגלויים לרשת.
 # אין כאן מחירון — העמוד טוען את products.csv ומסנן אותו לפי הרשימה.
@@ -2233,7 +2236,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # הפיד נושא g:shipping — לרענן כדי שלא ייווצר פער מול המוצג באתר
             try:
-                if cfg['generators']:
+                if cfg['generators'] and CARE_ACTIVE:
                     update_merchant_feed()
             except Exception as feed_err:
                 print(f'אזהרה: עדכון הפיד אחרי שמירת משלוחים נכשל: {feed_err}')
@@ -2370,7 +2373,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # הסכמה, הפיד ודפי הקטגוריה משקפים גם הנחות קטגוריה — מעדכנים
             try:
-                if cfg['generators']:
+                if cfg['generators'] and CARE_ACTIVE:
                     update_care_schema()
                     bake_care_products()
                     update_merchant_feed()
@@ -2485,7 +2488,7 @@ class AdminHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # עדכון סכמה, פיד ודפי קטגוריה (SEO + שופינג ללקוחות פרטיים).
             # מחירון הוועד הוא noindex ואין לו פיד/דפי מוצר — ולכן מדלגים.
             try:
-                if cfg['generators']:
+                if cfg['generators'] and CARE_ACTIVE:
                     update_care_schema()
                     bake_care_products()
                     update_merchant_feed()

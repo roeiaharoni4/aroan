@@ -28,3 +28,16 @@ exclude:
   # תדפיס בדיקה ישן (נובמבר 2025, עם נתיב מקומי ומספר פקס) ומחירון טיפוח ישן
   - "קטלוג אהרוני - הזמנה ללקוח.pdf"
   - "רשימת_מוצרים_וואטסאפ.xlsx"
+  # קטלוג הטיפוח (B2C) ועמוד הוועד — הורדו מהאתר ב-14.11.26 לבקשת רועי ("לשים בצד").
+  # הקבצים נשארים בריפו; להחזרה — למחוק את השורות האלה, להחזיר CARE_ACTIVE = True
+  # ב-server.py ואת הגנרטורים ב-tools/refresh_site.py, ולהריץ את refresh_site.py.
+  - care
+  - emp-8c3f5a
+  - data/pricelist.csv
+  - data/pricelist-promo.json
+  - data/care-shipping.json
+  - data/merchant-feed.xml
+  - data/committee.csv
+  - data/committee-promo.json
+  - data/committee-shipping.json
+  - meta-catalog-aroam.csv
