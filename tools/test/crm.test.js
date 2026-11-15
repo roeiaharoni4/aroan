@@ -1587,6 +1587,38 @@ test('quote: אותה הצעה פעמיים נרשמת פעם אחת; שגיאו
   assert.strictEqual(quotes().find(a => a.orderId === 'Q-20261115-5002').at, '2026-11-02 10:42');
 });
 
+test('agent_data: לקוחות, מחירים, אחרונים והצעות — בלי פעולות', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: SL_EVENT }).id;
+  app.setNow({ date: '2026-11-03', stamp: '2026-11-03 09:00' });
+  app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER, { orderId: 'AR-20261103-111111',
+    items: [{ id: 'ניק001', name: 'אקונומיקה', qty: 1, price: 5 }] }) });
+  app.call(Object.assign({ action: 'quote', password: P, id }, QUOTE));
+  app.call({ action: 'order', password: P, id, order: { date: '2026-11-03', note: 'ידנית' } });
+  const d = app.call({ action: 'agent_data', password: P });
+  assert.strictEqual(d.ok, true);
+  assert.strictEqual(d.activities, undefined);
+  assert.strictEqual(d.contacts.length, 1);
+  assert.ok('rivhitNo' in d.contacts[0] && !('email' in d.contacts[0]));
+  assert.deepStrictEqual(d.prices.map(p => p.slice(0, 3)), [[id, 'חדפ014', '4.4'], [id, 'RV-1500', '7']]);
+  assert.strictEqual(d.last[id].order.orderId, 'AR-20261103-111111');
+  assert.strictEqual(d.last[id].order.items[0].price, 0);
+  assert.strictEqual(d.last[id].quote.orderId, 'Q-20261115-4821');
+  assert.strictEqual(d.quotes.length, 1);
+  assert.strictEqual(d.quotes[0].contactId, id);
+  assert.strictEqual(d.quotes[0].text, '2 פריטים · 147.50 ₪ · מדף הסוכן');
+  assert.strictEqual(app.call({ action: 'agent_data' }).error, 'unauthorized');
+});
+
+test('agent_data: הזמנה מדף הסוכן — הפריטים עם המחירים', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: SL_EVENT }).id;
+  const d = app.call({ action: 'agent_data', password: P });
+  assert.strictEqual(d.last[id].order.orderId, 'SL-20261115-111111');
+  assert.strictEqual(d.last[id].order.items[0].price, 4.5);
+  assert.strictEqual(d.last[id].quote, undefined);
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

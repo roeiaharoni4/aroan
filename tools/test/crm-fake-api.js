@@ -89,7 +89,11 @@
               done: '', created: at(-1), reminded: '' }
         ],
         items: [],
-        itemsUpdated: ''
+        itemsUpdated: '',
+        prices: [
+            { contactId: 'C6', productId: 'חדפ006', name: 'כוסות נייר 8B - 1000 יח׳', price: '65',
+              updated: at(-10), source: 'הזמנה' }
+        ]
     };
     const clone = (x) => JSON.parse(JSON.stringify(x));
     const phoneOf = (raw) => window.CrmCore.normalizePhone(raw);
@@ -132,6 +136,27 @@
         c.lastOrder = mine.reduce((m, a) => (a.at.slice(0, 10) > m ? a.at.slice(0, 10) : m), '');
     }
 
+    const AGENT_KEYS = ['id', 'name', 'business', 'phone', 'address', 'stage', 'orders', 'lastOrder', 'rivhitNo', 'phones'];
+    const agentContact = (x) => {
+        const o = {};
+        AGENT_KEYS.forEach(k => { o[k] = x[k] == null ? '' : String(x[k]); });
+        return o;
+    };
+    const OWN = ['0526000158', '036346236', '0506444290'];
+    const keyOf = (s) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    // כמו learnPrices_ בסקריפט: מוחק רק ב-prices_set (ידני), ו-fill לא דורס
+    function setPrice(contactId, p, source, when, fill) {
+        const pid = String(p.productId || p.id || '').trim();
+        if (!pid) return;
+        const i = db.prices.findIndex(x => x.contactId === contactId && x.productId === pid);
+        const price = Math.round(Number(p.price) * 100) / 100;
+        if (!(price > 0)) { if (!fill && source === 'ידני' && i >= 0) db.prices.splice(i, 1); return; }
+        if (i >= 0 && fill) return;
+        const row = { contactId: contactId, productId: pid, name: p.name || (i >= 0 ? db.prices[i].name : ''),
+            price: String(price), updated: when, source: source };
+        if (i >= 0) db.prices[i] = row; else db.prices.push(row);
+    }
+
     function handle(b) {
         if (b.password !== PASSWORD) return { ok: false, error: 'unauthorized' };
         if (window.__crmFailNext && b.action !== 'list') {
@@ -158,15 +183,76 @@
             }
             // הרשימה הקלה לבורר בדף הסוכן (AGENT_CONTACT_KEYS בסקריפט)
             case 'contacts':
-                return { ok: true, contacts: db.contacts.map(x => {
-                    const o = {};
-                    ['id', 'name', 'business', 'phone', 'address', 'stage', 'orders', 'lastOrder', 'rivhitNo', 'phones']
-                        .forEach(k => { o[k] = x[k] == null ? '' : String(x[k]); });
-                    return o;
-                }) };
+                return { ok: true, contacts: db.contacts.map(agentContact) };
+            case 'prices_set':
+            case 'prices_fill': {
+                if (!c) return { ok: false, error: 'not found' };
+                const fill = b.action === 'prices_fill';
+                const source = fill ? 'העברה מהטלפון' : b.source;
+                if (['ידני', 'העברה מהטלפון'].indexOf(source) < 0) return { ok: false, error: 'bad source' };
+                if (!Array.isArray(b.prices) || !b.prices.length) return { ok: false, error: 'no prices' };
+                b.prices.forEach(p => setPrice(c.id, p, source, stamp(), fill));
+                return { ok: true, prices: clone(db.prices.filter(x => x.contactId === c.id)) };
+            }
+            case 'agent_data': {
+                const last = {};
+                const quotes = [];
+                db.activities.forEach(a => {
+                    if (!a.items || (a.type !== 'הזמנה' && a.type !== 'הצעת מחיר')) return;
+                    let items;
+                    try { items = JSON.parse(a.items); } catch (e) { return; }
+                    if (!items || !items.length) return;
+                    const key = a.type === 'הזמנה' ? 'order' : 'quote';
+                    if (key === 'order' && String(a.orderId).indexOf('SL-') !== 0) {
+                        items = items.map(it => Object.assign({}, it, { price: 0 }));
+                    }
+                    const slot = last[a.contactId] = last[a.contactId] || {};
+                    if (!slot[key] || a.at >= slot[key].at) slot[key] = { at: a.at, orderId: a.orderId, items: items };
+                    if (key === 'quote') quotes.push({ contactId: a.contactId, at: a.at, orderId: a.orderId, text: a.text, items: items });
+                });
+                quotes.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0));
+                return { ok: true, contacts: db.contacts.map(agentContact),
+                    prices: db.prices.map(p => [p.contactId, p.productId, p.price, p.updated]),
+                    last: last, quotes: quotes.slice(0, 50) };
+            }
+            case 'agent_customer': {
+                const name = String(b.name || '').trim();
+                if (!name) return { ok: false, error: 'name required' };
+                let phone = phoneOf(b.phone);
+                if (OWN.indexOf(phone) >= 0) phone = '';
+                const dup = (phone && db.contacts.find(x => x.phone === phone)) ||
+                    db.contacts.find(x => keyOf(x.business || x.name) === keyOf(name));
+                if (dup) return { ok: true, id: dup.id, existing: true };
+                const nc = { id: nextId('C'), name: String(b.contact || '').trim(), business: name, phone: phone,
+                    email: '', address: String(b.address || '').trim(), stage: 'חדש', followUp: '',
+                    source: 'דף הסוכן', created: stamp(), lastActivity: stamp(), orders: '0', lastOrder: '',
+                    rivhitNo: '', phones: '' };
+                db.contacts.push(nc);
+                db.activities.push({ id: nextId('A'), contactId: nc.id, at: stamp(), type: 'נוצר בדף הסוכן',
+                    text: '', orderId: '', pdf: '', quoteLink: '', by: 'דף הסוכן', items: '' });
+                return { ok: true, id: nc.id, existing: false };
+            }
+            case 'quote': {
+                if (!c) return { ok: false, error: 'not found' };
+                const qid = String(b.quoteId || '');
+                if (!/^Q-\d{8}-\d{3,6}$/.test(qid)) return { ok: false, error: 'bad quote' };
+                if (db.activities.some(a => a.orderId === qid)) return { ok: true, duplicate: true };
+                const items = (b.items || []).filter(it => it && it.id && Number(it.qty) > 0);
+                if (!items.length) return { ok: false, error: 'no items' };
+                const when = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(b.at || '') ? b.at : stamp();
+                const total = Number(b.total);
+                db.activities.push({ id: nextId('A'), contactId: c.id, at: when, type: 'הצעת מחיר',
+                    text: [items.length + ' פריטים', total > 0 ? total.toFixed(2) + ' ₪' : '', 'מדף הסוכן']
+                        .filter(Boolean).join(' · '),
+                    orderId: qid, pdf: '', quoteLink: '', by: 'דף הסוכן', items: JSON.stringify(items) });
+                if (c.stage !== 'לקוח') c.stage = 'נשלחה הצעה';
+                items.forEach(it => setPrice(c.id, it, 'הצעה', when, false));
+                return { ok: true };
+            }
             case 'list':
                 return { ok: true, today: today, contacts: db.contacts.map(withLate),
-                    activities: clone(db.activities), tasks: clone(db.tasks.filter(t => !t.done)) };
+                    activities: clone(db.activities), tasks: clone(db.tasks.filter(t => !t.done)),
+                    prices: clone(db.prices) };
             case 'add': {
                 const input = b.contact || {};
                 const phone = phoneOf(input.phone);

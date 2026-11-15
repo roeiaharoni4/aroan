@@ -4,7 +4,9 @@
  *
  * מי פונה אליו:
  *  - עמוד ה-CRM (/crm-f428d7/) — עם הסיסמה: list, add, update, log, delete, import,
- *    order, order_cancel, task_add, task_update, task_delete.
+ *    order, order_cancel, task_add, task_update, task_delete, prices_set.
+ *  - דף הסוכן (/agent/) — עם הסיסמה: items, contacts, agent_data, agent_customer, quote,
+ *    prices_fill, prices_set (אפיון 2026-11-15).
  *  - סקריפט הלידים וסקריפט ההזמנות — עם הסוד המשותף: event.
  *  - טריגר זמן (tick, כל 5 דקות) — תזכורות למשימות וסיכום הבוקר. מוקם ב-setupNotifications.
  *
@@ -718,6 +720,43 @@ function handleContacts_() {
   return {
     ok: true,
     contacts: model.contacts.map(function (c) { return publicOf_(c, AGENT_CONTACT_KEYS); })
+  };
+}
+
+// כל מה שדף הסוכן צריך, בקריאה אחת (אפיון 2026-11-15): הלקוחות, המחירים, ההזמנה
+// וההצעה האחרונות של כל כרטיס, ו-50 ההצעות האחרונות לחלון "היסטוריה".
+function handleAgentData_() {
+  var model = readModel_(book_());
+  var last = {};
+  var quotes = [];
+  model.activities.forEach(function (a) {
+    if (!a.items || (a.type !== 'הזמנה' && a.type !== 'הצעת מחיר')) return;
+    var items;
+    try { items = JSON.parse(a.items); } catch (e) { return; }
+    if (!items || !items.length) return;
+    var key = a.type === 'הזמנה' ? 'order' : 'quote';
+    // הזמנה מהאתר: המחיר בה הוא מהמחירון הכללי — "ההזמנה הקודמת" לא תדרוס מחיר מוסכם
+    if (key === 'order' && String(a.orderId).indexOf('SL-') !== 0) {
+      items = items.map(function (it) {
+        var o = {};
+        Object.keys(it).forEach(function (k) { o[k] = it[k]; });
+        o.price = 0;
+        return o;
+      });
+    }
+    var slot = last[a.contactId] || (last[a.contactId] = {});
+    if (!slot[key] || a.at >= slot[key].at) slot[key] = { at: a.at, orderId: a.orderId, items: items };
+    if (key === 'quote') {
+      quotes.push({ contactId: a.contactId, at: a.at, orderId: a.orderId, text: a.text, items: items });
+    }
+  });
+  quotes.sort(function (x, y) { return x.at < y.at ? 1 : x.at > y.at ? -1 : 0; });
+  return {
+    ok: true,
+    contacts: model.contacts.map(function (c) { return publicOf_(c, AGENT_CONTACT_KEYS); }),
+    prices: model.prices.map(function (p) { return [p.contactId, p.productId, p.price, p.updated]; }),
+    last: last,
+    quotes: quotes.slice(0, 50)
   };
 }
 
@@ -1519,6 +1558,7 @@ function doPost(e) {
     switch (body.action) {
       case 'list': return json_(handleList_());
       case 'contacts': return json_(handleContacts_());
+      case 'agent_data': return json_(handleAgentData_());
       case 'prices_set': return json_(withLock_(function () {
         return handlePricesSet_(body.id, body.prices, body.source, false);
       }));
