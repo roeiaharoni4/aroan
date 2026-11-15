@@ -391,7 +391,8 @@
                     const n = Object.keys(r.prices || {}).length;
                     const meta = [n ? `${n} מחירים` : '', r.orderCount ? `${r.orderCount} הזמנות` : '']
                         .filter(Boolean).join(' · ') || 'בלי מחירים';
-                    return `<div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,15rem); gap:0.6rem; align-items:center; padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.25);">
+                    // בטלפון השם מעל הבחירה, ובמסך רחב זה לצד זה
+                    return `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr)); gap:0.6rem; align-items:center; padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.25);">
                         <label for="agent-migrate-${i}" style="display:grid; gap:0.15rem;">
                             <strong>${esc(r.name)}</strong>
                             <span style="font-size:0.85rem; opacity:0.75;">${esc(meta)}</span>
