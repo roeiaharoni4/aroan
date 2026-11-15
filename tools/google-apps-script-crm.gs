@@ -56,6 +56,13 @@ var ITEM_HEADERS = ['מספר פריט', 'שם', 'מספר קטלוגי'];
 var ITEMS_MAX = 5000;
 var ITEM_NAME_MAX = 100;
 var CATALOG_MAX = 15;
+// מחירי לקוחות (אפיון 2026-11-15): שורה לכל כרטיס+מוצר. הכתיבה האחרונה קובעת.
+// productId — מזהה באתר (חדפ014) או RV-<מספר פריט> לפריט מריווחית.
+var PRICES_SHEET = 'מחירי לקוחות';
+var PRICE_HEADERS = ['מזהה איש קשר', 'מזהה מוצר', 'מוצר', 'מחיר', 'עודכן', 'מקור'];
+var PRICE_KEYS = ['contactId', 'productId', 'name', 'price', 'updated', 'source'];
+var PRICE_SET_SOURCES = ['ידני', 'העברה מהטלפון'];
+var PRICE_MAX = 100000;
 
 // מספר קטלוגי תקין או ''. אותו כלל כמו catalogCode ב-js/rivhit-core.js.
 function catalogCode_(v) {
@@ -518,11 +525,13 @@ function readModel_(book) {
   var cs = sheet_(book, CONTACTS_SHEET, CONTACT_HEADERS);
   var as = sheet_(book, ACTIVITIES_SHEET, ACTIVITY_HEADERS);
   var ts = sheet_(book, TASKS_SHEET, TASK_HEADERS);
+  var ps = sheet_(book, PRICES_SHEET, PRICE_HEADERS);
   return {
-    cs: cs, as: as, ts: ts,
+    cs: cs, as: as, ts: ts, ps: ps,
     contacts: readRows_(cs, CONTACT_KEYS),
     activities: readRows_(as, ACTIVITY_KEYS),
-    tasks: readRows_(ts, TASK_KEYS)
+    tasks: readRows_(ts, TASK_KEYS),
+    prices: readRows_(ps, PRICE_KEYS)
   };
 }
 
@@ -575,6 +584,87 @@ function saveTasks_(model, tasks) {
   writeRows_(model.ts, next, fresh.map(function (t) { return rowOf_(t, TASK_KEYS); }), TASK_KEYS.length);
 }
 
+// ---------- מחירי לקוחות ----------
+
+// מחיר תקין: חיובי ועד 100,000, מעוגל לאגורות. אחרת 0.
+function cleanPrice_(v) {
+  var n = Number(v);
+  if (!(n > 0) || n >= PRICE_MAX) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function priceRow_(model, contactId, productId) {
+  for (var i = 0; i < model.prices.length; i++) {
+    var p = model.prices[i];
+    if (!p._deleted && p.contactId === contactId && p.productId === productId) return p;
+  }
+  return null;
+}
+
+// כותב מחירים לכרטיס במודל, בלי לשמור. מחיר ישן יותר מהקיים לא דורס.
+// opts.onlyMissing — רק מוצרים שאין להם מחיר (prices_fill).
+// opts.allowDelete — מחיר ריק או 0 מוחק את השורה (prices_set). מחזיר כמה שורות השתנו.
+function learnPrices_(model, contactId, items, source, at, opts) {
+  opts = opts || {};
+  if (!model.prices) return 0;
+  var changed = 0;
+  (items || []).slice(0, 500).forEach(function (it) {
+    it = it || {};
+    var pid = trim_(it.productId || it.id).slice(0, 40);
+    if (!pid) return;
+    var price = cleanPrice_(it.price);
+    var row = priceRow_(model, contactId, pid);
+    if (!price) {
+      if (opts.allowDelete && row) { row._deleted = true; changed++; }
+      return;
+    }
+    var name = trim_(it.name).slice(0, 120);
+    if (row) {
+      if (opts.onlyMissing || trim_(row.updated) > at) return;
+      row.price = String(price);
+      if (name) row.name = name;
+      row.updated = at;
+      row.source = source;
+      row._dirty = true;
+    } else {
+      model.prices.push({ contactId: contactId, productId: pid, name: name,
+        price: String(price), updated: at, source: source });
+    }
+    changed++;
+  });
+  return changed;
+}
+
+// שורות שהשתנו — במקומן; חדשות — בסוף; שנמחקו — מלמטה למעלה, כי מחיקה מזיזה שורות
+function savePrices_(model) {
+  if (!model.ps) return;
+  var fresh = [];
+  model.prices.forEach(function (p) {
+    if (p._deleted) return;
+    if (p._row && p._dirty) {
+      writeRows_(model.ps, p._row, [rowOf_(p, PRICE_KEYS)], PRICE_KEYS.length);
+      p._dirty = false;
+    } else if (!p._row) {
+      fresh.push(p);
+    }
+  });
+  var next = model.ps.getLastRow() + 1;
+  fresh.forEach(function (p, i) { p._row = next + i; });
+  writeRows_(model.ps, next, fresh.map(function (p) { return rowOf_(p, PRICE_KEYS); }), PRICE_KEYS.length);
+  model.prices
+    .filter(function (p) { return p._deleted && p._row; })
+    .map(function (p) { return p._row; })
+    .sort(function (a, b) { return b - a; })
+    .forEach(function (r) { model.ps.deleteRow(r); });
+  model.prices = model.prices.filter(function (p) { return !p._deleted; });
+}
+
+function pricesOf_(model, contactId) {
+  return model.prices
+    .filter(function (p) { return p.contactId === contactId; })
+    .map(function (p) { return publicOf_(p, PRICE_KEYS); });
+}
+
 function publicOf_(o, keys) {
   var out = {};
   keys.forEach(function (k) { out[k] = o[k] == null ? '' : String(o[k]); });
@@ -592,7 +682,13 @@ function handleEvent_(ev) {
     return { ok: true, id: res.contact ? res.contact.id : '', duplicate: true,
       rivhitNo: res.contact ? trim_(res.contact.rivhitNo) : '' };
   }
+  // הזמנה מדף הסוכן: המחירים שנשלחו בה הם המחירים שסוכמו עם הלקוח. מהאתר — לא:
+  // בקטלוג העסקי אין מחירים, וה-price שם בא מהמחירון הכללי.
+  if (ev.type === 'order' && ev.via === 'דף הסוכן') {
+    learnPrices_(model, res.contact.id, ev.items, 'הזמנה', res.activity.at);
+  }
   save_(model, [res.contact], res.attached ? [] : [res.activity]);
+  savePrices_(model);
   var out = { ok: true, id: res.contact.id, rivhitNo: trim_(res.contact.rivhitNo) };
   if ((ev.type === 'lead' || ev.type === 'quote_request') && !ev.imported) {
     out.notify = inquiryMessage_(ev, res.contact);

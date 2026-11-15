@@ -1383,6 +1383,48 @@ test('contacts: רשימה קלה לדף הסוכן — בלי פעולות, ע�
   assert.strictEqual(app.call({ action: 'contacts' }).error, 'unauthorized');
 });
 
+// ---------- מחירי לקוחות (אפיון 2026-11-15) ----------
+const priceRows = (app) => ((app.crm.sheets['מחירי לקוחות'] || { rows: [] }).rows || [])
+  .slice(1).filter(r => r && r[0]);
+const SL_ITEMS = [
+  { id: 'חדפ014', name: 'מזלג קשיח', qty: 80, price: 4.5 },
+  { id: 'ניק001', name: 'אקונומיקה', qty: 2, price: 0 }
+];
+const SL_EVENT = Object.assign({}, ORDER, { orderId: 'SL-20261115-111111', via: 'דף הסוכן', items: SL_ITEMS });
+
+test('מחירים: הזמנה מדף הסוכן נלמדת לכרטיס — רק פריטים עם מחיר', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: SL_EVENT }).id;
+  const rows = priceRows(app);
+  assert.strictEqual(rows.length, 1);
+  assert.deepStrictEqual(rows[0].slice(0, 6), [id, 'חדפ014', 'מזלג קשיח', '4.5', '2026-11-02 10:42', 'הזמנה']);
+  assert.strictEqual(app.crm.sheets['מחירי לקוחות'].rows[0][0], 'מזהה איש קשר');
+  assert.strictEqual(app.crm.sheets['מחירי לקוחות'].untyped, false);
+});
+
+test('מחירים: הזמנה מהאתר לא נלמדת, וכפילות לא נלמדת שוב', () => {
+  const app = loadApp();
+  app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER, { items: SL_ITEMS }) });
+  assert.strictEqual(priceRows(app).length, 0);
+  app.call({ action: 'event', secret: S, event: SL_EVENT });
+  app.setNow({ date: '2026-11-03', stamp: '2026-11-03 09:00' });
+  app.call({ action: 'event', secret: S, event: Object.assign({}, SL_EVENT,
+    { items: [{ id: 'חדפ014', name: 'מזלג קשיח', qty: 1, price: 9 }] }) });
+  assert.strictEqual(priceRows(app)[0][3], '4.5');
+});
+
+test('מחירים: הזמנה חדשה מדף הסוכן מעדכנת את אותה שורה', () => {
+  const app = loadApp();
+  app.call({ action: 'event', secret: S, event: SL_EVENT });
+  app.setNow({ date: '2026-11-03', stamp: '2026-11-03 09:00' });
+  app.call({ action: 'event', secret: S, event: Object.assign({}, SL_EVENT, { orderId: 'SL-20261115-222222',
+    items: [{ id: 'חדפ014', name: 'מזלג קשיח', qty: 1, price: 5 }] }) });
+  const rows = priceRows(app);
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0][3], '5');
+  assert.strictEqual(rows[0][4], '2026-11-03 09:00');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
