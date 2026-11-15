@@ -785,6 +785,16 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     var sheet = getOrCreateSheet_();
 
+    // אותו מספר הזמנה כבר בגיליון — זו שליחה חוזרת של הזמנה שכבר נקלטה: לא כותבים
+    // שורה שנייה, לא מפיקים תעודה שנייה ולא שולחים מייל שני (15.11.26).
+    var dupRow = findOrderRow_(sheet, clean_(data.orderId, 30));
+    if (dupRow) {
+      var oldPdf = String(sheet.getRange(dupRow, SHEET_HEADERS.length).getValue() || '');
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true, duplicate: true, pdfId: pdfIdFromUrl_(oldPdf), pdfUrl: oldPdf
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     var customer = data.customer || {};
     var itemsText = (data.items || []).slice(0, 200).map(function (item) {
       var line = clean_(item.name, 120) + ' (מק"ט ' + clean_(item.id, 30) + ') x' +
@@ -921,6 +931,30 @@ var SHEET_HEADERS = ['תאריך קבלה', 'מספר הזמנה', 'תאריך �
   'איש קשר', 'טלפון', 'כתובת למשלוח', 'הערות', 'פירוט פריטים', 'סה"כ פריטים',
   'סה"כ לתשלום', 'סטטוס', 'שיטת אספקה', 'דמי משלוח', 'אופן תשלום', 'קובץ PDF'];
 var STATUS_COL = 12; // מיקום עמודת הסטטוס (1-based)
+var ORDER_ID_COL = 2; // מספר הזמנה
+var DUP_SCAN_ROWS = 1000;
+
+// השורה בגיליון עם מספר ההזמנה הזה (בין 1,000 השורות האחרונות), או null.
+// השליחה מהאתר היא no-cors: כשהרשת בטלפון נופלת אחרי שהבקשה כבר הגיעה, הדפדפן
+// רואה כשל, ותור האופליין בדף הסוכן שולח שוב — עם אותו מספר הזמנה.
+function findOrderRow_(sheet, orderId) {
+  if (!orderId) return null;
+  var last = sheet.getLastRow();
+  if (last < 2) return null;
+  var n = Math.min(DUP_SCAN_ROWS, last - 1);
+  var first = last - n + 1;
+  var vals = sheet.getRange(first, ORDER_ID_COL, n, 1).getValues();
+  for (var i = vals.length - 1; i >= 0; i--) {
+    if (String(vals[i][0]).trim() === orderId) return first + i;
+  }
+  return null;
+}
+
+// מזהה הקובץ מתוך קישור Drive (.../file/d/<id>/view)
+function pdfIdFromUrl_(url) {
+  var m = String(url || '').match(/\/d\/([A-Za-z0-9_-]{10,})/);
+  return m ? m[1] : '';
+}
 
 // יוצר את הגיליון עם כותרות ורשימת סטטוסים, ומשלים כותרות חסרות בגיליון קיים
 function getOrCreateSheet_() {

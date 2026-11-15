@@ -407,8 +407,18 @@ function loadOrdersApp(opts) {
   const env = {
     SpreadsheetApp: { openById() { return {
       getSheetByName() { return {
-        getLastRow() { return 1; }, getLastColumn() { return 16; },
-        appendRow(r) { sent.rows.push(r); }
+        getLastRow() { return 1 + sent.rows.length; }, getLastColumn() { return 16; },
+        appendRow(r) { sent.rows.push(r); },
+        // שורה 1 = כותרות; שורה n = sent.rows[n - 2]
+        getRange(row, col, numRows, numCols) {
+          const cells = () => Array.from({ length: numRows || 1 }, (_, i) =>
+            Array.from({ length: numCols || 1 }, (_, j) => {
+              const r = sent.rows[row + i - 2];
+              const v = r ? r[col + j - 1] : '';
+              return v == null ? '' : v;
+            }));
+          return { getValues: cells, getValue: () => cells()[0][0] };
+        }
       }; }
     }; } },
     MailApp: { sendEmail(to, subject, body, o) { sent.mails.push({ to, subject, body, o: o || {} }); } },
@@ -554,6 +564,33 @@ test('ריווחית: doPost — לקוח מוכר ב-CRM עם מספר בריו
   assert.strictEqual(f[9], '1234');
   assert.ok(/כהצעת מחיר — לקוח 1234\./.test(m.body), m.body);
   assert.strictEqual(app.sent.rows.length, 1);
+});
+
+// 15.11.26: SL-20261115-866261 נכתב פעמיים (12:13 ו-13:36) ונשלחו שני מיילים — ה-fetch
+// נכשל בטלפון אחרי שהבקשה כבר הגיעה, ותור האופליין בדף הסוכן שלח אותה שוב.
+test('הזמנה שכבר רשומה בגיליון — בלי שורה שנייה, בלי מייל שני ובלי CRM', () => {
+  const app = loadOrdersApp({ rivhitNo: '1234' });
+  assert.strictEqual(app.post(AR_ORDER).success, true);
+  // התעודה מהשליחה הראשונה (בדמויות ה-PDF נכשל — כאן היא נרשמת ידנית)
+  app.sent.rows[0][15] = 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp_q-r/view?usp=drivesdk';
+  const fetchesBefore = app.sent.fetches.length;
+  const r = app.post(AR_ORDER);
+  assert.strictEqual(r.success, true);
+  assert.strictEqual(r.duplicate, true);
+  assert.strictEqual(r.pdfId, '1AbCdEfGhIjKlMnOp_q-r');
+  assert.strictEqual(app.sent.rows.length, 1);
+  assert.strictEqual(app.sent.mails.length, 1);
+  assert.strictEqual(app.sent.fetches.length, fetchesBefore);
+});
+
+test('מספר הזמנה אחר, או בלי מספר — נכתב כרגיל', () => {
+  const app = loadOrdersApp({ rivhitNo: '1234' });
+  app.post(AR_ORDER);
+  app.post(Object.assign({}, AR_ORDER, { orderId: 'AR-20261104-654321' }));
+  assert.strictEqual(app.sent.rows.length, 2);
+  app.post(Object.assign({}, AR_ORDER, { orderId: '' }));
+  app.post(Object.assign({}, AR_ORDER, { orderId: '' }));
+  assert.strictEqual(app.sent.rows.length, 4);
 });
 
 test('ריווחית: doPost — לקוח בלי מספר בריווחית ⇒ 118 (לקוחות שונים)', () => {
