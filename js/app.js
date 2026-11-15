@@ -3527,6 +3527,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     async function getQuoteHistory() {
+        if (CONFIG.agentMode && window.AGENT && window.AGENT.quoteHistory) return window.AGENT.quoteHistory();
         const pw = getApiPassword();
         if (!pw) return [];
         try {
@@ -3582,6 +3583,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 total: Number(finalTotal.toFixed(2))
             };
         }
+
+        // דף הסוכן: ההצעה נרשמת בכרטיס ב-CRM (js/agent.js, אחרי aroam:quote-saved).
+        // השירות הישן (AgentQuotes) כבר לא בשימוש שם, ולא שואלים סיסמה.
+        if (CONFIG.agentMode) return newQuote;
 
         const pw = getApiPassword();
         if (!pw) return newQuote;
@@ -3640,6 +3645,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (Object.keys(cart).length > 0 && !confirm("טעינת הצעה תמחק את העגלה הנוכחית. להמשיך?")) return;
 
+        // ההצעה נטענת אצל הלקוח שלה — עם המחירים שלו, ואז המחירים שבהצעה
+        if (CONFIG.agentMode && window.AGENT && window.AGENT.pickByName && quote.customer) {
+            window.AGENT.pickByName(quote.customer);
+        }
         applyOrder(quote.items);
         closeHistoryModal();
         openOrderModal();
@@ -3764,21 +3773,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const history = await getQuoteHistory();
         if (history.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">אין הצעות שמורות.</div>';
+            listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#999;">${CONFIG.agentMode
+                ? 'עוד אין הצעות ב-CRM. הצעה שתודפס מכאן תירשם בכרטיס הלקוח.'
+                : 'אין הצעות שמורות.'}</div>`;
             return;
         }
 
+        // שמות הלקוחות מגיעים מה-CRM — טקסט בלבד, לא HTML
+        const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         listEl.innerHTML = history.map(q => `
             <div class="history-item" style="border-bottom:1px solid #eee; padding:10px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-weight:bold;">${q.customer || 'לקוח כללי'}</div>
-                    <div style="font-size:0.85rem; color:#666;">${q.date} | ${q.items.length} פריטים</div>
+                    <div style="font-weight:bold;">${esc(q.customer || 'לקוח כללי')}</div>
+                    <div style="font-size:0.85rem; color:#666;">${esc(q.date)} | ${q.items.length} פריטים</div>
                 </div>
                 <div style="text-align:left;">
-                    <div style="font-weight:bold; color:var(--primary);">${q.total.toFixed(2)} ₪</div>
+                    <div style="font-weight:bold; color:var(--primary);">${Number(q.total || 0).toFixed(2)} ₪</div>
                     <div style="margin-top:5px;">
-                        <button class="btn btn-sm btn-outline" onclick="window.APP.loadQuote('${q.id}')">טען</button>
-                        <button class="btn btn-sm btn-danger" onclick="window.APP.deleteQuote('${q.id}')">&times;</button>
+                        <button class="btn btn-sm btn-outline" onclick="window.APP.loadQuote('${esc(q.id)}')">טען</button>
+                        ${CONFIG.agentMode ? '' : `<button class="btn btn-sm btn-danger" onclick="window.APP.deleteQuote('${esc(q.id)}')">&times;</button>`}
                     </div>
                 </div>
             </div>
