@@ -357,8 +357,122 @@
         }
     }
 
-    // מוחלף במשימה 8 (מסך המעבר)
-    function maybeShowMigration() { }
+    // ---------- מסך מעבר חד-פעמי (אפיון 2026-11-15) ----------
+    // לקוחות שקיימים רק בטלפון: לקשר לכרטיס קיים, לפתוח כרטיס חדש או למחוק.
+    // "אחר כך" סוגר בלי לסמן — המסך חוזר בפתיחה הבאה.
+    let migrationShown = false;
+
+    function maybeShowMigration() {
+        if (migrationShown || readJson(MIGRATED_KEY, false) === true) return;
+        if (localStorage.getItem('agent_logged_in') !== 'true') return;
+        const candidates = AS.localOnly(loadCustomers(), loadOps());
+        if (!candidates.length) { writeJson(MIGRATED_KEY, true); return; }
+        migrationShown = true;
+        showMigration(candidates);
+    }
+
+    function showMigration(candidates) {
+        const cards = loadCustomers().filter(r => r.crmId)
+            .sort((a, b) => a.name.localeCompare(b.name, 'he'));
+        const options = cards.map(r => `<option value="link:${esc(r.crmId)}">${esc(r.name)}</option>`).join('');
+        const wrap = document.createElement('div');
+        wrap.id = 'agent-migrate';
+        wrap.className = 'agent-gate';
+        wrap.style.display = 'flex';
+        wrap.setAttribute('role', 'dialog');
+        wrap.setAttribute('aria-modal', 'true');
+        wrap.setAttribute('aria-labelledby', 'agent-migrate-title');
+        wrap.innerHTML = `
+            <div class="agent-gate-inner">
+                <h2 id="agent-migrate-title" tabindex="-1">לקוחות שנמצאים רק בטלפון</h2>
+                <p style="margin:0 0 1rem; opacity:0.85;">מעכשיו כל לקוח שמור בכרטיס ב-CRM. מה לעשות עם כל אחד מאלה? המחירים שלו עוברים איתו.</p>
+                <div style="text-align:right; margin-bottom:1.2rem;">
+                ${candidates.map((r, i) => {
+                    const n = Object.keys(r.prices || {}).length;
+                    const meta = [n ? `${n} מחירים` : '', r.orderCount ? `${r.orderCount} הזמנות` : '']
+                        .filter(Boolean).join(' · ') || 'בלי מחירים';
+                    return `<div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,15rem); gap:0.6rem; align-items:center; padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.25);">
+                        <label for="agent-migrate-${i}" style="display:grid; gap:0.15rem;">
+                            <strong>${esc(r.name)}</strong>
+                            <span style="font-size:0.85rem; opacity:0.75;">${esc(meta)}</span>
+                        </label>
+                        <select id="agent-migrate-${i}" style="width:100%; min-height:44px; padding:0.4rem; font-size:16px; border-radius:8px; border:0; background:#fff; color:var(--primary-dark);">
+                            <option value="new">כרטיס חדש ב-CRM</option>
+                            <option value="delete">למחוק מהטלפון</option>
+                            ${options ? `<optgroup label="קישור לכרטיס קיים">${options}</optgroup>` : ''}
+                        </select>
+                    </div>`;
+                }).join('')}
+                </div>
+                <div class="agent-gate-foot">
+                    <button type="button" class="agent-gate-btn agent-gate-btn-solid" data-act="done">סיום</button>
+                    <button type="button" class="agent-gate-btn" data-act="later">אחר כך</button>
+                </div>
+            </div>`;
+        document.body.appendChild(wrap);
+        document.body.classList.add('agent-gate-open');
+        wrap.querySelector('#agent-migrate-title').focus();
+
+        const close = () => {
+            wrap.remove();
+            if (!gateEl || gateEl.style.display === 'none') document.body.classList.remove('agent-gate-open');
+        };
+        wrap.querySelector('[data-act="later"]').addEventListener('click', close);
+        wrap.querySelector('[data-act="done"]').addEventListener('click', () => {
+            const choices = candidates.map((r, i) => wrap.querySelector('#agent-migrate-' + i).value);
+            finishMigration(candidates, choices);
+            close();
+        });
+        wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    }
+
+    function finishMigration(candidates, choices) {
+        const list = loadCustomers();
+        let activeName = readJson(ACTIVE_KEY, null);
+        candidates.forEach((cand, i) => {
+            const choice = choices[i] || 'new';
+            const rec = list.find(r => !r.crmId && nameKey(r.name) === nameKey(cand.name));
+            if (!rec) return;
+            if (choice === 'delete') {
+                list.splice(list.indexOf(rec), 1);
+                if (activeName && nameKey(activeName) === nameKey(rec.name)) activeName = null;
+                return;
+            }
+            const positive = (p) => Object.keys(p || {}).filter(id => Number(p[id]) > 0);
+            if (choice.indexOf('link:') === 0) {
+                const crmId = choice.slice(5);
+                const target = list.find(r => r.crmId === crmId);
+                if (!target) return;
+                const extra = positive(rec.prices).filter(id => !(target.prices && id in target.prices));
+                AS.mergeInto(target, rec);
+                list.splice(list.indexOf(rec), 1);
+                if (extra.length) {
+                    enqueueOp({ op: 'prices_fill', body: { id: crmId,
+                        prices: extra.map(id => ({ productId: id, price: Number(rec.prices[id]) })) } });
+                }
+                if (activeName && nameKey(activeName) === nameKey(rec.name)) activeName = target.name;
+                return;
+            }
+            // כרטיס חדש. המחירים ב-prices_fill: אם ה-CRM יחזיר כרטיס קיים, מחיריו לא יידרסו.
+            rec.localId = rec.localId || newLocalId();
+            enqueueOp({ op: 'agent_customer', localId: rec.localId, body: {
+                name: rec.name, phone: isOwnPhone(rec.phone) ? '' : (rec.phone || ''),
+                contact: rec.contact || '', address: rec.address || '' } });
+            const ids = positive(rec.prices);
+            if (ids.length) {
+                enqueueOp({ op: 'prices_fill', localId: rec.localId, body: { id: '',
+                    prices: ids.map(id => ({ productId: id, price: Number(rec.prices[id]) })) } });
+            }
+        });
+        saveCustomers(list);
+        writeJson(MIGRATED_KEY, true);
+        writeJson(ACTIVE_KEY, activeName);
+        ACTIVE = activeName ? findCustomer(activeName) : null;
+        renderBar();
+        if (!ACTIVE) openGate(false);
+        toast('המעבר נשמר — מעדכן את ה-CRM...');
+        syncWithCrm(true);
+    }
 
     // שורת המצב מעל רשימת הלקוחות בבורר
     function crmNote() {
