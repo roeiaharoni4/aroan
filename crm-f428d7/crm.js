@@ -34,7 +34,9 @@
         'bad rivhit': 'מספר הלקוח בריווחית — ספרות בלבד, עד 5.',
         'same contact': 'אי אפשר לקשר כרטיס לעצמו.',
         'no items': 'לא נמצאו פריטים לשמירה.',
-        'too many items': 'יותר מ-5,000 פריטים — זה לא נראה כמו קובץ הייצוא של ריווחית.'
+        'too many items': 'יותר מ-5,000 פריטים — זה לא נראה כמו קובץ הייצוא של ריווחית.',
+        'bad source': 'מקור המחיר לא תקין.',
+        'no prices': 'אין מחירים לשמירה.'
     };
     // קובץ קליטה לריווחית (סבב 88): js/rivhit-core.js, ומק"טי הפריטים מ-products.csv
     const R = window.RivhitCore;
@@ -42,6 +44,7 @@
 
     const S = {
         password: '', contacts: [], activities: [], tasks: [], filter: 'todo', query: '',
+        prices: [], products: null, productsLoading: false, pricesAll: null,
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
         outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
         rivhit: null, rivhitCodes: null, rivhitCatalogs: null,
@@ -152,6 +155,7 @@
         S.contacts = data.contacts || [];
         S.activities = data.activities || [];
         S.tasks = data.tasks || [];
+        S.prices = data.prices || [];
         if (data.today) S.today = data.today;
         S.loadedAt = Date.now();
     }
@@ -316,6 +320,12 @@
         host.appendChild(mergeLine);
         host.appendChild(actions(c, false));
         host.appendChild(ordersBlock(c));
+        host.appendChild(pricesBlock(c));
+        // שמות המוצרים מ-products.csv, פעם אחת
+        if (S.products === null && !S.productsLoading) {
+            S.productsLoading = true;
+            ensureProducts().then(() => { if (S.openId) rerender(); });
+        }
 
         host.appendChild(el('h2', 'crm-label', 'שלב'));
         const stages = el('div', 'crm-chips');
@@ -552,6 +562,165 @@
             toast('ההזמנה בוטלה.');
         });
         return b;
+    }
+
+    // ---------- מחירון לקוח (אפיון 2026-11-15) ----------
+    // המחירים שסוכמו עם הלקוח. נלמדים לבד מהזמנות ומהצעות בדף הסוכן, ונערכים כאן.
+    const PRICES_SHOWN = 20;
+
+    async function ensureProducts() {
+        if (S.products) return S.products;
+        try {
+            const res = await fetch('/data/products.csv?t=' + Date.now(), { cache: 'no-store' });
+            S.products = res.ok
+                ? R.parseCsv(await res.text()).filter(p => p.id && p.name).map(p => ({ id: p.id, name: p.name }))
+                : [];
+        } catch (e) { S.products = []; }
+        return S.products;
+    }
+
+    function productNames() {
+        const m = {};
+        (S.products || []).forEach(p => { m[p.id] = p.name; });
+        return m;
+    }
+
+    function pricesBlock(c) {
+        const wrap = el('div', 'crm-prices');
+        const rows = C.pricesFor(S.prices, c.id, productNames());
+        wrap.appendChild(el('h2', 'crm-label', 'מחירון לקוח · ' +
+            (rows.length === 1 ? 'מוצר אחד' : rows.length + ' מוצרים')));
+        if (!rows.length) {
+            wrap.appendChild(el('p', 'crm-hint', 'עוד אין מחירים מוסכמים. הם נשמרים לבד מהזמנות ומהצעות בדף הסוכן.'));
+        }
+        const all = S.pricesAll === c.id;
+        const ul = el('ul', 'crm-price-list');
+        rows.slice(0, all ? rows.length : PRICES_SHOWN).forEach(p => ul.appendChild(priceRow(c, p)));
+        wrap.appendChild(ul);
+        if (rows.length > PRICES_SHOWN && !all) {
+            const more = el('button', 'crm-link-btn', 'הצג הכל (' + rows.length + ')');
+            more.type = 'button';
+            more.addEventListener('click', () => { S.pricesAll = c.id; rerender(); });
+            wrap.appendChild(more);
+        }
+        const add = el('button', 'crm-btn crm-btn-small', 'הוספת מחיר');
+        add.type = 'button';
+        add.addEventListener('click', () => openPriceAdd(c, wrap));
+        wrap.appendChild(add);
+        return wrap;
+    }
+
+    function priceRow(c, p) {
+        const li = el('li', 'crm-price-row');
+        const main = el('div', 'crm-price-main');
+        main.appendChild(el('span', 'crm-price-name', p.name));
+        const meta = [p.updated ? C.formatStamp(p.updated) : '', p.source].filter(Boolean).join(' · ');
+        if (meta) main.appendChild(el('span', 'crm-price-meta', meta));
+        li.appendChild(main);
+        const val = el('button', 'crm-price-value', C.formatPrice(p.price));
+        val.type = 'button';
+        val.setAttribute('aria-label', 'עריכת המחיר של ' + p.name + ': ' + C.formatPrice(p.price));
+        val.addEventListener('click', () => editPrice(li, c, p));
+        li.appendChild(val);
+        const del = el('button', 'crm-link-btn', 'מחיקה');
+        del.type = 'button';
+        del.setAttribute('aria-label', 'מחיקת המחיר של ' + p.name);
+        del.addEventListener('click', () => deletePrice(c, p));
+        li.appendChild(del);
+        return li;
+    }
+
+    // טופס מחיר אחד: שדה מספר, שמירה וביטול. onSave(price) מחזיר Promise<boolean>.
+    function priceForm(label, value, onSave) {
+        const form = el('form', 'crm-price-edit');
+        form.appendChild(el('span', 'crm-price-name', label));
+        const input = el('input', 'crm-input crm-price-input');
+        input.type = 'number';
+        input.step = '0.01';
+        input.min = '0.01';
+        input.inputMode = 'decimal';
+        if (value) input.value = String(value);
+        input.setAttribute('aria-label', 'מחיר ל' + label);
+        const ok = el('button', 'crm-btn crm-btn-small', 'שמירה');
+        ok.type = 'submit';
+        const cancel = el('button', 'crm-link-btn', 'ביטול');
+        cancel.type = 'button';
+        cancel.addEventListener('click', rerender);
+        form.append(input, ok, cancel);
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const price = Number(input.value);
+            if (!(price > 0)) { toast('המחיר לא תקין.'); input.focus(); return; }
+            ok.disabled = true;
+            if (!(await onSave(price))) ok.disabled = false;
+        });
+        setTimeout(() => { input.focus(); input.select(); }, 0);
+        return form;
+    }
+
+    function editPrice(li, c, p) {
+        li.textContent = '';
+        li.appendChild(priceForm(p.name, p.price, async (price) => {
+            const ok = await savePrices(c, [{ productId: p.productId, name: p.name, price: price }]);
+            if (ok) toast('המחיר נשמר.');
+            return ok;
+        }));
+    }
+
+    // prices_set, ואז המחירים של הכרטיס מוחלפים בתשובה. כשל — הודעה והמחיר הקודם חוזר.
+    async function savePrices(c, prices) {
+        if (offline()) { toast(ERRORS.network); rerender(); return false; }
+        const res = await api('prices_set', { id: c.id, prices: prices, source: 'ידני' });
+        if (!res.ok) {
+            if (res.error !== 'unauthorized') toast(errorText(res, 'לא נשמר — נסו שוב.'));
+            rerender();
+            return false;
+        }
+        S.prices = S.prices.filter(x => x.contactId !== c.id).concat(res.prices || []);
+        rerender();
+        return true;
+    }
+
+    async function deletePrice(c, p) {
+        if (!(await savePrices(c, [{ productId: p.productId, price: '' }]))) return;
+        toast('המחיר של ' + p.name + ' נמחק.', 'בטל', () => {
+            savePrices(c, [{ productId: p.productId, name: p.name, price: p.price }])
+                .then(ok => { if (ok) toast('המחיר הוחזר.'); });
+        });
+    }
+
+    function openPriceAdd(c, wrap) {
+        const open = wrap.querySelector('.crm-price-add input');
+        if (open) { open.focus(); return; }
+        const box = el('div', 'crm-price-add');
+        const search = el('input', 'crm-input');
+        search.type = 'search';
+        search.placeholder = 'חיפוש מוצר…';
+        search.setAttribute('aria-label', 'חיפוש מוצר להוספת מחיר');
+        const results = el('ul', 'crm-price-results');
+        box.append(search, results);
+        wrap.appendChild(box);
+        search.focus();
+        const show = () => {
+            results.textContent = '';
+            C.productMatches(S.products, search.value, 8).forEach(pr => {
+                const li = el('li');
+                const b = el('button', 'crm-link-btn', pr.name);
+                b.type = 'button';
+                b.addEventListener('click', () => {
+                    box.textContent = '';
+                    box.appendChild(priceForm(pr.name, '', async (price) => {
+                        const ok = await savePrices(c, [{ productId: pr.id, name: pr.name, price: price }]);
+                        if (ok) toast('המחיר נשמר.');
+                        return ok;
+                    }));
+                });
+                li.appendChild(b);
+                results.appendChild(li);
+            });
+        };
+        search.addEventListener('input', show);
+        ensureProducts().then(show);
     }
 
     // ---------- משימות ----------

@@ -227,6 +227,25 @@ test('תוצאה "הזמין": נרשמת כהזמנה; ובלי רישום — 
   assert.strictEqual(C.isManualOrder(Object.assign({}, acts[0], { orderId: 'AR-1' })), false);
 });
 
+test('מחירון לקוח: רק של הכרטיס, שם מהקטלוג או השמור, ממוין לפי שם', () => {
+  const prices = [
+    { contactId: 'C1', productId: 'ניק001', name: '', price: '6.5', updated: '2026-11-04 12:00', source: 'ידני' },
+    { contactId: 'C1', productId: 'RV-1500', name: 'כפפות ניטריל M', price: '7', updated: '2026-11-03 09:00', source: 'הצעה' },
+    { contactId: 'C2', productId: 'ניק001', name: '', price: '9', updated: '', source: 'ידני' }];
+  const rows = C.pricesFor(prices, 'C1', { 'ניק001': 'אקונומיקה 4 ליטר' });
+  assert.deepStrictEqual(rows.map(r => [r.productId, r.name, r.price]),
+    [['ניק001', 'אקונומיקה 4 ליטר', 6.5], ['RV-1500', 'כפפות ניטריל M', 7]]);
+  assert.strictEqual(C.formatPrice(6.5), '6.50 ₪');
+});
+
+test('חיפוש מוצר להוספת מחיר: לפי שם או מזהה מדויק, עד הגבול', () => {
+  const products = [{ id: 'חדפ014', name: 'מזלג קשיח' }, { id: 'חדפ013', name: 'מזלג חד פעמי' }, { id: 'ניק001', name: 'אקונומיקה' }];
+  assert.deepStrictEqual(C.productMatches(products, 'מזלג', 8).map(p => p.id), ['חדפ014', 'חדפ013']);
+  assert.deepStrictEqual(C.productMatches(products, 'ניק001', 8).map(p => p.id), ['ניק001']);
+  assert.strictEqual(C.productMatches(products, 'מזלג', 1).length, 1);
+  assert.deepStrictEqual(C.productMatches(products, '  ', 8), []);
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

@@ -344,6 +344,35 @@
         return lines;
     }
 
+    // ---------- מחירון לקוח (אפיון 2026-11-15) ----------
+
+    // המחירים של כרטיס אחד. השם מ-products.csv כשיש (names), אחרת השם שנשמר. לפי שם.
+    function pricesFor(prices, contactId, names) {
+        return (prices || [])
+            .filter(function (p) { return p && p.contactId === contactId && Number(p.price) > 0; })
+            .map(function (p) {
+                return {
+                    productId: p.productId,
+                    name: (names && names[p.productId]) || p.name || p.productId,
+                    price: Number(p.price),
+                    updated: p.updated || '',
+                    source: p.source || ''
+                };
+            })
+            .sort(function (a, b) { return a.name.localeCompare(b.name, 'he'); });
+    }
+
+    function formatPrice(n) { return Number(n).toFixed(2) + ' ₪'; }
+
+    // חיפוש מוצר להוספת מחיר: חלק מהשם, או המזהה המדויק
+    function productMatches(products, query, limit) {
+        var q = String(query || '').trim().toLowerCase();
+        if (!q) return [];
+        return (products || []).filter(function (p) {
+            return p && p.id && (String(p.name || '').toLowerCase().indexOf(q) >= 0 || String(p.id).toLowerCase() === q);
+        }).slice(0, limit || 8);
+    }
+
     var CrmCore = {
         STAGES: STAGES, FILTERS: FILTERS, MANUAL_SOURCES: MANUAL_SOURCES, CHANNELS: CHANNELS,
         OUTCOMES: OUTCOMES, ymd: ymd, addDays: addDays, daysBetween: daysBetween,
@@ -357,7 +386,8 @@
         ordersLine: ordersLine, lateLabel: lateLabel, orderSubLine: orderSubLine, orderOn: orderOn,
         isManualOrder: isManualOrder, isTaskDue: isTaskDue, isTaskLate: isTaskLate, sortTasks: sortTasks,
         dueTasks: dueTasks, openTasksOf: openTasksOf, taskDueLabel: taskDueLabel, validateTask: validateTask,
-        taskMatchesQuery: taskMatchesQuery
+        taskMatchesQuery: taskMatchesQuery,
+        pricesFor: pricesFor, formatPrice: formatPrice, productMatches: productMatches
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = CrmCore;
     else root.CrmCore = CrmCore;

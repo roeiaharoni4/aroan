@@ -294,3 +294,21 @@ h2.crm-label, p.crm-label, label.crm-label {
     transition: transform 0.2s ease;
 }
 .crm-toast.is-on { transform: translateX(-50%) translateY(0); }
+
+/* --- מחירון לקוח בכרטיס (אפיון 2026-11-15) --- */
+.crm-prices { margin-top: 0.4rem; }
+.crm-price-list, .crm-price-results { list-style: none; margin: 0.4rem 0; padding: 0; }
+.crm-price-row, .crm-price-edit {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0; border-bottom: 1px solid var(--crm-border);
+}
+.crm-price-main { flex: 1 1 12rem; min-width: 0; display: grid; gap: 0.1rem; }
+.crm-price-name { overflow-wrap: anywhere; }
+.crm-price-edit .crm-price-name { flex: 1 1 12rem; min-width: 0; }
+.crm-price-meta { font-size: 0.8rem; color: var(--crm-muted); }
+.crm-price-value {
+    min-height: 40px; padding: 0.3rem 0.7rem; border: 1px solid var(--crm-border); border-radius: 8px;
+    background: var(--crm-surface); color: var(--crm-text); font: inherit; font-weight: 700; cursor: pointer;
+}
+.crm-price-input { max-width: 7rem; }
+.crm-price-add { margin-top: 0.4rem; }
