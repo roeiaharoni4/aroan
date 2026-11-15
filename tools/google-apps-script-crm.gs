@@ -707,7 +707,8 @@ function handleList_() {
     activities: model.activities.map(function (a) { return publicOf_(a, ACTIVITY_KEYS); }),
     tasks: model.tasks
       .filter(function (t) { return !t.done; })
-      .map(function (t) { return publicOf_(t, TASK_KEYS); })
+      .map(function (t) { return publicOf_(t, TASK_KEYS); }),
+    prices: model.prices.map(function (p) { return publicOf_(p, PRICE_KEYS); })
   };
 }
 
@@ -718,6 +719,20 @@ function handleContacts_() {
     ok: true,
     contacts: model.contacts.map(function (c) { return publicOf_(c, AGENT_CONTACT_KEYS); })
   };
+}
+
+// עריכה בכרטיס ב-CRM (ידני) והמעבר מהטלפון. onlyMissing — prices_fill: רק מוצרים בלי מחיר.
+function handlePricesSet_(id, prices, source, onlyMissing) {
+  source = trim_(source);
+  if (PRICE_SET_SOURCES.indexOf(source) < 0) return { ok: false, error: 'bad source' };
+  if (!Array.isArray(prices) || !prices.length) return { ok: false, error: 'no prices' };
+  var model = readModel_(book_());
+  var c = contactById_(model, trim_(id));
+  if (!c) return { ok: false, error: 'not found' };
+  var changed = learnPrices_(model, c.id, prices, source, now_().stamp,
+    { onlyMissing: !!onlyMissing, allowDelete: !onlyMissing });
+  savePrices_(model);
+  return { ok: true, changed: changed, prices: pricesOf_(model, c.id) };
 }
 
 function handleAdd_(input) {
@@ -874,6 +889,7 @@ function handleDelete_(id) {
   var rows = rowsOf(model.activities);
   rows.forEach(function (r) { model.as.deleteRow(r); });
   rowsOf(model.tasks).forEach(function (r) { model.ts.deleteRow(r); });
+  rowsOf(model.prices).forEach(function (r) { model.ps.deleteRow(r); });
   model.cs.deleteRow(c._row);
   return { ok: true, deleted: rows.length };
 }
@@ -910,6 +926,15 @@ function handleMerge_(fromId, toId) {
   });
   var tasks = model.tasks.filter(function (t) { return t.contactId === from.id; });
   tasks.forEach(function (t) { t.contactId = to.id; });
+  // מחירים עוברים ל-to. לאותו מוצר בשני הכרטיסים — נשאר החדש (אפיון 2026-11-15)
+  model.prices.forEach(function (p) {
+    if (p.contactId !== from.id || p._deleted) return;
+    var mine = priceRow_(model, to.id, p.productId);
+    if (mine && trim_(mine.updated) >= trim_(p.updated)) { p._deleted = true; return; }
+    if (mine) mine._deleted = true;
+    p.contactId = to.id;
+    p._dirty = true;
+  });
 
   if (from.stage === 'לקוח' || movedOrders) to.stage = 'לקוח';
   if (trim_(from.followUp) && (!trim_(to.followUp) || from.followUp < to.followUp)) to.followUp = from.followUp;
@@ -929,6 +954,7 @@ function handleMerge_(fromId, toId) {
   // קודם כותבים, ורק אחר כך מוחקים את השורה של from — מחיקה מזיזה את השורות שמתחתיה
   save_(model, [to], [log]);
   if (tasks.length) saveTasks_(model, tasks);
+  savePrices_(model);
   model.cs.deleteRow(from._row);
   return { ok: true, id: to.id, moved: moved, tasks: tasks.length };
 }
@@ -1434,6 +1460,12 @@ function doPost(e) {
     switch (body.action) {
       case 'list': return json_(handleList_());
       case 'contacts': return json_(handleContacts_());
+      case 'prices_set': return json_(withLock_(function () {
+        return handlePricesSet_(body.id, body.prices, body.source, false);
+      }));
+      case 'prices_fill': return json_(withLock_(function () {
+        return handlePricesSet_(body.id, body.prices, 'העברה מהטלפון', true);
+      }));
       case 'add': return json_(withLock_(function () { return handleAdd_(body.contact || {}); }));
       case 'update': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, null); }));
       case 'log': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, body.activity || null); }));

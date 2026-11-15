@@ -1425,6 +1425,87 @@ test('מחירים: הזמנה חדשה מדף הסוכן מעדכנת את או
   assert.strictEqual(rows[0][4], '2026-11-03 09:00');
 });
 
+function pricedSetup() {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: SL_EVENT }).id;
+  return { app, id };
+}
+
+test('prices_set: הוספה, עדכון ומחיקה; מקור ותאריך', () => {
+  const { app, id } = pricedSetup();
+  app.setNow({ date: '2026-11-04', stamp: '2026-11-04 12:00' });
+  const r = app.call({ action: 'prices_set', password: P, id, source: 'ידני', prices: [
+    { productId: 'ניק001', name: 'אקונומיקה 4 ליטר', price: '6.5' },
+    { productId: 'חדפ014', price: 4.2 }] });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.prices.length, 2);
+  const byId = Object.fromEntries(priceRows(app).map(x => [x[1], x]));
+  assert.strictEqual(byId['ניק001'][3], '6.5');
+  assert.strictEqual(byId['ניק001'][4], '2026-11-04 12:00');
+  assert.strictEqual(byId['ניק001'][5], 'ידני');
+  assert.strictEqual(byId['חדפ014'][3], '4.2');
+  assert.strictEqual(byId['חדפ014'][2], 'מזלג קשיח', 'בלי שם — נשאר השם הקודם');
+  const d = app.call({ action: 'prices_set', password: P, id, source: 'ידני',
+    prices: [{ productId: 'חדפ014', price: '' }] });
+  assert.strictEqual(d.prices.length, 1);
+  assert.deepStrictEqual(priceRows(app).map(x => x[1]), ['ניק001']);
+});
+
+test('prices_set: שגיאות — מקור, רשימה ריקה, כרטיס, סיסמה; כלום לא משתנה', () => {
+  const { app, id } = pricedSetup();
+  const set = (o) => app.call(Object.assign({ action: 'prices_set', password: P, id, source: 'ידני',
+    prices: [{ productId: 'ניק001', price: 6 }] }, o));
+  assert.strictEqual(set({ source: 'הזמנה' }).error, 'bad source');
+  assert.strictEqual(set({ prices: [] }).error, 'no prices');
+  assert.strictEqual(set({ id: 'C-none' }).error, 'not found');
+  assert.strictEqual(set({ password: 'wrong' }).error, 'unauthorized');
+  assert.strictEqual(priceRows(app).length, 1);
+});
+
+test('prices_fill: לא דורס מחיר קיים, ממלא חסר במקור העברה מהטלפון', () => {
+  const { app, id } = pricedSetup();
+  const r = app.call({ action: 'prices_fill', password: P, id, prices: [
+    { productId: 'חדפ014', price: 3 }, { productId: 'ניק001', price: 6 }] });
+  assert.strictEqual(r.ok, true);
+  const byId = Object.fromEntries(priceRows(app).map(x => [x[1], x]));
+  assert.strictEqual(byId['חדפ014'][3], '4.5');
+  assert.strictEqual(byId['ניק001'][3], '6');
+  assert.strictEqual(byId['ניק001'][5], 'העברה מהטלפון');
+});
+
+test('list: כולל את מחירי הלקוחות', () => {
+  const { app, id } = pricedSetup();
+  const prices = app.call({ action: 'list', password: P }).prices;
+  assert.strictEqual(prices.length, 1);
+  assert.strictEqual(prices[0].contactId, id);
+  assert.strictEqual(prices[0].productId, 'חדפ014');
+  assert.strictEqual(prices[0].price, '4.5');
+});
+
+test('מחיקת כרטיס מוחקת את המחירים שלו בלבד', () => {
+  const { app, id } = pricedSetup();
+  const other = app.call({ action: 'add', password: P, contact: { phone: '0529999999', name: 'אחר' } }).contact.id;
+  app.call({ action: 'prices_set', password: P, id: other, source: 'ידני', prices: [{ productId: 'ניק001', price: 7 }] });
+  app.call({ action: 'delete', password: P, id });
+  assert.deepStrictEqual(priceRows(app).map(x => x[0]), [other]);
+});
+
+test('מיזוג: המחירים עוברים, ולאותו מוצר נשאר החדש', () => {
+  const { app, id } = pricedSetup();   // חדפ014 4.5 ב-02.11
+  const from = app.call({ action: 'add', password: P, contact: { phone: '0529999999', name: 'כפול' } }).contact.id;
+  app.setNow({ date: '2026-11-01', stamp: '2026-11-01 08:00' });
+  app.call({ action: 'prices_set', password: P, id: from, source: 'ידני', prices: [{ productId: 'ניק001', price: 6 }] });
+  app.setNow({ date: '2026-11-04', stamp: '2026-11-04 08:00' });
+  app.call({ action: 'prices_set', password: P, id: from, source: 'ידני', prices: [{ productId: 'חדפ014', price: 5 }] });
+  app.call({ action: 'prices_set', password: P, id, source: 'ידני', prices: [{ productId: 'ניק001', price: 6.9 }] });
+  app.call({ action: 'merge', password: P, from, to: id });
+  const rows = priceRows(app);
+  assert.ok(rows.every(x => x[0] === id), 'הכל אצל to');
+  const byId = Object.fromEntries(rows.map(x => [x[1], x[3]]));
+  assert.deepStrictEqual(byId, { 'חדפ014': '5', 'ניק001': '6.9' });
+  assert.strictEqual(rows.length, 2);
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
