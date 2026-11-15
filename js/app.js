@@ -2518,19 +2518,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         // בלקוח פרטי אין "שם עסק" — הזיהוי הוא שם מלא
         const nameField = isB2C ? "cust-contact" : "cust-business";
         const nameValue = isB2C ? customer.contact : customer.business;
-        if (!nameValue || !customer.phone) {
+        // דף הסוכן: טלפון לא חובה. כשהוא היה חובה רועי הקליד את המספר שלו ללקוח בלי
+        // טלפון, וה-CRM צירף את ההזמנה ללקוח אחר עם אותו מספר (15.11.26). הלקוח
+        // מזוהה שם לפי הכרטיס שנבחר (crmId), לא לפי הטלפון.
+        const phoneRequired = !CONFIG.agentMode;
+        if (!nameValue || (phoneRequired && !customer.phone)) {
             trackEvent('checkout_error', {
                 error_reason: !nameValue && !customer.phone ? 'missing_name_and_phone'
                     : (!nameValue ? 'missing_name' : 'missing_phone')
             });
             showToast(isB2C
                 ? "נא למלא שם מלא וטלפון לפני שליחת ההזמנה"
-                : "נא למלא שם עסק וטלפון לפני שליחת ההזמנה");
+                : (phoneRequired ? "נא למלא שם עסק וטלפון לפני שליחת ההזמנה" : "נא למלא שם לקוח לפני שליחת ההזמנה"));
             markMissingField(!nameValue ? nameField : "cust-phone", "שדה חובה");
             return false;
         }
         // ספרה חסרה או מיותרת — בלי המספר אין דרך לחזור ללקוח שהזמין במייל
-        if (!isValidPhone(customer.phone)) {
+        if (customer.phone && !isValidPhone(customer.phone)) {
             trackEvent('checkout_error', { error_reason: 'invalid_phone' });
             showToast("מספר הטלפון לא תקין — בדקו שהוקלד במלואו");
             markMissingField("cust-phone", "מספר טלפון לא תקין (למשל 050-1234567 או 03-1234567)");
@@ -3038,11 +3042,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             // business נושא את החדש והשדה הזה את המקורי — אחרת אי אפשר לדעת
             // במשלוח לאיזו חנות ההזמנה נועדה במקור.
             originalBranch: ORIGINAL_BRANCH || '',
-            customer: getCustomerDetails(), // פרטי הלקוח (null בגרסת סוכן)
+            customer: withCrmId(getCustomerDetails()),
             // דף הסוכן: סוג קובץ הקליטה לריווחית שמצורף למייל (סבב 93; js/agent.js)
             ...(CONFIG.agentMode && window.AGENT && window.AGENT.rivhitDocType
                 ? { rivhitDocType: window.AGENT.rivhitDocType() } : {})
         };
+    }
+
+    // דף הסוכן: מזהה הכרטיס ב-CRM של הלקוח שנבחר (js/agent.js). סקריפט ההזמנות
+    // מעביר אותו ל-CRM, וכך ההזמנה נרשמת בכרטיס הנכון בלי לנחש לפי טלפון.
+    function withCrmId(customer) {
+        if (!customer || !CONFIG.agentMode || !window.AGENT || !window.AGENT.crmIdFor) return customer;
+        const crmId = window.AGENT.crmIdFor(customer.business);
+        return crmId ? Object.assign({}, customer, { crmId: crmId }) : customer;
     }
 
     // מחזירה true כשהבקשה יצאה לדרך. התשובה אטומה (mode: no-cors) ולכן אין

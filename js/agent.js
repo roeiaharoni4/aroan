@@ -23,6 +23,9 @@
     const CRM_API = 'https://script.google.com/macros/s/AKfycbzs-jtpiy0yH6MnGjy_B2wULKZ56fpQ67UgtCDDPe9o0IZH_gjYb36RBqW7vVt8wGRcbw/exec';
     const CRM_KEY = 'aroam_crm_key';
     const RIVHIT_KEY = 'aroam_agent_rivhit_items';
+    // המספרים של העסק עצמו — לא טלפון של לקוח. אותה רשימה כמו OWN_PHONES בסקריפט ה-CRM.
+    const OWN_PHONES = ['0526000158', '036346236', '0506444290'];
+    const CRM_SYNC_MS = 60000;   // פתיחה חוזרת של הבורר בתוך דקה לא מושכת שוב
 
     // מחירי המחירון כפי שנטענו מ-products.csv, לפני החלת מחירי לקוח.
     // בלעדיהם מעבר מלקוח א' ללקוח ב' היה משאיר את המחירים של א'.
@@ -30,6 +33,9 @@
     let ACTIVE = null;
     let gateEl = null;
     let rivhitLoaded = false;   // יש רשימת פריטים מריווחית (מהעותק במכשיר או מה-CRM)
+    let crmSyncedAt = 0;
+    let crmSyncing = null;
+    let crmSyncError = '';      // 'unauthorized' כשהסיסמה במכשיר פגה
 
     // ---------- עזרים ----------
 
@@ -62,6 +68,19 @@
         const t = Date.parse(iso);
         if (isNaN(t)) return null;
         return Math.floor((Date.now() - t) / 86400000);
+    }
+
+    // ספרות בלבד, בצורה מקומית (0...) — כדי להשוות מספרים שנכתבו אחרת
+    function phoneDigits(raw) {
+        let d = String(raw || '').replace(/\D/g, '');
+        if (d.startsWith('00972')) d = d.slice(2);
+        if (d.startsWith('972')) d = d.slice(3);
+        if (d && !d.startsWith('0') && !d.startsWith('1')) d = '0' + d;
+        return d;
+    }
+
+    function isOwnPhone(raw) {
+        return OWN_PHONES.includes(phoneDigits(raw));
     }
 
     function setField(id, value) {
@@ -193,6 +212,121 @@
             : 'פריטים מריווחית יופיעו בחיפוש אחרי כניסה ל-CRM במכשיר הזה.';
     }
 
+    // ---------- לקוחות מה-CRM (15.11.26) ----------
+    // הבורר הציג רק לקוחות שנוצרו בדף הסוכן במכשיר הזה. עכשיו כל כרטיס ב-CRM
+    // נכנס למאגר במכשיר עם crmId, ושליחת הזמנה נושאת אותו — כך ההזמנה נרשמת
+    // בכרטיס שנבחר ולא בכרטיס אחר שבמקרה יש לו אותו טלפון. המאגר במכשיר נשאר
+    // מקור האמת למחירים ולהזמנה האחרונה, ועובד גם בלי רשת.
+
+    function crmLabel(c) {
+        return String((c && (c.business || c.name)) || '').trim();
+    }
+
+    // ממזג את רשימת ה-CRM לתוך המאגר במכשיר. מחזיר true אם משהו השתנה.
+    function syncCrmContacts(contacts) {
+        const list = loadCustomers();
+        const before = JSON.stringify(list);
+        const seen = new Set();
+        const usedNames = new Set();
+
+        contacts.forEach(c => {
+            let label = crmLabel(c);
+            if (!c || !c.id || !label) return;
+            seen.add(c.id);
+            // שני כרטיסים באותו שם — השני מקבל תוספת, כי המאגר במכשיר מזוהה לפי שם
+            if (usedNames.has(nameKey(label))) label += ` (${c.name || c.phone || c.id})`;
+            usedNames.add(nameKey(label));
+
+            let rec = list.find(r => r.crmId === c.id) ||
+                list.find(r => !r.crmId && nameKey(r.name) === nameKey(label));
+            if (!rec) {
+                rec = { name: label, phone: '', address: '', notes: '', prices: {}, orderCount: 0 };
+                list.push(rec);
+            }
+            // שם שהשתנה ב-CRM מתעדכן גם כאן, כל עוד אין לקוח אחר בשם הזה
+            if (rec.crmId === c.id && nameKey(rec.name) !== nameKey(label) &&
+                !list.some(r => r !== rec && nameKey(r.name) === nameKey(label))) {
+                if (ACTIVE && nameKey(ACTIVE.name) === nameKey(rec.name)) writeJson(ACTIVE_KEY, label);
+                rec.name = label;
+            }
+            rec.crmId = c.id;
+            rec.stage = c.stage || '';
+            rec.rivhitNo = c.rivhitNo || '';
+            if ((!rec.phone || isOwnPhone(rec.phone)) && c.phone && !isOwnPhone(c.phone)) rec.phone = c.phone;
+            if (isOwnPhone(rec.phone)) rec.phone = '';
+            if (!rec.contact && c.name && c.business) rec.contact = c.name;
+            if (!rec.address && c.address) rec.address = c.address;
+            // הזמנות מהאתר לא עוברות בדף הסוכן — ה-CRM יודע עליהן
+            const crmLast = String(c.lastOrder || '').slice(0, 10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(crmLast) &&
+                (!rec.lastOrderAt || crmLast > String(rec.lastOrderAt).slice(0, 10))) {
+                rec.lastOrderAt = crmLast;
+            }
+            rec.orderCount = Math.max(Number(rec.orderCount) || 0, Number(c.orders) || 0);
+        });
+
+        // כרטיס שנמחק או מוזג ב-CRM — הלקוח נשאר כאן, בלי מזהה ישן
+        list.forEach(r => { if (r.crmId && !seen.has(r.crmId)) delete r.crmId; });
+
+        if (JSON.stringify(list) === before) return false;
+        saveCustomers(list);
+        if (ACTIVE) {
+            const fresh = findCustomer(readJson(ACTIVE_KEY, ACTIVE.name));
+            if (fresh) {
+                ACTIVE = fresh;
+                // פרטים שהגיעו עכשיו מה-CRM — רק לשדות ריקים, בלי לדרוס מה שהוקלד
+                [['cust-phone', fresh.phone], ['cust-contact', fresh.contact], ['cust-address', fresh.address]]
+                    .forEach(([id, v]) => {
+                        const el = document.getElementById(id);
+                        if (el && !el.value.trim() && v) el.value = v;
+                    });
+                renderBar();
+            }
+        }
+        return true;
+    }
+
+    // ברקע, עם הסיסמה שה-CRM שמר במכשיר. כשל רשת — בשקט; המאגר במכשיר נשאר.
+    async function refreshCrmContacts(force) {
+        const password = crmPassword();
+        if (!password || navigator.onLine === false) return false;
+        if (!force && Date.now() - crmSyncedAt < CRM_SYNC_MS) return false;
+        if (crmSyncing) return crmSyncing;
+        crmSyncing = (async () => {
+            let data = null;
+            try {
+                const res = await fetch(CRM_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'contacts', password: password })
+                });
+                data = await res.json();
+            } catch (e) { return false; }
+            if (!data || !data.ok || !Array.isArray(data.contacts)) {
+                crmSyncError = (data && data.error) || 'failed';
+                return false;
+            }
+            crmSyncError = '';
+            crmSyncedAt = Date.now();
+            return syncCrmContacts(data.contacts);
+        })();
+        try { return await crmSyncing; } finally { crmSyncing = null; }
+    }
+
+    // שורת המצב מעל רשימת הלקוחות בבורר
+    function crmNote() {
+        if (!crmPassword()) return 'כדי לראות כאן את כל הלקוחות מה-CRM — להיכנס פעם אחת ל-CRM במכשיר הזה.';
+        if (crmSyncError === 'unauthorized') return 'לא ניתן לטעון את הלקוחות מה-CRM — צריך להיכנס מחדש ל-CRM במכשיר הזה.';
+        return '';
+    }
+
+    // מזהה הכרטיס ב-CRM לשם הלקוח שבטופס. לפי השם שנשלח בפועל ולא לפי הלקוח
+    // שנבחר — אם רועי שינה את שם הלקוח בטופס, המזהה של הקודם לא נשלח איתו.
+    function crmIdFor(business) {
+        const rec = business ? findCustomer(business) : null;
+        return (rec && rec.crmId) || '';
+    }
+
     // ---------- מחירי הלקוח ----------
 
     function snapshotBasePrices() {
@@ -218,7 +352,8 @@
         ACTIVE = customer;
         writeJson(ACTIVE_KEY, customer ? customer.name : null);
         setField('cust-business', customer ? customer.name : '');
-        setField('cust-phone', customer ? customer.phone : '');
+        // לקוח שנשמר בעבר עם המספר של רועי — השדה נשאר ריק
+        setField('cust-phone', customer && !isOwnPhone(customer.phone) ? customer.phone : '');
         setField('cust-contact', customer ? customer.contact : '');
         setField('cust-address', customer ? customer.address : '');
         setField('cust-notes', '');
@@ -287,6 +422,13 @@
         gateEl.style.display = 'flex';
         document.body.classList.add('agent-gate-open');
         renderGateList('');
+        // הלקוחות מה-CRM מתעדכנים ברקע; הרשימה מתרעננת כשהם מגיעים
+        refreshCrmContacts().then(() => {
+            if (gateEl && gateEl.style.display !== 'none') {
+                const search = gateEl.querySelector('#agent-search');
+                renderGateList(search ? search.value : '');
+            }
+        });
         if (push) {
             try { history.pushState({ agentStep: 'gate' }, '', location.pathname); } catch (e) { }
         }
@@ -348,25 +490,37 @@
         const q = nameKey(query);
         let list = loadCustomers();
 
+        const irrelevant = (c) => c.stage === 'לא רלוונטי';
         if (forgottenOnly) {
             list = list.filter(c => {
+                if (irrelevant(c)) return false;
                 const d = daysSince(c.lastOrderAt);
-                return d == null || d >= FORGOTTEN_DAYS;
+                // בלי הזמנה בכלל — רק לקוח (לא ליד מה-CRM שעוד לא הזמין)
+                return d == null ? (!c.crmId || c.stage === 'לקוח') : d >= FORGOTTEN_DAYS;
             });
         }
-        if (q) list = list.filter(c => nameKey(c.name).includes(q) || String(c.phone || '').includes(query.trim()));
+        const qPhone = String(query || '').replace(/\D/g, '');
+        if (q) {
+            list = list.filter(c => nameKey(c.name).includes(q) ||
+                (qPhone.length >= 3 && phoneDigits(c.phone).includes(qPhone)));
+        }
 
-        // הוותיקים ביותר קודם — מי שלא הזמין הכי הרבה זמן דורש טיפול
-        list.sort((a, b) => String(a.lastOrderAt || '').localeCompare(String(b.lastOrderAt || '')));
+        // הוותיקים ביותר קודם — מי שלא הזמין הכי הרבה זמן דורש טיפול.
+        // כרטיסים שסומנו ב-CRM "לא רלוונטי" בסוף.
+        list.sort((a, b) => (irrelevant(a) - irrelevant(b)) ||
+            String(a.lastOrderAt || '').localeCompare(String(b.lastOrderAt || '')));
+
+        const note = crmNote();
+        const noteHtml = note ? `<p class="agent-empty" style="margin:0 0 0.4rem;">${esc(note)}</p>` : '';
 
         if (!list.length) {
-            listEl.innerHTML = `<p class="agent-empty">${forgottenOnly
+            listEl.innerHTML = noteHtml + `<p class="agent-empty">${forgottenOnly
                 ? 'אין לקוחות שנשכחו. יפה.'
                 : (loadCustomers().length ? 'אין לקוח שמתאים לחיפוש.' : 'עוד אין לקוחות. הוסף את הראשון ב"+ לקוח חדש".')}</p>`;
             return;
         }
 
-        listEl.innerHTML = list.map(c => {
+        listEl.innerHTML = noteHtml + list.map(c => {
             const d = daysSince(c.lastOrderAt);
             const qd = daysSince(c.lastQuoteAt);
             let meta = d == null ? 'טרם הזמין' : `לפני ${d} ימים · ${c.orderCount || 0} הזמנות`;
@@ -415,6 +569,11 @@
 
         if (!name) { nameEl.focus(); toast('נא למלא שם לקוח'); return; }
         if (findCustomer(name)) { nameEl.focus(); toast('הלקוח כבר קיים ברשימה'); return; }
+        if (isOwnPhone(phoneEl.value)) {
+            phoneEl.focus();
+            toast('זה המספר שלך. אם אין טלפון של הלקוח — השאר ריק');
+            return;
+        }
 
         const rec = upsertCustomer(name, { phone: phoneEl.value.trim() });
         nameEl.value = '';
@@ -438,7 +597,8 @@
 
         const existing = findCustomer(name);
         const rec = upsertCustomer(name, {
-            phone: (detail.customer && detail.customer.phone) || (existing && existing.phone) || '',
+            phone: [detail.customer && detail.customer.phone, existing && existing.phone]
+                .find(p => p && !isOwnPhone(p)) || '',
             contact: (detail.customer && detail.customer.contact) || (existing && existing.contact) || '',
             address: (detail.customer && detail.customer.address) || (existing && existing.address) || '',
             prices: prices,
@@ -687,6 +847,7 @@
 
     window.AGENT = {
         activeName: () => (ACTIVE ? ACTIVE.name : ''),
+        crmIdFor: crmIdFor,
         rivhitHint: rivhitHint,
         refreshRivhit: refreshRivhitItems,
         rivhitDocType: rivhitDocType
@@ -704,6 +865,7 @@
 
         snapshotBasePrices();
         refreshRivhitItems();
+        refreshCrmContacts();
 
         hookOrderModalHistory();
 

@@ -35,6 +35,12 @@ var CONTACT_HEADERS = ['מזהה', 'שם', 'עסק', 'טלפון', 'אימייל
 var CONTACT_KEYS = ['id', 'name', 'business', 'phone', 'email', 'address', 'stage',
   'followUp', 'source', 'created', 'lastActivity', 'orders', 'lastOrder', 'rivhitNo', 'phones'];
 var PHONES_MAX = 5;
+// המספרים של העסק עצמו (נייד/וואטסאפ, משרד, נוסף). הם לא מזהים לקוח: כשאין לרועי
+// טלפון של לקוח הוא מקליד את שלו, וכך הזמנה של "זארה" נרשמה תחת "קר פרי" (15.11.26).
+var OWN_PHONES = ['0526000158', '036346236', '0506444290'];
+// השדות שדף הסוכן מקבל ב-contacts — בלי פעולות ומשימות
+var AGENT_CONTACT_KEYS = ['id', 'name', 'business', 'phone', 'address', 'stage',
+  'orders', 'lastOrder', 'rivhitNo', 'phones'];
 var ACTIVITY_HEADERS = ['מזהה פעולה', 'מזהה איש קשר', 'תאריך', 'סוג', 'פירוט',
   'מספר הזמנה', 'PDF', 'קישור הצעה', 'נוצר ע"י', 'פריטים'];
 var ACTIVITY_KEYS = ['id', 'contactId', 'at', 'type', 'text', 'orderId', 'pdf',
@@ -255,9 +261,13 @@ function applyEvent_(model, ev, now) {
   }
   var at = trim_(ev.at) || now.stamp;
   var phone = normalizePhone_(ev.phone);
+  if (OWN_PHONES.indexOf(phone) >= 0) phone = '';
   var business = trim_(ev.business);
   var name = trim_(ev.name || ev.contact);
-  var c = findContact_(model.contacts, phone, business || name);
+  // דף הסוכן שולח את מזהה הכרטיס של הלקוח שנבחר — הוא גובר על כל ניחוש.
+  // כרטיס שנמחק או מוזג בינתיים — זיהוי רגיל לפי טלפון ושם.
+  var c = (trim_(ev.crmId) && contactById_(model, trim_(ev.crmId))) ||
+    findContact_(model.contacts, phone, business || name);
   var created = false;
   if (!c) {
     c = blankContact_(at);
@@ -602,6 +612,15 @@ function handleList_() {
     tasks: model.tasks
       .filter(function (t) { return !t.done; })
       .map(function (t) { return publicOf_(t, TASK_KEYS); })
+  };
+}
+
+// רשימת הלקוחות לבורר בדף הסוכן — קלה, כי היא נטענת בטלפון בכל פתיחה
+function handleContacts_() {
+  var model = readModel_(book_());
+  return {
+    ok: true,
+    contacts: model.contacts.map(function (c) { return publicOf_(c, AGENT_CONTACT_KEYS); })
   };
 }
 
@@ -1318,6 +1337,7 @@ function doPost(e) {
     if (!authorized_(CRM_PASSWORD, body.password)) return json_({ ok: false, error: 'unauthorized' });
     switch (body.action) {
       case 'list': return json_(handleList_());
+      case 'contacts': return json_(handleContacts_());
       case 'add': return json_(withLock_(function () { return handleAdd_(body.contact || {}); }));
       case 'update': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, null); }));
       case 'log': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, body.activity || null); }));

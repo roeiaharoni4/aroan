@@ -190,6 +190,55 @@ test('טלפון אחר עם אותו שם עסק — איש קשר נפרד', (
   assert.strictEqual(m.contacts.length, 2);
 });
 
+// 15.11.26: הזמנה ל"זארה" מדף הסוכן נשלחה עם הנייד של רועי, ונרשמה תחת "קר פרי"
+// שרשום עם אותו מספר. המספרים של העסק עצמו לא מזהים לקוח.
+test('הטלפון של רועי לא מזהה לקוח — לא מחבר ולא נשמר בכרטיס', () => {
+  const m = emptyModel();
+  gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'SL-1', via: 'דף הסוכן', business: 'קר פרי', phone: '0526000158' }), NOW);
+  const r = gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'SL-2', via: 'דף הסוכן', business: 'זארה', phone: '052-600-0158' }), NOW);
+  assert.strictEqual(m.contacts.length, 2);
+  assert.strictEqual(r.contact.business, 'זארה');
+  assert.strictEqual(r.contact.phone, '');
+  ['036346236', '0506444290', '+972526000158'].forEach(p => {
+    const x = gs.applyEvent_(m, Object.assign({}, ORDER,
+      { orderId: 'SL-' + p, via: 'דף הסוכן', business: 'לקוח ' + p, phone: p }), NOW);
+    assert.strictEqual(x.contact.phone, '', p);
+    assert.strictEqual(x.contact.business, 'לקוח ' + p);
+  });
+});
+
+test('כרטיס שכבר רשום עם הטלפון של רועי — לא מושך אליו הזמנות של אחרים', () => {
+  const m = emptyModel();
+  m.contacts.push({ id: 'C-kar', name: '', business: 'קר פרי', phone: '0526000158', phones: '',
+    stage: 'לקוח', orders: '2', lastOrder: '2026-10-06' });
+  const r = gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'SL-3', via: 'דף הסוכן', business: 'זארה', phone: '0526000158' }), NOW);
+  assert.notStrictEqual(r.contact.id, 'C-kar');
+  assert.strictEqual(m.contacts[0].orders, '2');
+  // אבל לפי השם הוא עדיין נמצא
+  const k = gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'SL-4', via: 'דף הסוכן', business: 'קר פרי', phone: '0526000158' }), NOW);
+  assert.strictEqual(k.contact.id, 'C-kar');
+});
+
+test('crmId מדף הסוכן גובר על טלפון ושם; מזהה שלא קיים — זיהוי רגיל', () => {
+  const m = emptyModel();
+  gs.applyEvent_(m, ORDER, NOW);
+  const other = gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'AR-9', business: 'זארה', phone: '0547777777' }), NOW).contact;
+  const r = gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'SL-5', via: 'דף הסוכן', crmId: other.id }), NOW);
+  assert.strictEqual(r.contact.id, other.id);
+  assert.strictEqual(m.contacts.length, 2);
+  // הטלפון מההזמנה לא דורס את הטלפון בכרטיס
+  assert.strictEqual(other.phone, '0547777777');
+  const g = gs.applyEvent_(m, Object.assign({}, ORDER,
+    { orderId: 'SL-6', via: 'דף הסוכן', crmId: 'C-deleted' }), NOW);
+  assert.strictEqual(g.contact.id, m.contacts[0].id);
+});
+
 // ---------- הזמנות וקצב ----------
 
 test('קצב: הזמנות במרחק עד 3 ימים מתמזגות; פחות משלוש — בלי קצב', () => {
@@ -1315,6 +1364,23 @@ test('מיזוג: שגיאות — כרטיס לא קיים, אותו כרטיס
   assert.strictEqual(app.call({ action: 'merge', password: P, from: existing, to: existing }).error, 'same contact');
   assert.strictEqual(app.call({ action: 'merge', password: 'wrong', from: fresh, to: existing }).error, 'unauthorized');
   assert.strictEqual(app.call({ action: 'list', password: P }).contacts.length, 2);
+});
+
+test('contacts: רשימה קלה לדף הסוכן — בלי פעולות, עם סיסמה בלבד', () => {
+  const { app, existing } = mergeSetup();
+  const res = app.call({ action: 'contacts', password: P });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.contacts.length, 2);
+  assert.strictEqual(res.activities, undefined);
+  const c = res.contacts.find(x => x.id === existing);
+  assert.strictEqual(c.business, 'מסעדת הגפן');
+  assert.strictEqual(c.phone, '0501234567');
+  assert.strictEqual(c.rivhitNo, '1234');
+  assert.strictEqual(c.orders, '1');
+  ['id', 'name', 'business', 'phone', 'address', 'stage', 'orders', 'lastOrder', 'rivhitNo', 'phones']
+    .forEach(k => assert.ok(k in c, k));
+  assert.strictEqual(app.call({ action: 'contacts', password: 'wrong' }).error, 'unauthorized');
+  assert.strictEqual(app.call({ action: 'contacts' }).error, 'unauthorized');
 });
 
 let failed = 0;

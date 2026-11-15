@@ -639,6 +639,8 @@ function crmEventFor_(data, pdf) {
     contact: String(c.contact || ''),
     phone: String(c.phone || ''),
     address: String(c.address || ''),
+    // דף הסוכן: הכרטיס ב-CRM של הלקוח שנבחר (15.11.26). רק מ-SL — באתר הלקוח לא בוחר כרטיס.
+    crmId: prefix === 'SL-' && /^C[a-z0-9]{4,30}$/.test(String(c.crmId || '')) ? String(c.crmId) : '',
     totalItems: data.totalItems || '',
     totalPrice: Number(data.totalPrice) > 0 ? Number(data.totalPrice).toFixed(2) : '',
     pdfUrl: pdf && pdf.url ? pdf.url : '',

@@ -345,6 +345,19 @@ test('CRM: הזמנה עסקית עם סכום מחירון, והזמנה מדף
   assert.strictEqual(sl.type, 'order');
   assert.strictEqual(sl.via, 'דף הסוכן');
   assert.strictEqual(sl.quoteLink, '');
+  assert.strictEqual(sl.crmId, '');
+});
+
+test('CRM: מזהה הכרטיס מדף הסוכן עובר לאירוע — רק ב-SL', () => {
+  const withId = (orderId) => gs.crmEventFor_(Object.assign({}, B2B, { orderId: orderId,
+    showPrices: orderId.indexOf('SL-') === 0,
+    customer: Object.assign({}, B2B.customer, { crmId: 'Cmwhri6pi6115' }) }), null);
+  assert.strictEqual(withId('SL-20261115-866261').crmId, 'Cmwhri6pi6115');
+  // מהאתר לקוח לא בוחר כרטיס — מזהה שהגיע משם לא נסמך עליו
+  assert.strictEqual(withId('AR-20261115-111111').crmId, '');
+  const bad = gs.crmEventFor_(Object.assign({}, B2B, { orderId: 'SL-20261115-1', showPrices: true,
+    customer: Object.assign({}, B2B.customer, { crmId: 'x"; DROP' }) }), null);
+  assert.strictEqual(bad.crmId, '');
 });
 
 test('CRM: רשת, ועד, צרכן ושליחה מרוכזת — לא נשלחים', () => {

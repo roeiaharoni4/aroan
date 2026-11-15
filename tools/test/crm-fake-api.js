@@ -156,6 +156,14 @@
                 db.itemsUpdated = at(0, '12:00');
                 return { ok: true, count: items.length, updated: db.itemsUpdated };
             }
+            // הרשימה הקלה לבורר בדף הסוכן (AGENT_CONTACT_KEYS בסקריפט)
+            case 'contacts':
+                return { ok: true, contacts: db.contacts.map(x => {
+                    const o = {};
+                    ['id', 'name', 'business', 'phone', 'address', 'stage', 'orders', 'lastOrder', 'rivhitNo', 'phones']
+                        .forEach(k => { o[k] = x[k] == null ? '' : String(x[k]); });
+                    return o;
+                }) };
             case 'list':
                 return { ok: true, today: today, contacts: db.contacts.map(withLate),
                     activities: clone(db.activities), tasks: clone(db.tasks.filter(t => !t.done)) };
