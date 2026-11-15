@@ -735,6 +735,65 @@ function handlePricesSet_(id, prices, source, onlyMissing) {
   return { ok: true, changed: changed, prices: pricesOf_(model, c.id) };
 }
 
+// כרטיס חדש מדף הסוכן (אפיון 2026-11-15). טלפון לא חובה. כרטיס קיים באותו טלפון או
+// באותו שם מוחזר במקום כרטיס חדש — כך גם ניסיון חוזר מהתור בטלפון לא משכפל.
+function handleAgentCustomer_(input) {
+  input = input || {};
+  var name = trim_(input.name).slice(0, 200);
+  if (!name) return { ok: false, error: 'name required' };
+  var phone = normalizePhone_(input.phone);
+  if (OWN_PHONES.indexOf(phone) >= 0) phone = '';
+  var model = readModel_(book_());
+  var key = nameKey_(name);
+  var dup = (phone && findContact_(model.contacts, phone, '')) ||
+    model.contacts.filter(function (c) { return nameKey_(c.business || c.name) === key; })[0] || null;
+  if (dup) return { ok: true, id: dup.id, existing: true };
+  var now = now_();
+  var c = blankContact_(now.stamp);
+  c.business = name;
+  c.name = trim_(input.contact).slice(0, 200);
+  c.phone = phone;
+  c.address = trim_(input.address).slice(0, 200);
+  c.source = 'דף הסוכן';
+  model.contacts.push(c);
+  var a = { id: newId_('A'), contactId: c.id, at: now.stamp, type: 'נוצר בדף הסוכן',
+    text: '', orderId: '', pdf: '', quoteLink: '', by: 'דף הסוכן', items: '' };
+  save_(model, [c], [a]);
+  return { ok: true, id: c.id, existing: false };
+}
+
+// הצעת מחיר שהודפסה בדף הסוכן. אותו quoteId פעמיים (ניסיון חוזר מהתור) — פעם אחת.
+// השלב עובר ל"נשלחה הצעה" מכל שלב חוץ מ"לקוח"; התאריך "לחזור" לא משתנה.
+function handleQuote_(input) {
+  input = input || {};
+  var model = readModel_(book_());
+  var c = contactById_(model, trim_(input.id));
+  if (!c) return { ok: false, error: 'not found' };
+  var quoteId = trim_(input.quoteId);
+  if (!/^Q-\d{8}-\d{3,6}$/.test(quoteId)) return { ok: false, error: 'bad quote' };
+  for (var i = 0; i < model.activities.length; i++) {
+    if (model.activities[i].orderId === quoteId) return { ok: true, duplicate: true };
+  }
+  var items = itemsJson_(input.items);
+  if (!items) return { ok: false, error: 'no items' };
+  var now = now_();
+  var at = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(trim_(input.at)) ? trim_(input.at) : now.stamp;
+  var total = Number(input.total);
+  var a = {
+    id: newId_('A'), contactId: c.id, at: at, type: 'הצעת מחיר',
+    text: [JSON.parse(items).length + ' פריטים', total > 0 ? total.toFixed(2) + ' ₪' : '', 'מדף הסוכן']
+      .filter(Boolean).join(' · '),
+    orderId: quoteId, pdf: '', quoteLink: '', by: 'דף הסוכן', items: items
+  };
+  model.activities.push(a);
+  if (c.stage !== 'לקוח') c.stage = 'נשלחה הצעה';
+  if (!c.lastActivity || at > c.lastActivity) c.lastActivity = at;
+  learnPrices_(model, c.id, input.items, 'הצעה', at);
+  save_(model, [c], [a]);
+  savePrices_(model);
+  return { ok: true };
+}
+
 function handleAdd_(input) {
   var phone = normalizePhone_(input.phone);
   if (!phone) return { ok: false, error: 'bad phone' };
@@ -1466,6 +1525,8 @@ function doPost(e) {
       case 'prices_fill': return json_(withLock_(function () {
         return handlePricesSet_(body.id, body.prices, 'העברה מהטלפון', true);
       }));
+      case 'agent_customer': return json_(withLock_(function () { return handleAgentCustomer_(body); }));
+      case 'quote': return json_(withLock_(function () { return handleQuote_(body); }));
       case 'add': return json_(withLock_(function () { return handleAdd_(body.contact || {}); }));
       case 'update': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, null); }));
       case 'log': return json_(withLock_(function () { return handleUpdate_(body.id, body.fields || {}, body.activity || null); }));

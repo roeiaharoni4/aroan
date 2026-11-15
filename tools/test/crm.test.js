@@ -1506,6 +1506,87 @@ test('מיזוג: המחירים עוברים, ולאותו מוצר נשאר ה
   assert.strictEqual(rows.length, 2);
 });
 
+test('agent_customer: כרטיס חדש בלי טלפון, מקור דף הסוכן, פעולה', () => {
+  const app = loadApp();
+  const r = app.call({ action: 'agent_customer', password: P, name: 'זארה', phone: '', contact: 'דנה', address: 'קניון איילון' });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.existing, false);
+  const data = app.call({ action: 'list', password: P });
+  const c = data.contacts.find(x => x.id === r.id);
+  assert.strictEqual(c.business, 'זארה');
+  assert.strictEqual(c.name, 'דנה');
+  assert.strictEqual(c.phone, '');
+  assert.strictEqual(c.address, 'קניון איילון');
+  assert.strictEqual(c.source, 'דף הסוכן');
+  assert.strictEqual(c.stage, 'חדש');
+  assert.strictEqual(c.followUp, '');
+  assert.deepStrictEqual(data.activities.filter(a => a.contactId === r.id).map(a => a.type), ['נוצר בדף הסוכן']);
+});
+
+test('agent_customer: המספר של רועי לא נשמר; קיים לפי טלפון או לפי שם', () => {
+  const app = loadApp();
+  const own = app.call({ action: 'agent_customer', password: P, name: 'לקוח א', phone: '052-600-0158' });
+  const list = () => app.call({ action: 'list', password: P }).contacts;
+  assert.strictEqual(list().find(x => x.id === own.id).phone, '');
+  const a = app.call({ action: 'agent_customer', password: P, name: 'מסעדת הגפן', phone: '0501234567' });
+  const byPhone = app.call({ action: 'agent_customer', password: P, name: 'שם אחר', phone: '050-123-4567' });
+  assert.strictEqual(byPhone.id, a.id);
+  assert.strictEqual(byPhone.existing, true);
+  const byName = app.call({ action: 'agent_customer', password: P, name: ' מסעדת  הגפן ', phone: '0547777777' });
+  assert.strictEqual(byName.id, a.id);
+  assert.strictEqual(app.call({ action: 'agent_customer', password: P, name: '  ' }).error, 'name required');
+  assert.strictEqual(list().length, 2);
+});
+
+const QUOTE = { quoteId: 'Q-20261115-4821', at: '2026-11-15 10:00', total: 147.5,
+  items: [{ id: 'חדפ014', name: 'מזלג קשיח', qty: 10, price: 4.4 },
+    { id: 'RV-1500', name: 'כפפות ניטריל M', qty: 3, price: 7, rivhit: 'E400M' }] };
+
+test('quote: פעולה בכרטיס, מחירים במקור הצעה, שלב נשלחה הצעה', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'agent_customer', password: P, name: 'זארה' }).id;
+  assert.strictEqual(app.call(Object.assign({ action: 'quote', password: P, id }, QUOTE)).ok, true);
+  const data = app.call({ action: 'list', password: P });
+  const a = data.activities.find(x => x.orderId === 'Q-20261115-4821');
+  assert.strictEqual(a.type, 'הצעת מחיר');
+  assert.strictEqual(a.at, '2026-11-15 10:00');
+  assert.strictEqual(a.text, '2 פריטים · 147.50 ₪ · מדף הסוכן');
+  assert.strictEqual(a.by, 'דף הסוכן');
+  assert.strictEqual(JSON.parse(a.items)[1].rivhit, 'E400M');
+  const c = data.contacts.find(x => x.id === id);
+  assert.strictEqual(c.stage, 'נשלחה הצעה');
+  assert.strictEqual(c.lastActivity, '2026-11-15 10:00');
+  assert.deepStrictEqual(priceRows(app).map(x => [x[1], x[3], x[5]]),
+    [['חדפ014', '4.4', 'הצעה'], ['RV-1500', '7', 'הצעה']]);
+});
+
+test('quote: לקוח נשאר לקוח; לא רלוונטי נפתח מחדש', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'event', secret: S, event: ORDER }).id;
+  app.call(Object.assign({ action: 'quote', password: P, id }, QUOTE));
+  const stage = (x) => app.call({ action: 'list', password: P }).contacts.find(c => c.id === x).stage;
+  assert.strictEqual(stage(id), 'לקוח');
+  const other = app.call({ action: 'agent_customer', password: P, name: 'אחר' }).id;
+  app.call({ action: 'update', password: P, id: other, fields: { stage: 'לא רלוונטי' } });
+  app.call(Object.assign({ action: 'quote', password: P, id: other }, QUOTE, { quoteId: 'Q-20261115-4822' }));
+  assert.strictEqual(stage(other), 'נשלחה הצעה');
+});
+
+test('quote: אותה הצעה פעמיים נרשמת פעם אחת; שגיאות; תאריך לא תקין = עכשיו', () => {
+  const app = loadApp();
+  const id = app.call({ action: 'agent_customer', password: P, name: 'זארה' }).id;
+  const q = (o) => app.call(Object.assign({ action: 'quote', password: P, id }, QUOTE, o));
+  q({});
+  assert.strictEqual(q({}).duplicate, true);
+  const quotes = () => app.call({ action: 'list', password: P }).activities.filter(a => a.type === 'הצעת מחיר');
+  assert.strictEqual(quotes().length, 1);
+  assert.strictEqual(q({ id: 'C-none', quoteId: 'Q-20261115-5000' }).error, 'not found');
+  assert.strictEqual(q({ quoteId: 'ABC' }).error, 'bad quote');
+  assert.strictEqual(q({ quoteId: 'Q-20261115-5001', items: [] }).error, 'no items');
+  q({ quoteId: 'Q-20261115-5002', at: 'מחר' });
+  assert.strictEqual(quotes().find(a => a.orderId === 'Q-20261115-5002').at, '2026-11-02 10:42');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }
