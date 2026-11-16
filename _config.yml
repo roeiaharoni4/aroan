@@ -12,6 +12,9 @@ exclude:
   - WORDPRESS_DEPLOY.md
   - docs
   - marketing
+  # הערות מחקר ודוחות (נכתבים ע"י Claude) — לשימוש פנימי בלבד
+  - research_notes
+  - reports
   - tools
   - admin
   - images_backup
