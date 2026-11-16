@@ -48,7 +48,7 @@
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
         outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
         rivhit: null, rivhitCodes: null, rivhitCatalogs: null,
-        itemsUpload: null, merge: null
+        itemsUpload: null, itemsStored: 0, merge: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1396,7 +1396,10 @@
         $('i-file').value = '';
         $('i-found').textContent = '';
         $('i-error').textContent = '';
+        $('i-warn').hidden = true;
+        $('i-warn').textContent = '';
         $('i-save').disabled = true;
+        $('i-save').textContent = 'שמירה';
     }
 
     async function openItems() {
@@ -1405,6 +1408,7 @@
         openOverlay('crm-items', 'crm-items-title');
         const res = await api('items');
         if ($('crm-items').hidden) return;
+        S.itemsStored = res && res.ok && res.items ? res.items.length : 0;
         $('i-status').textContent = itemsStatusText(res);
     }
 
@@ -1424,13 +1428,20 @@
         const file = $('i-file').files && $('i-file').files[0];
         S.itemsUpload = null;
         $('i-save').disabled = true;
+        $('i-save').textContent = 'שמירה';
         $('i-found').textContent = '';
         $('i-error').textContent = '';
+        $('i-warn').hidden = true;
         if (!file) return;
         const parsed = await readItemsFile(file);
         if (parsed.error) { $('i-error').textContent = parsed.error; return; }
         S.itemsUpload = parsed.items;
         $('i-found').textContent = itemsFoundText(parsed);
+        // קובץ שנראה ישן — אזהרה, והכפתור אומר במפורש שזו שמירה למרות האזהרה
+        const warn = C.itemsUploadWarning(parsed, S.itemsStored);
+        $('i-warn').textContent = warn;
+        $('i-warn').hidden = !warn;
+        $('i-save').textContent = warn ? 'לשמור בכל זאת' : 'שמירה';
         $('i-save').disabled = false;
     }
 
@@ -1450,6 +1461,7 @@
             return;
         }
         resetItemsForm();
+        S.itemsStored = res.count;
         S.rivhitCatalogs = null;
         $('i-status').textContent = 'נשמרו ' + res.count.toLocaleString('he-IL') + ' פריטים · עודכן ' + C.formatStamp(res.updated);
         toast('רשימת הפריטים מריווחית עודכנה.');

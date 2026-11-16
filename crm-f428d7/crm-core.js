@@ -373,6 +373,26 @@
         }).slice(0, limit || 8);
     }
 
+    // ---------- העלאת פריטים מריווחית ----------
+
+    // אזהרה לפני שמירה של רשימה שנראית ישנה (16.11.26: הועלה ייצוא מלפני מילוי המספרים
+    // הקטלוגיים, ובדף הסוכן נשארו 580 פריטים במקום 1,841). שני סימנים:
+    // רוב הפריטים בקובץ בלי מספר קטלוגי, או הרבה פחות פריטים ממה ששמור עכשיו (פחות מ-80%).
+    function itemsUploadWarning(parsed, storedCount) {
+        var found = (parsed && parsed.items ? parsed.items.length : 0);
+        var noCatalog = (parsed && parsed.noCatalog) || 0;
+        var n = function (x) { return Number(x).toLocaleString('en-US'); };
+        if (noCatalog > found) {
+            return 'ל-' + n(noCatalog) + ' פריטים בקובץ אין מספר קטלוגי, ונשמרים רק ' + n(found) +
+                '. זה נראה כמו ייצוא ישן, מלפני שמילאת מספרים קטלוגיים בריווחית — כדאי לייצא מחדש.';
+        }
+        if (storedCount > 0 && found < storedCount * 0.8) {
+            return 'בקובץ ' + n(found) + ' פריטים, ועכשיו שמורים ' + n(storedCount) +
+                '. הפריטים החסרים ייעלמו מהחיפוש בדף הסוכן — כדאי לוודא שזה הייצוא העדכני.';
+        }
+        return '';
+    }
+
     var CrmCore = {
         STAGES: STAGES, FILTERS: FILTERS, MANUAL_SOURCES: MANUAL_SOURCES, CHANNELS: CHANNELS,
         OUTCOMES: OUTCOMES, ymd: ymd, addDays: addDays, daysBetween: daysBetween,
@@ -387,7 +407,8 @@
         isManualOrder: isManualOrder, isTaskDue: isTaskDue, isTaskLate: isTaskLate, sortTasks: sortTasks,
         dueTasks: dueTasks, openTasksOf: openTasksOf, taskDueLabel: taskDueLabel, validateTask: validateTask,
         taskMatchesQuery: taskMatchesQuery,
-        pricesFor: pricesFor, formatPrice: formatPrice, productMatches: productMatches
+        pricesFor: pricesFor, formatPrice: formatPrice, productMatches: productMatches,
+        itemsUploadWarning: itemsUploadWarning
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = CrmCore;
     else root.CrmCore = CrmCore;

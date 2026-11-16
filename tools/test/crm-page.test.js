@@ -246,6 +246,22 @@ test('חיפוש מוצר להוספת מחיר: לפי שם או מזהה מד�
   assert.deepStrictEqual(C.productMatches(products, '  ', 8), []);
 });
 
+// 16.11.26: הועלה ייצוא מלפני מילוי המספרים הקטלוגיים — נשמרו 580 פריטים במקום 1,841
+test('אזהרת קובץ פריטים: רוב הפריטים בלי מספר קטלוגי, או פחות ממה ששמור', () => {
+  const items = (n) => Array.from({ length: n }, (_, i) => [String(i + 1), 'פריט', 'P' + i]);
+  // הקובץ הישן: 580 עם מספר, 1,333 בלי
+  const old = C.itemsUploadWarning({ items: items(580), noCatalog: 1333 }, 1841);
+  assert.ok(/1,333/.test(old) && /ייצוא ישן/.test(old), old);
+  // הקובץ הנכון: אין אזהרה
+  assert.strictEqual(C.itemsUploadWarning({ items: items(1841), noCatalog: 1 }, 580), '');
+  // מעט פריטים בלי מספר, אבל הרבה פחות ממה ששמור
+  const fewer = C.itemsUploadWarning({ items: items(900), noCatalog: 10 }, 1841);
+  assert.ok(/900/.test(fewer) && /1,841/.test(fewer), fewer);
+  // ירידה קטנה (פריטים שהוצאו מפעילות) — בלי אזהרה; ובלי רשימה שמורה — בלי השוואה
+  assert.strictEqual(C.itemsUploadWarning({ items: items(1800), noCatalog: 0 }, 1841), '');
+  assert.strictEqual(C.itemsUploadWarning({ items: items(900), noCatalog: 0 }, 0), '');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

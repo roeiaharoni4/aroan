@@ -214,6 +214,7 @@
             <label for="i-file" class="crm-label">קובץ ייצוא מריווחית</label>
             <input type="file" id="i-file" class="crm-input" accept=".csv,.txt,text/csv,text/plain">
             <p id="i-found" class="crm-card-meta" aria-live="polite"></p>
+            <div id="i-warn" class="crm-dup" role="status" hidden></div>
             <p id="i-error" class="crm-error" role="alert"></p>
             <div class="crm-form-actions">
                 <button type="button" id="i-save" class="crm-btn crm-btn-primary" disabled>שמירה</button>
@@ -244,9 +245,9 @@
         <button type="button" id="crm-toast-action" class="crm-toast-action" hidden></button>
     </div>
 
-    <script src="crm-core.js?v=4"></script>
+    <script src="crm-core.js?v=5"></script>
     <script src="/js/rivhit-core.js?v=4"></script>
-    <script src="crm.js?v=8"></script>
+    <script src="crm.js?v=9"></script>
 </body>
 
 </html>
