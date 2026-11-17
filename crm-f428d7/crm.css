@@ -314,6 +314,8 @@ h2.crm-label, p.crm-label, label.crm-label {
 .crm-price-add { margin-top: 0.4rem; }
 
 /* --- מסך הזמנות (אפיון 2026-11-17) --- */
+/* כמו .crm-tools ברשימה: ריווח מהצדדים, ומקום בתחתית לבר הבחירה */
+#crm-orders-view .crm-wrap { padding: 0 1rem 5rem; }
 .crm-order-day { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-top: 1rem; }
 .crm-order-list { list-style: none; margin: 0.3rem 0; padding: 0; }
 .crm-order-row {
