@@ -17,6 +17,8 @@ marketing/ads/src/tmp_page.html
 marketing/ads/src/tmp_shot.png
 marketing/ads/src/scale_report.json
 marketing/ads/src/meta_scale_report.json
+# פריימים של טיוטות הווידאו — נוצרים מחדש ב-meta_v2.py/meta_v3.py
+marketing/meta/drafts_v2/*_frames/
 
 # הערות מחקר ודוחות — פנימיים בלבד. הריפו פומבי, אז הם לא נכנסים ל-git בכלל.
 research_notes/
