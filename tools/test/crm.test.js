@@ -30,7 +30,7 @@ function loadGs() {
     '   rhythmFor_: rhythmFor_, lateInfo_: lateInfo_, recomputeOrders_: recomputeOrders_,' +
     '   inquiryMessage_: inquiryMessage_, dueReminders_: dueReminders_,' +
     '   reminderMessage_: reminderMessage_, digestDue_: digestDue_, digestFor_: digestFor_,' +
-    '   chatFromUpdates_: chatFromUpdates_, itemsJson_: itemsJson_ };')();
+    '   chatFromUpdates_: chatFromUpdates_, itemsJson_: itemsJson_, reconcileFor_: reconcileFor_ };')();
 }
 
 const gs = loadGs();
@@ -1693,6 +1693,80 @@ test('order_status: כמה מספרים, שורות כפולות, missing, כו�
   assert.strictEqual(app.call({ action: 'order_status', password: P, status: 'סופקה', orderIds: [] }).error, 'no orders');
   assert.strictEqual(app.call({ action: 'order_status', password: P, status: 'סופקה',
     orderIds: Array.from({ length: 201 }, (_, i) => 'X' + i) }).error, 'no orders');
+});
+
+const RNOW = { date: '2026-11-22', stamp: '2026-11-22 07:30' };   // יום ראשון
+const rrow = (o) => Object.assign({ orderId: '', receivedAt: '', business: 'עסק', contact: 'איש קשר',
+  phone: '0501234567', address: '', notes: '', totalItems: '3', totalPrice: '', shipping: '',
+  pdf: 'https://drive/x', status: 'חדשה', statusAt: '' }, o);
+
+test('התאמה: ספירה מאז הסיכום הקודם — שישי ושבת ביום ראשון', () => {
+  const rows = [
+    rrow({ orderId: 'AR-1', receivedAt: '2026-11-19 10:00' }),
+    rrow({ orderId: 'AR-2', receivedAt: '2026-11-20 10:00' }),
+    rrow({ orderId: 'SL-3', receivedAt: '2026-11-21 10:00' }),
+    rrow({ orderId: 'RA-4', receivedAt: '2026-11-21 11:00' }),
+    rrow({ orderId: 'AR-5', receivedAt: '2026-11-22 07:00' })
+  ];
+  const model = { contacts: [], activities: ['AR-1', 'AR-2', 'SL-3', 'AR-5'].map(id => ({ orderId: id, contactId: 'C' })) };
+  const r = gs.reconcileFor_(rows, model, RNOW, '2026-11-20');
+  assert.deepStrictEqual(r.counts, { total: 3, site: 1, agent: 1, chain: 1, other: 0 });
+  assert.strictEqual(gs.reconcileFor_(rows, model, RNOW, null).counts.total, 2, 'בלי סיכום קודם — רק אתמול');
+});
+
+test('התאמה: חסרה ב-CRM (לא צרכן ולא רשת), בלי PDF, ומספר כפול — 7 ימים אחרונים', () => {
+  const rows = [
+    rrow({ orderId: 'AR-10', receivedAt: '2026-11-20 10:00', business: 'מסעדת הגפן' }),
+    rrow({ orderId: 'AR-11', receivedAt: '2026-11-20 11:00', business: '', shipping: 'משלוח' }),
+    rrow({ orderId: 'RA-12', receivedAt: '2026-11-20 12:00', pdf: '' }),
+    rrow({ orderId: 'SL-13', receivedAt: '2026-11-21 09:00' }),
+    rrow({ orderId: 'SL-13', receivedAt: '2026-11-21 10:00' }),
+    rrow({ orderId: 'AR-14', receivedAt: '2026-11-10 10:00', business: 'ישן' })
+  ];
+  const model = { contacts: [], activities: [{ orderId: 'SL-13', contactId: 'C' }] };
+  const r = gs.reconcileFor_(rows, model, RNOW, '2026-11-20');
+  const by = (k) => r.problems.filter(p => p.detail.indexOf(k) >= 0).map(p => p.orderId);
+  assert.deepStrictEqual(by('חסרה ב-CRM'), ['AR-10']);
+  assert.deepStrictEqual(by('בלי תעודת PDF'), ['RA-12']);
+  assert.deepStrictEqual(by('מספר כפול'), ['SL-13']);
+});
+
+test('התאמה: תקועות — לא נקלטה, לא סופקה, סופקה בלי חשבונית; בלי הזמנות מלפני המעקב', () => {
+  const rows = [
+    rrow({ orderId: 'AR-20', receivedAt: '2026-11-18 10:00' }),
+    rrow({ orderId: 'AR-21', receivedAt: '2026-11-19 10:00' }),
+    rrow({ orderId: 'AR-22', receivedAt: '2026-11-18 10:00', status: 'נקלטה בריווחית', statusAt: '2026-11-18 12:00' }),
+    rrow({ orderId: 'AR-23', receivedAt: '2026-11-20 10:00', status: 'נקלטה בריווחית', statusAt: '2026-11-20 12:00' }),
+    rrow({ orderId: 'AR-24', receivedAt: '2026-11-17 10:00', status: 'סופקה', statusAt: '2026-11-19 12:00' }),
+    rrow({ orderId: 'AR-25', receivedAt: '2026-11-03 10:00' }),
+    rrow({ orderId: 'AR-26', receivedAt: '2026-11-18 10:00', status: 'בוטלה' })
+  ];
+  const model = { contacts: [], activities: rows.map(x => ({ orderId: x.orderId, contactId: 'C' })) };
+  const r = gs.reconcileFor_(rows, model, RNOW, '2026-11-20');
+  const ids = (k) => r.stuck.filter(p => p.detail.indexOf(k) >= 0).map(p => p.orderId);
+  assert.deepStrictEqual(ids('לא נקלטה'), ['AR-20'], 'יום העסקים הקודם הוא חמישי 19.11');
+  assert.deepStrictEqual(ids('לא סופקה'), ['AR-22']);
+  assert.deepStrictEqual(ids('בלי חשבונית'), []);
+  const dec = gs.reconcileFor_(rows, model, { date: '2026-12-01', stamp: '2026-12-01 07:30' }, '2026-11-30');
+  assert.ok(dec.stuck.some(p => p.orderId === 'AR-24' && p.detail.indexOf('בלי חשבונית') >= 0));
+});
+
+test('סיכום הבוקר: בעיות התאמה מוסיפות סעיף ונכנסות לכותרת; "הכל תקין" לבד לא שולח', () => {
+  const empty = { contacts: [], activities: [], tasks: [] };
+  const ok = { counts: { total: 4, site: 2, agent: 2, chain: 0, other: 0 }, problems: [], stuck: [], error: false };
+  assert.strictEqual(gs.digestFor_(empty, RNOW, ok), null);
+  const bad = { counts: ok.counts, error: false, stuck: [],
+    problems: [{ orderId: 'AR-10', business: 'מסעדת הגפן', detail: 'חסרה ב-CRM' }] };
+  const d = gs.digestFor_(empty, RNOW, bad);
+  assert.strictEqual(d.subject, 'CRM — בעיה אחת בהזמנות');
+  assert.ok(d.text.indexOf('מאז הסיכום הקודם: 4 הזמנות — אתר 2, סוכן 2') >= 0, d.text);
+  assert.ok(d.text.indexOf('• מסעדת הגפן (AR-10) — חסרה ב-CRM') >= 0, d.text);
+  assert.ok(d.html.indexOf('#orders') >= 0);
+  const err = gs.digestFor_(empty, RNOW, { error: true });
+  assert.ok(err.text.indexOf('בדיקת ההתאמה לא רצה') >= 0, err.text);
+  const withTask = gs.digestFor_({ contacts: [], activities: [],
+    tasks: [{ id: 'T', contactId: '', text: 'משימה', due: '2026-11-22', time: '', done: '' }] }, RNOW, ok);
+  assert.ok(withTask.text.indexOf('הכל תקין') >= 0, withTask.text);
 });
 
 let failed = 0;

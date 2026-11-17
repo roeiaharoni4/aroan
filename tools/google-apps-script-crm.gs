@@ -1383,6 +1383,81 @@ function reminderMessage_(t, c, now) {
     : { text: text, button: 'פתח את ה-CRM', url: CRM_PAGE_URL };
 }
 
+// ---------- בדיקת התאמה (אפיון 2026-11-17) ----------
+
+// יום העסקים הקודם (ראשון–חמישי)
+function prevBusinessDay_(day) {
+  var d = dayNum_(day) - 1;
+  var wd = function (n) { return new Date(n * 86400000).getUTCDay(); };
+  while (wd(d) === 5 || wd(d) === 6) d--;
+  var dt = new Date(d * 86400000);
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return dt.getUTCFullYear() + '-' + p(dt.getUTCMonth() + 1) + '-' + p(dt.getUTCDate());
+}
+
+// rows — מ-orderRowsFromValues_. lastDigest — היום של הסיכום הקודם (או null ⇒ אתמול).
+// counts: מה שהגיע מאז הסיכום הקודם עד אתמול. problems: 7 הימים האחרונים. stuck: 60 יום,
+// רק מ-ORDERS_STATUS_SINCE. היום עצמו לא נבדק — ההזמנה אולי עוד בדרך ל-CRM.
+function reconcileFor_(rows, model, now, lastDigest) {
+  var today = now.date;
+  var from = lastDigest && lastDigest < today ? lastDigest : prevDay_(today);
+  var inCrm = {};
+  model.activities.forEach(function (a) { if (a.orderId) inCrm[a.orderId] = true; });
+  var counts = { total: 0, site: 0, agent: 0, chain: 0, other: 0 };
+  var key = { 'אתר': 'site', 'סוכן': 'agent', 'רשת': 'chain', 'אחר': 'other' };
+  var times = {};
+  rows.forEach(function (r) { times[r.orderId] = (times[r.orderId] || 0) + 1; });
+  var problems = [];
+  var stuck = [];
+  var seen = {};
+  var prevBiz = prevBusinessDay_(today);
+  rows.forEach(function (r) {
+    var day = String(r.receivedAt || '').slice(0, 10);
+    if (!day || day >= today) return;
+    var label = trim_(r.business) || trim_(r.contact) || r.orderId;
+    var age = daysBetween_(day, today);
+    var first = !seen[r.orderId];
+    seen[r.orderId] = true;
+    if (first && day >= from) {
+      counts.total++;
+      counts[key[channelOf_(r.orderId)]]++;
+    }
+    if (first && age <= 7) {
+      var kind = classifyOrderRow_(r).kind;
+      if ((kind === 'order' || kind === 'quote_request') && !inCrm[r.orderId]) {
+        problems.push({ orderId: r.orderId, business: label, detail: 'חסרה ב-CRM' });
+      }
+      if (!trim_(r.pdf)) problems.push({ orderId: r.orderId, business: label, detail: 'בלי תעודת PDF' });
+      if (times[r.orderId] > 1) {
+        problems.push({ orderId: r.orderId, business: label, detail: 'מספר כפול (' + times[r.orderId] + ' שורות)' });
+      }
+    }
+    if (!first || age > 60 || day < ORDERS_STATUS_SINCE) return;
+    var st = normStatus_(r.status);
+    var since = String(trim_(r.statusAt) || r.receivedAt).slice(0, 10);
+    if (st === 'חדשה' && day < prevBiz) {
+      stuck.push({ orderId: r.orderId, business: label, detail: 'לא נקלטה בריווחית · מ-' + fmtDay_(day) });
+    } else if (st === 'נקלטה בריווחית' && daysBetween_(since, today) > 3) {
+      stuck.push({ orderId: r.orderId, business: label,
+        detail: 'לא סופקה · נקלטה לפני ' + daysBetween_(since, today) + ' ימים' });
+    } else if (st === 'סופקה' && since.slice(0, 7) < today.slice(0, 7)) {
+      stuck.push({ orderId: r.orderId, business: label, detail: 'סופקה בלי חשבונית · ב-' + fmtDay_(since) });
+    }
+  });
+  return { counts: counts, problems: problems, stuck: stuck, error: false };
+}
+
+function prevDay_(day) {
+  var dt = new Date((dayNum_(day) - 1) * 86400000);
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return dt.getUTCFullYear() + '-' + p(dt.getUTCMonth() + 1) + '-' + p(dt.getUTCDate());
+}
+
+function fmtDay_(day) {
+  var p = String(day).split('-');
+  return p.length === 3 ? p[2] + '.' + p[1] : '';
+}
+
 // סיכום הבוקר: פעם ביום, מראשון עד שישי, בריצה הראשונה בין 07:30 ל-12:00
 function digestDue_(now, lastSent) {
   var time = now.stamp.slice(11, 16);
@@ -1390,7 +1465,7 @@ function digestDue_(now, lastSent) {
 }
 
 // סיכום הבוקר — null כשאין שום דבר לטיפול
-function digestFor_(model, now) {
+function digestFor_(model, now, recon) {
   var today = now.date;
   var tasks = model.tasks
     .filter(function (t) { return !t.done && t.due <= today; })
@@ -1415,7 +1490,11 @@ function digestFor_(model, now) {
     .map(function (c) { return { c: c, info: lateInfo_(c, byContact[c.id], today) }; })
     .filter(function (x) { return x.info.isLate; })
     .sort(function (a, b) { return b.info.lateBy - a.info.lateBy; });
-  if (!tasks.length && !todo.length && !late.length) return null;
+  // בדיקת ההתאמה: בעיות ותקועות מוסיפות סעיפים ושולחות סיכום; "הכל תקין" — רק שורה
+  var rc = recon || null;
+  var issues = rc && !rc.error ? rc.problems.concat(rc.stuck) : [];
+  var reconError = !!(rc && rc.error);
+  if (!tasks.length && !todo.length && !late.length && !issues.length && !reconError) return null;
 
   var link = function (c) { return CRM_PAGE_URL + '#c=' + c.id; };
   var sections = [];
@@ -1439,14 +1518,43 @@ function digestFor_(model, now) {
           (x.info.rhythm ? ' (בדרך כלל כל ' + x.info.rhythm + ')' : '') };
     }) });
   }
+  var ordersUrl = CRM_PAGE_URL + '#orders';
+  var asItems = function (list) {
+    return list.slice(0, 10).map(function (p) {
+      return { name: p.business + ' (' + p.orderId + ')', url: ordersUrl, detail: p.detail };
+    });
+  };
+  if (rc && !rc.error && rc.problems.length) {
+    sections.push({ title: 'בעיות בהזמנות', more: Math.max(0, rc.problems.length - 10), items: asItems(rc.problems) });
+  }
+  if (rc && !rc.error && rc.stuck.length) {
+    sections.push({ title: 'הזמנות תקועות', more: Math.max(0, rc.stuck.length - 10), items: asItems(rc.stuck) });
+  }
 
   var parts = [];
   if (tasks.length) parts.push(tasks.length === 1 ? 'משימה אחת' : tasks.length + ' משימות');
   if (todo.length) parts.push(todo.length + ' לחזור');
   if (late.length) parts.push(late.length + ' לא הזמינו');
+  if (issues.length) parts.push(issues.length === 1 ? 'בעיה אחת בהזמנות' : issues.length + ' בעיות בהזמנות');
+  if (reconError) parts.push('בדיקת ההתאמה לא רצה');
   var text = [];
   var html = ['<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">'];
   var tg = ['בוקר טוב — ' + parts.join(' · ')];
+  if (rc) {
+    var line = '';
+    if (rc.error) {
+      line = 'בדיקת ההתאמה לא רצה — גיליון ההזמנות לא נקרא.';
+    } else {
+      var ch = [['site', 'אתר'], ['agent', 'סוכן'], ['chain', 'רשת'], ['other', 'אחר']]
+        .filter(function (x) { return rc.counts[x[0]]; })
+        .map(function (x) { return x[1] + ' ' + rc.counts[x[0]]; });
+      line = 'מאז הסיכום הקודם: ' + rc.counts.total + ' הזמנות' + (ch.length ? ' — ' + ch.join(', ') : '') +
+        (issues.length ? '' : ' · הכל תקין');
+    }
+    text.push(line, '');
+    html.push('<p>' + esc_(line) + '</p>');
+    tg.push(line);
+  }
   sections.forEach(function (s) {
     text.push(s.title + ':');
     html.push('<h3 style="margin:16px 0 6px">' + esc_(s.title) + '</h3><ul style="margin:0;padding-inline-start:18px">');
@@ -1540,9 +1648,17 @@ function tick() {
     });
     if (changed.length) saveTasks_(model, changed);
     var props = PropertiesService.getScriptProperties();
-    if (digestDue_(now, props.getProperty('LAST_DIGEST'))) {
+    var lastDigest = props.getProperty('LAST_DIGEST');
+    if (digestDue_(now, lastDigest)) {
       props.setProperty('LAST_DIGEST', now.date);
-      var d = digestFor_(model, now);
+      var recon;
+      try {
+        recon = reconcileFor_(readOrderRows_(), model, now, lastDigest);
+      } catch (e) {
+        Logger.log('CRM reconcile: ' + e);
+        recon = { error: true };
+      }
+      var d = digestFor_(model, now, recon);
       if (d) {
         try {
           MailApp.sendEmail({ to: NOTIFY_EMAIL, subject: d.subject, body: d.text, htmlBody: d.html });
