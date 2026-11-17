@@ -536,7 +536,9 @@ function fakeSheet() {
             const v = (rows[r - 1 + i] || [])[c - 1 + j];
             return v == null ? '' : v;
           }));
-        }
+        },
+        getDataValidation() { return sh.validation || null; },
+        setDataValidation(rule) { sh.validation = rule; return range; }
       };
       return range;
     },
@@ -569,7 +571,19 @@ function loadApp(opts) {
   const net = { telegramDown: !!opts.telegramDown, webhook: opts.webhook || '' };
   const clock = { now: opts.now || { date: '2026-11-02', stamp: '2026-11-02 10:42' } };
   const env = {
-    SpreadsheetApp: { openById(id) { return id === 'ORDERS-ID' ? orders : crm; } },
+    SpreadsheetApp: {
+      openById(id) { return id === 'ORDERS-ID' ? orders : crm; },
+      // כלל רשימה נפתחת — רק מה שהקוד משתמש בו
+      newDataValidation() {
+        const rule = { values: null };
+        const b = {
+          requireValueInList(values) { rule.values = values.slice(); return b; },
+          setAllowInvalid() { return b; },
+          build() { return { getCriteriaValues: () => [rule.values] }; }
+        };
+        return b;
+      }
+    },
     LockService: { getScriptLock() { return { tryLock() { return true; }, releaseLock() {} }; } },
     ContentService: {
       MimeType: { JSON: 'json' },
@@ -1617,6 +1631,68 @@ test('agent_data: הזמנה מדף הסוכן — הפריטים עם המחי�
   assert.strictEqual(d.last[id].order.orderId, 'SL-20261115-111111');
   assert.strictEqual(d.last[id].order.items[0].price, 4.5);
   assert.strictEqual(d.last[id].quote, undefined);
+});
+
+// ---------- סטטוס הזמנה (אפיון 2026-11-17) ----------
+function statusBook(rows) {
+  const b = fakeBook();
+  const sh = b.insertSheet('הזמנות');
+  sh.rows.push(ORDERS_HEAD.slice());
+  rows.forEach(r => sh.rows.push(r));
+  return b;
+}
+const O = (d, id, business, status, pdf) => [d, id, '', business, 'איש קשר', '0501234567', '', '', '...', 3,
+  '100.00', status, '', '', '', pdf === undefined ? 'https://drive/x' : pdf];
+
+test('orders: נרמול סטטוס, ערוץ, contactId, כפילות, וסדר מהחדשה', () => {
+  const orders = statusBook([
+    O(new Date(2026, 10, 10, 9, 0), 'AR-20261110-111111', 'מסעדת הגפן', 'חדשה'),
+    O(new Date(2026, 10, 11, 9, 0), 'SL-20261111-222222', 'משרדי אלפא', 'בטיפול'),
+    O(new Date(2026, 10, 12, 9, 0), 'RA-20261112-333333', 'גלילות — טומי', ''),
+    O(new Date(2026, 10, 12, 9, 5), 'RA-20261112-333333', 'גלילות — טומי', ''),
+    O(new Date(2026, 6, 1, 9, 0), 'AR-20260701-444444', 'ישן', 'חדשה')
+  ]);
+  const app = loadApp({ orders, now: { date: '2026-11-17', stamp: '2026-11-17 08:00' } });
+  const id = app.call({ action: 'event', secret: S, event: Object.assign({}, ORDER, { orderId: 'AR-20261110-111111' }) }).id;
+  const r = app.call({ action: 'orders', password: P });
+  assert.strictEqual(r.ok, true);
+  assert.deepStrictEqual(r.orders.map(o => o.orderId), ['RA-20261112-333333', 'SL-20261111-222222', 'AR-20261110-111111']);
+  const ra = r.orders[0];
+  assert.strictEqual(ra.duplicate, true);
+  assert.strictEqual(ra.channel, 'רשת');
+  assert.strictEqual(ra.status, 'חדשה');
+  assert.strictEqual(r.orders[1].status, 'חדשה', 'בטיפול ⇒ חדשה');
+  assert.strictEqual(r.orders[1].channel, 'סוכן');
+  assert.strictEqual(r.orders[2].contactId, id);
+  assert.strictEqual(r.orders[2].receivedAt, '2026-11-10 09:00');
+  assert.strictEqual(app.call({ action: 'orders', password: P, days: 400 }).orders.length, 4, 'תקרה 365');
+  assert.strictEqual(app.call({ action: 'orders' }).error, 'unauthorized');
+});
+
+test('order_status: כמה מספרים, שורות כפולות, missing, כותרת חדשה ורשימה נפתחת', () => {
+  const orders = statusBook([
+    O(new Date(2026, 10, 12, 9, 0), 'RA-20261112-333333', 'גלילות — טומי', 'חדשה'),
+    O(new Date(2026, 10, 12, 9, 5), 'RA-20261112-333333', 'גלילות — טומי', 'חדשה'),
+    O(new Date(2026, 10, 13, 9, 0), 'SL-20261113-555555', 'משרדי אלפא', 'חדשה')
+  ]);
+  const app = loadApp({ orders, now: { date: '2026-11-17', stamp: '2026-11-17 08:30' } });
+  const r = app.call({ action: 'order_status', password: P, status: 'נקלטה בריווחית',
+    orderIds: ['RA-20261112-333333', 'SL-20261113-555555', 'AR-NOPE'] });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.updated, 3);
+  assert.deepStrictEqual(r.missing, ['AR-NOPE']);
+  assert.strictEqual(r.statusAt, '2026-11-17 08:30');
+  const sh = orders.sheets['הזמנות'];
+  assert.strictEqual(sh.rows[0][16], 'סטטוס עודכן');
+  assert.deepStrictEqual(sh.rows.slice(1).map(x => [x[11], x[16]]),
+    [['נקלטה בריווחית', '2026-11-17 08:30'], ['נקלטה בריווחית', '2026-11-17 08:30'], ['נקלטה בריווחית', '2026-11-17 08:30']]);
+  assert.ok(sh.validation.getCriteriaValues()[0].indexOf('נקלטה בריווחית') >= 0);
+  const list = app.call({ action: 'orders', password: P }).orders;
+  assert.strictEqual(list[0].statusAt, '2026-11-17 08:30');
+  assert.strictEqual(app.call({ action: 'order_status', password: P, status: 'שולמה', orderIds: ['X'] }).error, 'bad status');
+  assert.strictEqual(app.call({ action: 'order_status', password: P, status: 'סופקה', orderIds: [] }).error, 'no orders');
+  assert.strictEqual(app.call({ action: 'order_status', password: P, status: 'סופקה',
+    orderIds: Array.from({ length: 201 }, (_, i) => 'X' + i) }).error, 'no orders');
 });
 
 let failed = 0;

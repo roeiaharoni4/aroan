@@ -4,7 +4,7 @@
  *
  * מי פונה אליו:
  *  - עמוד ה-CRM (/crm-f428d7/) — עם הסיסמה: list, add, update, log, delete, import,
- *    order, order_cancel, task_add, task_update, task_delete, prices_set.
+ *    order, order_cancel, task_add, task_update, task_delete, prices_set, orders, order_status.
  *  - דף הסוכן (/agent/) — עם הסיסמה: items, contacts, agent_data, agent_customer, quote,
  *    prices_fill, prices_set (אפיון 2026-11-15).
  *  - סקריפט הלידים וסקריפט ההזמנות — עם הסוד המשותף: event.
@@ -65,6 +65,12 @@ var PRICE_HEADERS = ['מזהה איש קשר', 'מזהה מוצר', 'מוצר', 
 var PRICE_KEYS = ['contactId', 'productId', 'name', 'price', 'updated', 'source'];
 var PRICE_SET_SOURCES = ['ידני', 'העברה מהטלפון'];
 var PRICE_MAX = 100000;
+// סטטוס הזמנה (אפיון 2026-11-17): בעמודת "סטטוס" בגיליון ההזמנות, וחותמת ב"סטטוס עודכן"
+// בסוף השורה. "בטיפול" — ערך ישן מהרשימה הנפתחת — נחשב "חדשה".
+var ORDER_STATUSES = ['חדשה', 'נקלטה בריווחית', 'סופקה', 'חשבונית הופקה', 'בוטלה'];
+var ORDER_STATUS_AT = 'סטטוס עודכן';
+// הזמנות מלפני המעקב לא נחשבות "תקועות" בסיכום הבוקר
+var ORDERS_STATUS_SINCE = '2026-11-17';
 
 // מספר קטלוגי תקין או ''. אותו כלל כמו catalogCode ב-js/rivhit-core.js.
 function catalogCode_(v) {
@@ -466,6 +472,16 @@ function buildImport_(model, rows, now) {
 
 // ערכי גיליון ההזמנות לאובייקטים — לפי שמות העמודות ולא לפי מיקום, כדי
 // שעמודה שתתווסף בעתיד לא תשבור את הייבוא.
+// תאריך קבלה כטקסט (שורה שהוקלדה ידנית): DD/MM/YYYY HH:mm[:ss] ⇒ YYYY-MM-DD HH:mm
+function stampOfCell_(s) {
+  s = trim_(s);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 16);
+  var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(s);
+  if (!m) return '';
+  var p = function (n) { return (Number(n) < 10 ? '0' : '') + Number(n); };
+  return m[3] + '-' + p(m[2]) + '-' + p(m[1]) + (m[4] ? ' ' + p(m[4]) + ':' + m[5] : ' 00:00');
+}
+
 function orderRowsFromValues_(values) {
   if (!values || values.length < 2) return [];
   var head = values[0].map(function (h) { return trim_(h); });
@@ -475,7 +491,8 @@ function orderRowsFromValues_(values) {
     phone: head.indexOf('טלפון'), address: head.indexOf('כתובת למשלוח'),
     notes: head.indexOf('הערות'), totalItems: head.indexOf('סה"כ פריטים'),
     totalPrice: head.indexOf('סה"כ לתשלום'), shipping: head.indexOf('שיטת אספקה'),
-    pdf: head.indexOf('קובץ PDF')
+    pdf: head.indexOf('קובץ PDF'),
+    status: head.indexOf('סטטוס'), statusAt: head.indexOf(ORDER_STATUS_AT)
   };
   var out = [];
   for (var r = 1; r < values.length; r++) {
@@ -485,6 +502,8 @@ function orderRowsFromValues_(values) {
       var v = idx[k] >= 0 ? row[idx[k]] : '';
       o[k] = v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd HH:mm') : trim_(v);
     });
+    o._row = r + 1;
+    o.receivedAt = stampOfCell_(o.receivedAt);
     if (o.orderId) out.push(o);
   }
   return out;
@@ -1166,6 +1185,108 @@ function readOrderRows_() {
   return orderRowsFromValues_(sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues());
 }
 
+// ---------- סטטוס הזמנה (אפיון 2026-11-17) ----------
+
+function normStatus_(s) {
+  s = trim_(s);
+  return ORDER_STATUSES.indexOf(s) >= 0 ? s : 'חדשה';
+}
+
+function channelOf_(orderId) {
+  var p = trim_(orderId).slice(0, 3);
+  if (p === 'AR-' || p === 'HM-') return 'אתר';
+  if (p === 'SL-') return 'סוכן';
+  if (p === 'RA-') return 'רשת';
+  return 'אחר';
+}
+
+function ordersSheet_() {
+  return SpreadsheetApp.openById(ORDERS_SPREADSHEET_ID).getSheetByName(ORDERS_SHEET);
+}
+
+// ההזמנות מ-days הימים האחרונים, החדשה קודם. מספר כפול — פעם אחת, עם duplicate.
+// שורה בלי תאריך קריא — בסוף.
+function handleOrders_(days) {
+  var n = Math.min(365, Math.max(1, Math.floor(Number(days) || 60)));
+  var rows = readOrderRows_();
+  var model = readModel_(book_());
+  var today = now_().date;
+  var byOrder = {};
+  model.activities.forEach(function (a) { if (a.orderId) byOrder[a.orderId] = a.contactId; });
+  var seen = {};
+  var out = [];
+  rows.forEach(function (r) {
+    if (r.receivedAt && daysBetween_(r.receivedAt, today) > n) return;
+    if (seen[r.orderId]) { seen[r.orderId].duplicate = true; return; }
+    var o = {
+      orderId: r.orderId, receivedAt: r.receivedAt, business: r.business, contact: r.contact,
+      totalItems: r.totalItems, totalPrice: r.totalPrice, pdf: r.pdf,
+      status: normStatus_(r.status), statusAt: trim_(r.statusAt), channel: channelOf_(r.orderId),
+      contactId: byOrder[r.orderId] || '', duplicate: false
+    };
+    seen[r.orderId] = o;
+    out.push(o);
+  });
+  out.sort(function (a, b) {
+    if (!a.receivedAt || !b.receivedAt) return a.receivedAt ? -1 : b.receivedAt ? 1 : 0;
+    return cmp_(b.receivedAt, a.receivedAt);
+  });
+  return { ok: true, orders: out };
+}
+
+// הרשימה הנפתחת בעמודת הסטטוס — עם "נקלטה בריווחית". "בטיפול" נשאר בה, בשביל שורות ישנות.
+function ensureStatusValidation_(sh, col) {
+  try {
+    var cell = sh.getRange(2, col, 1, 1);
+    var cur = cell.getDataValidation();
+    var vals = cur && cur.getCriteriaValues ? (cur.getCriteriaValues()[0] || []) : [];
+    if (vals.indexOf('נקלטה בריווחית') >= 0) return;
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(ORDER_STATUSES.concat(['בטיפול']), true)
+      .setAllowInvalid(true)
+      .build();
+    // עד סוף הגיליון — getRange לא מרחיב, ובגיליון ההזמנות יש 998 שורות
+    sh.getRange(2, col, sh.getMaxRows() - 1, 1).setDataValidation(rule);
+  } catch (e) {
+    Logger.log('CRM status validation: ' + e);
+  }
+}
+
+// כותב סטטוס וחותמת לכל השורות של כל מספר. השורות מאותרות מחדש בכל כתיבה.
+function handleOrderStatus_(ids, status) {
+  status = trim_(status);
+  if (ORDER_STATUSES.indexOf(status) < 0) return { ok: false, error: 'bad status' };
+  if (!Array.isArray(ids) || !ids.length || ids.length > 200) return { ok: false, error: 'no orders' };
+  var sh = ordersSheet_();
+  if (!sh || sh.getLastRow() < 2) return { ok: false, error: 'not found' };
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (h) { return trim_(h); });
+  var idCol = head.indexOf('מספר הזמנה') + 1;
+  var statusCol = head.indexOf('סטטוס') + 1;
+  if (!idCol || !statusCol) return { ok: false, error: 'not found' };
+  var atCol = head.indexOf(ORDER_STATUS_AT) + 1;
+  if (!atCol) {
+    atCol = head.length + 1;
+    sh.getRange(1, atCol, 1, 1).setValues([[ORDER_STATUS_AT]]);
+  }
+  ensureStatusValidation_(sh, statusCol);
+  var want = {};
+  ids.forEach(function (id) { id = trim_(id); if (id) want[id] = false; });
+  var stamp = now_().stamp;
+  var col = sh.getRange(2, idCol, sh.getLastRow() - 1, 1).getValues();
+  var updated = 0;
+  col.forEach(function (row, i) {
+    var id = trim_(row[0]);
+    if (!(id in want)) return;
+    want[id] = true;
+    sh.getRange(i + 2, statusCol, 1, 1).setValues([[status]]);
+    sh.getRange(i + 2, atCol, 1, 1).setValues([[stamp]]);
+    updated++;
+  });
+  var missing = Object.keys(want).filter(function (id) { return !want[id]; });
+  if (!updated) return { ok: false, error: 'not found', missing: missing };
+  return { ok: true, updated: updated, missing: missing, status: status, statusAt: stamp };
+}
+
 // ברירת המחדל היא הרצה יבשה — כתיבה רק כשהעמוד שולח dryRun: false במפורש
 function handleImport_(dryRun) {
   var model = readModel_(book_());
@@ -1559,6 +1680,10 @@ function doPost(e) {
       case 'list': return json_(handleList_());
       case 'contacts': return json_(handleContacts_());
       case 'agent_data': return json_(handleAgentData_());
+      case 'orders': return json_(handleOrders_(body.days));
+      case 'order_status': return json_(withLock_(function () {
+        return handleOrderStatus_(body.orderIds, body.status);
+      }));
       case 'prices_set': return json_(withLock_(function () {
         return handlePricesSet_(body.id, body.prices, body.source, false);
       }));
