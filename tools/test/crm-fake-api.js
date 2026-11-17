@@ -93,6 +93,13 @@
         prices: [
             { contactId: 'C6', productId: 'חדפ006', name: 'כוסות נייר 8B - 1000 יח׳', price: '65',
               updated: at(-10), source: 'הזמנה' }
+        ]        ,
+        orders: [
+            { orderId: 'RA-' + day(-1).replace(/-/g, '') + '-100001', receivedAt: at(-1, '09:00'), business: 'גלילות — טומי', contact: 'רונית', totalItems: '12', totalPrice: '', pdf: 'https://drive.google.com/x', status: 'חדשה', statusAt: '', channel: 'רשת', contactId: '', duplicate: false },
+            { orderId: 'RA-' + day(-1).replace(/-/g, '') + '-100002', receivedAt: at(-1, '09:05'), business: 'אמור', contact: 'דנה', totalItems: '8', totalPrice: '', pdf: 'https://drive.google.com/x', status: 'חדשה', statusAt: '', channel: 'רשת', contactId: '', duplicate: false },
+            { orderId: 'SL-' + day(-2).replace(/-/g, '') + '-200001', receivedAt: at(-2, '12:13'), business: 'משרדי אלפא', contact: 'דוד', totalItems: '80', totalPrice: '360', pdf: 'https://drive.google.com/x', status: 'נקלטה בריווחית', statusAt: at(-2, '13:00'), channel: 'סוכן', contactId: 'C6', duplicate: true },
+            { orderId: 'AR-' + day(-5).replace(/-/g, '') + '-300001', receivedAt: at(-5, '10:00'), business: 'גן שושנים', contact: 'רותי', totalItems: '5', totalPrice: '120', pdf: '', status: 'סופקה', statusAt: at(-4, '10:00'), channel: 'אתר', contactId: 'C5', duplicate: false },
+            { orderId: 'AR-' + day(-20).replace(/-/g, '') + '-400001', receivedAt: at(-20, '10:00'), business: 'מאפיית הכיכר', contact: 'שמעון', totalItems: '3', totalPrice: '', pdf: 'https://drive.google.com/x', status: 'חשבונית הופקה', statusAt: at(-15, '10:00'), channel: 'אתר', contactId: 'C8', duplicate: false }
         ]
     };
     const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -248,6 +255,23 @@
                 if (c.stage !== 'לקוח') c.stage = 'נשלחה הצעה';
                 items.forEach(it => setPrice(c.id, it, 'הצעה', when, false));
                 return { ok: true };
+            }
+            case 'orders':
+                return { ok: true, orders: clone(db.orders) };
+            case 'order_status': {
+                const all = ['חדשה', 'נקלטה בריווחית', 'סופקה', 'חשבונית הופקה', 'בוטלה'];
+                if (all.indexOf(b.status) < 0) return { ok: false, error: 'bad status' };
+                if (!Array.isArray(b.orderIds) || !b.orderIds.length || b.orderIds.length > 200) return { ok: false, error: 'no orders' };
+                const when = stamp();
+                const missing = [];
+                let updated = 0;
+                b.orderIds.forEach(id => {
+                    const o = db.orders.find(x => x.orderId === id);
+                    if (!o) { missing.push(id); return; }
+                    o.status = b.status; o.statusAt = when; updated++;
+                });
+                if (!updated) return { ok: false, error: 'not found', missing };
+                return { ok: true, updated, missing, status: b.status, statusAt: when };
             }
             case 'list':
                 return { ok: true, today: today, contacts: db.contacts.map(withLate),

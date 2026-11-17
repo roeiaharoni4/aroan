@@ -262,6 +262,31 @@ test('אזהרת קובץ פריטים: רוב הפריטים בלי מספר ק
   assert.strictEqual(C.itemsUploadWarning({ items: items(900), noCatalog: 0 }, 0), '');
 });
 
+test('הזמנות: מסננים, ספירה, השלב הבא, קיבוץ לפי יום ושורת משנה', () => {
+  const orders = [
+    { orderId: 'RA-2', receivedAt: '2026-11-16 09:05', business: 'גלילות', channel: 'רשת', status: 'חדשה', totalItems: '3', totalPrice: '' },
+    { orderId: 'RA-1', receivedAt: '2026-11-16 09:00', business: 'אמור', channel: 'רשת', status: 'סופקה', totalItems: '2', totalPrice: '' },
+    { orderId: 'SL-3', receivedAt: '2026-11-15 12:13', business: 'זארה', channel: 'סוכן', status: 'נקלטה בריווחית', totalItems: '80', totalPrice: '360' },
+    { orderId: 'AR-4', receivedAt: '2026-11-14 10:00', business: '', contact: 'דנה', channel: 'אתר', status: 'חשבונית הופקה', totalItems: '1', totalPrice: '' },
+    { orderId: 'AR-5', receivedAt: '', business: 'בלי תאריך', channel: 'אתר', status: 'בוטלה', totalItems: '1', totalPrice: '' }
+  ];
+  assert.deepStrictEqual(C.filterOrders(orders, 'open').map(o => o.orderId), ['RA-2', 'RA-1', 'SL-3']);
+  assert.deepStrictEqual(C.filterOrders(orders, 'סופקה').map(o => o.orderId), ['RA-1']);
+  assert.strictEqual(C.filterOrders(orders, 'all').length, 5);
+  assert.deepStrictEqual(C.orderCounts(orders),
+    { open: 3, 'חדשה': 1, 'נקלטה בריווחית': 1, 'סופקה': 1, all: 5 });
+  assert.strictEqual(C.nextStatus('חדשה'), 'נקלטה בריווחית');
+  assert.strictEqual(C.nextStatus('סופקה'), 'חשבונית הופקה');
+  assert.strictEqual(C.nextStatus('חשבונית הופקה'), null);
+  assert.strictEqual(C.nextStatusLabel('נקלטה בריווחית'), 'סופקה');
+  const g = C.groupOrdersByDay(orders);
+  assert.deepStrictEqual(g.map(x => [x.day, x.orders.length, x.chain]),
+    [['2026-11-16', 2, 2], ['2026-11-15', 1, 0], ['2026-11-14', 1, 0], ['', 1, 0]]);
+  assert.strictEqual(C.orderRowSub(orders[2]), 'SL-3 · סוכן · 80 פריטים · 360.00 ₪');
+  assert.strictEqual(C.orderRowSub(orders[0]), 'RA-2 · רשת · 3 פריטים');
+  assert.strictEqual(C.statusSlug('סופקה'), 'back');
+});
+
 let failed = 0;
 tests.forEach(([name, fn]) => {
   try { fn(); console.log('  V ' + name); }

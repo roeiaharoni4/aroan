@@ -393,6 +393,63 @@
         return '';
     }
 
+    // ---------- הזמנות (אפיון 2026-11-17) ----------
+
+    var ORDER_STATUSES = ['חדשה', 'נקלטה בריווחית', 'סופקה', 'חשבונית הופקה', 'בוטלה'];
+    var ORDER_FILTERS = [
+        { key: 'open', label: 'פתוחות' }, { key: 'חדשה', label: 'חדשות' },
+        { key: 'נקלטה בריווחית', label: 'נקלטו' }, { key: 'סופקה', label: 'סופקו' }, { key: 'all', label: 'הכל' }
+    ];
+    var NEXT = { 'חדשה': 'נקלטה בריווחית', 'נקלטה בריווחית': 'סופקה', 'סופקה': 'חשבונית הופקה' };
+    var NEXT_LABEL = { 'חדשה': 'נקלטה', 'נקלטה בריווחית': 'סופקה', 'סופקה': 'חשבונית' };
+    // צבעי התגים — המחלקות הקיימות של השלבים ב-CRM
+    var STATUS_SLUGS = { 'חדשה': 'new', 'נקלטה בריווחית': 'quote', 'סופקה': 'back',
+        'חשבונית הופקה': 'customer', 'בוטלה': 'closed' };
+
+    function isOpenOrder(o) { return o.status !== 'חשבונית הופקה' && o.status !== 'בוטלה'; }
+
+    function filterOrders(orders, key) {
+        return (orders || []).filter(function (o) {
+            if (key === 'all') return true;
+            if (key === 'open') return isOpenOrder(o);
+            return o.status === key;
+        });
+    }
+
+    function orderCounts(orders) {
+        var out = { open: 0, 'חדשה': 0, 'נקלטה בריווחית': 0, 'סופקה': 0, all: 0 };
+        (orders || []).forEach(function (o) {
+            out.all++;
+            if (isOpenOrder(o)) out.open++;
+            if (o.status in out) out[o.status]++;
+        });
+        return out;
+    }
+
+    function nextStatus(s) { return NEXT[s] || null; }
+    function nextStatusLabel(s) { return NEXT_LABEL[s] || ''; }
+    function statusSlug(s) { return STATUS_SLUGS[s] || 'new'; }
+
+    // ימים בסדר שבו ההזמנות מגיעות (החדש קודם); בלי תאריך — בסוף
+    function groupOrdersByDay(orders) {
+        var groups = [];
+        var byDay = {};
+        (orders || []).forEach(function (o) {
+            var day = String(o.receivedAt || '').slice(0, 10);
+            if (!byDay[day]) { byDay[day] = { day: day, orders: [], chain: 0 }; groups.push(byDay[day]); }
+            byDay[day].orders.push(o);
+            if (o.channel === 'רשת') byDay[day].chain++;
+        });
+        return groups.filter(function (g) { return g.day; }).concat(groups.filter(function (g) { return !g.day; }));
+    }
+
+    function orderRowSub(o) {
+        var parts = [o.orderId, o.channel];
+        if (Number(o.totalItems) > 0) parts.push(o.totalItems + ' פריטים');
+        if (Number(o.totalPrice) > 0) parts.push(Number(o.totalPrice).toFixed(2) + ' ₪');
+        return parts.filter(Boolean).join(' · ');
+    }
+
     var CrmCore = {
         STAGES: STAGES, FILTERS: FILTERS, MANUAL_SOURCES: MANUAL_SOURCES, CHANNELS: CHANNELS,
         OUTCOMES: OUTCOMES, ymd: ymd, addDays: addDays, daysBetween: daysBetween,
@@ -408,7 +465,10 @@
         dueTasks: dueTasks, openTasksOf: openTasksOf, taskDueLabel: taskDueLabel, validateTask: validateTask,
         taskMatchesQuery: taskMatchesQuery,
         pricesFor: pricesFor, formatPrice: formatPrice, productMatches: productMatches,
-        itemsUploadWarning: itemsUploadWarning
+        itemsUploadWarning: itemsUploadWarning,
+        ORDER_STATUSES: ORDER_STATUSES, ORDER_FILTERS: ORDER_FILTERS, filterOrders: filterOrders,
+        orderCounts: orderCounts, nextStatus: nextStatus, nextStatusLabel: nextStatusLabel,
+        statusSlug: statusSlug, groupOrdersByDay: groupOrdersByDay, orderRowSub: orderRowSub
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = CrmCore;
     else root.CrmCore = CrmCore;
