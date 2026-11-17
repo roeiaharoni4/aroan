@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="/css/site.css">
-    <link rel="stylesheet" href="crm.css?v=6">
+    <link rel="stylesheet" href="crm.css?v=7">
 </head>
 
 <body class="crm-page">
@@ -44,6 +44,7 @@
             <header class="crm-bar">
                 <h1>לידים ולקוחות</h1>
                 <div class="crm-bar-actions">
+                    <button type="button" id="crm-orders-btn" class="crm-bar-btn">הזמנות</button>
                     <button type="button" id="crm-task-add-btn" class="crm-bar-btn">+ משימה</button>
                     <button type="button" id="crm-add-btn" class="crm-bar-btn">+ ליד</button>
                     <button type="button" id="crm-menu-btn" class="crm-bar-btn crm-icon-btn" aria-label="תפריט"
@@ -87,6 +88,26 @@
                 </button>
             </header>
             <div class="crm-wrap"><div id="crm-card" class="crm-card"></div></div>
+        </section>
+
+        <section id="crm-orders-view" hidden>
+            <header class="crm-bar">
+                <button type="button" id="crm-orders-back" class="crm-bar-btn crm-icon-btn" aria-label="חזרה לרשימה">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </button>
+                <h1 id="crm-orders-title" tabindex="-1">הזמנות</h1>
+                <button type="button" id="crm-orders-refresh" class="crm-bar-btn">רענון</button>
+            </header>
+            <div class="crm-wrap">
+                <div id="crm-order-filters" class="crm-filters" role="group" aria-label="סינון הזמנות"></div>
+                <p id="crm-orders-status" class="crm-hint" aria-live="polite"></p>
+                <div id="crm-orders-list"></div>
+            </div>
+            <div id="crm-orders-bar" class="crm-orders-bar" hidden>
+                <span id="crm-orders-count"></span>
+                <div id="crm-orders-actions" class="crm-chips"></div>
+                <button type="button" id="crm-orders-clear" class="crm-link-btn">ביטול הבחירה</button>
+            </div>
         </section>
     </main>
 
@@ -245,9 +266,9 @@
         <button type="button" id="crm-toast-action" class="crm-toast-action" hidden></button>
     </div>
 
-    <script src="crm-core.js?v=5"></script>
+    <script src="crm-core.js?v=6"></script>
     <script src="/js/rivhit-core.js?v=4"></script>
-    <script src="crm.js?v=9"></script>
+    <script src="crm.js?v=10"></script>
 </body>
 
 </html>

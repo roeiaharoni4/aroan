@@ -312,3 +312,25 @@ h2.crm-label, p.crm-label, label.crm-label {
 }
 .crm-price-input { max-width: 7rem; }
 .crm-price-add { margin-top: 0.4rem; }
+
+/* --- מסך הזמנות (אפיון 2026-11-17) --- */
+.crm-order-day { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-top: 1rem; }
+.crm-order-list { list-style: none; margin: 0.3rem 0; padding: 0; }
+.crm-order-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--crm-border);
+}
+.crm-order-check { width: 22px; height: 22px; flex: none; accent-color: var(--crm-primary); }
+.crm-order-main { flex: 1 1 12rem; min-width: 0; display: grid; gap: 0.15rem; }
+.crm-order-main .crm-row-sub { white-space: normal; }
+.crm-order-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.88rem; }
+.crm-order-links .crm-link-btn { padding: 0; font-size: inherit; }
+.crm-order-side { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+.crm-order-more { flex: 1 1 100%; padding-inline-start: 2rem; }
+.crm-orders-bar {
+    position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 1rem; background: var(--crm-surface); border-top: 1px solid var(--crm-border);
+}
+@media (max-width: 520px) {
+    .crm-order-side { flex: 1 1 100%; justify-content: flex-end; }
+}

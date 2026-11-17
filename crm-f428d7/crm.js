@@ -36,7 +36,9 @@
         'no items': 'לא נמצאו פריטים לשמירה.',
         'too many items': 'יותר מ-5,000 פריטים — זה לא נראה כמו קובץ הייצוא של ריווחית.',
         'bad source': 'מקור המחיר לא תקין.',
-        'no prices': 'אין מחירים לשמירה.'
+        'no prices': 'אין מחירים לשמירה.',
+        'bad status': 'השלב לא תקין.',
+        'no orders': 'לא נבחרו הזמנות.'
     };
     // קובץ קליטה לריווחית (סבב 88): js/rivhit-core.js, ומק"טי הפריטים מ-products.csv
     const R = window.RivhitCore;
@@ -48,7 +50,8 @@
         today: C.ymd(new Date()), loadedAt: 0, openId: null,
         outcome: null, form: null, orderForm: null, taskForm: null, afterPop: null, lastFocus: null,
         rivhit: null, rivhitCodes: null, rivhitCatalogs: null,
-        itemsUpload: null, itemsStored: 0, merge: null
+        itemsUpload: null, itemsStored: 0, merge: null,
+        orders: null, ordersFilter: 'open', ordersSel: new Set(), ordersLoading: false, ordersOpen: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -266,6 +269,7 @@
         S.openId = id;
         closeMenu();
         $('crm-list-view').hidden = true;
+        $('crm-orders-view').hidden = true;
         $('crm-card-view').hidden = false;
         renderCard();
         window.scrollTo(0, 0);
@@ -455,7 +459,7 @@
     function rerender() {
         if (!S.password) return;
         const hadFocus = document.activeElement && document.activeElement !== document.body;
-        if (S.openId && !$('crm-card-view').hidden) renderCard();
+        if (!$('crm-orders-view').hidden) renderOrders(); else if (S.openId && !$('crm-card-view').hidden) renderCard();
         else renderList();
         // הרינדור בונה את הכרטיס או הרשימה מחדש, והאלמנט שהיה בפוקוס נעלם —
         // בלי זה המקלדת וקורא המסך נזרקים לתחילת העמוד אחרי כל שמירה
@@ -721,6 +725,182 @@
         };
         search.addEventListener('input', show);
         ensureProducts().then(show);
+    }
+
+    // ---------- הזמנות (אפיון 2026-11-17) ----------
+    // הסטטוס נשמר בגיליון ההזמנות. השינוי בדפדפן מיידי, וכשל מחזיר את הקודם.
+
+    function openOrders() {
+        history.pushState({ crm: 'orders' }, '', '#orders');
+        showOrders();
+    }
+
+    function showOrders() {
+        S.openId = null;
+        closeMenu();
+        $('crm-list-view').hidden = true;
+        $('crm-card-view').hidden = true;
+        $('crm-orders-view').hidden = false;
+        window.scrollTo(0, 0);
+        $('crm-orders-title').focus();
+        if (S.orders === null) loadOrders(); else renderOrders();
+    }
+
+    function hideOrders() {
+        $('crm-orders-view').hidden = true;
+        S.ordersSel.clear();
+        $('crm-orders-bar').hidden = true;
+    }
+
+    async function loadOrders() {
+        if (S.ordersLoading) return;
+        S.ordersLoading = true;
+        $('crm-orders-status').textContent = 'טוען…';
+        const res = await api('orders', { days: 60 });
+        S.ordersLoading = false;
+        if (!res.ok) {
+            $('crm-orders-status').textContent = errorText(res, 'ההזמנות לא נטענו — נסו "רענון".');
+            return;
+        }
+        S.orders = res.orders || [];
+        S.ordersSel.clear();
+        renderOrders();
+    }
+
+    function renderOrders() {
+        if (S.orders === null) return;
+        const counts = C.orderCounts(S.orders);
+        const fh = $('crm-order-filters');
+        fh.textContent = '';
+        C.ORDER_FILTERS.forEach(f => {
+            const b = el('button', 'crm-chip' + (S.ordersFilter === f.key ? ' is-on' : ''), f.label + ' ' + counts[f.key]);
+            b.type = 'button';
+            b.setAttribute('aria-pressed', String(S.ordersFilter === f.key));
+            b.addEventListener('click', () => { S.ordersFilter = f.key; S.ordersSel.clear(); renderOrders(); });
+            fh.appendChild(b);
+        });
+        const list = C.filterOrders(S.orders, S.ordersFilter);
+        $('crm-orders-status').textContent = list.length ? '' : 'אין הזמנות כאן.';
+        const host = $('crm-orders-list');
+        host.textContent = '';
+        C.groupOrdersByDay(list).forEach(g => {
+            const head = el('div', 'crm-order-day');
+            const label = g.day ? C.relativeDay(g.day, S.today) : 'בלי תאריך';
+            head.appendChild(el('h2', 'crm-label', label + ' · ' + (g.orders.length === 1 ? 'הזמנה אחת' : g.orders.length + ' הזמנות') +
+                (g.chain ? ' (' + g.chain + ' רשת)' : '')));
+            const all = el('button', 'crm-link-btn', 'סמן הכל');
+            all.type = 'button';
+            all.addEventListener('click', () => { g.orders.forEach(o => S.ordersSel.add(o.orderId)); renderOrders(); });
+            head.appendChild(all);
+            host.appendChild(head);
+            const ul = el('ul', 'crm-order-list');
+            g.orders.forEach(o => ul.appendChild(orderRow(o)));
+            host.appendChild(ul);
+        });
+        renderOrdersBar();
+    }
+
+    function orderRow(o) {
+        const li = el('li', 'crm-order-row');
+        const box = el('input', 'crm-order-check');
+        box.type = 'checkbox';
+        box.checked = S.ordersSel.has(o.orderId);
+        box.setAttribute('aria-label', 'בחירת ההזמנה ' + o.orderId);
+        box.addEventListener('change', () => {
+            if (box.checked) S.ordersSel.add(o.orderId); else S.ordersSel.delete(o.orderId);
+            renderOrdersBar();
+        });
+        li.appendChild(box);
+        const main = el('div', 'crm-order-main');
+        main.appendChild(el('span', 'crm-row-title', o.business || o.contact || o.orderId));
+        main.appendChild(el('span', 'crm-row-sub', C.orderRowSub(o)));
+        const links = el('span', 'crm-order-links');
+        if (o.pdf) {
+            const a = el('a', 'crm-link-btn', 'PDF');
+            a.href = o.pdf; a.target = '_blank'; a.rel = 'noopener';
+            links.appendChild(a);
+        }
+        if (o.contactId && byId(o.contactId)) {
+            const card = el('button', 'crm-link-btn', 'כרטיס');
+            card.type = 'button';
+            card.addEventListener('click', () => openCard(o.contactId));
+            links.appendChild(card);
+        }
+        if (o.duplicate) links.appendChild(el('span', 'crm-badge crm-stage-quote', 'כפול'));
+        if (links.childNodes.length) main.appendChild(links);
+        li.appendChild(main);
+        const side = el('div', 'crm-order-side');
+        side.appendChild(el('span', 'crm-badge crm-stage-' + C.statusSlug(o.status), o.status));
+        const next = C.nextStatus(o.status);
+        if (next) {
+            const b = el('button', 'crm-btn crm-btn-small', C.nextStatusLabel(o.status));
+            b.type = 'button';
+            b.setAttribute('aria-label', 'סימון ' + o.orderId + ': ' + next);
+            b.addEventListener('click', () => setOrderStatus([o.orderId], next));
+            side.appendChild(b);
+        }
+        const more = el('button', 'crm-link-btn', 'עוד');
+        more.type = 'button';
+        more.setAttribute('aria-expanded', String(S.ordersOpen === o.orderId));
+        more.addEventListener('click', () => { S.ordersOpen = S.ordersOpen === o.orderId ? null : o.orderId; renderOrders(); });
+        side.appendChild(more);
+        li.appendChild(side);
+        if (S.ordersOpen === o.orderId) {
+            const chips = el('div', 'crm-chips crm-order-more');
+            C.ORDER_STATUSES.forEach(s => {
+                const c = chip(s, s === o.status);
+                c.addEventListener('click', () => { S.ordersOpen = null; if (s !== o.status) setOrderStatus([o.orderId], s); else renderOrders(); });
+                chips.appendChild(c);
+            });
+            li.appendChild(chips);
+        }
+        return li;
+    }
+
+    function renderOrdersBar() {
+        const n = S.ordersSel.size;
+        const bar = $('crm-orders-bar');
+        bar.hidden = !n;
+        if (!n) return;
+        $('crm-orders-count').textContent = n === 1 ? 'הזמנה אחת נבחרה' : n + ' הזמנות נבחרו';
+        const host = $('crm-orders-actions');
+        host.textContent = '';
+        [['נקלטה בריווחית', 'נקלטה'], ['סופקה', 'סופקה'], ['חשבונית הופקה', 'חשבונית'], ['בוטלה', 'בוטלה']].forEach(([s, label]) => {
+            const b = chip(label, false);
+            b.addEventListener('click', () => setOrderStatus(Array.from(S.ordersSel), s));
+            host.appendChild(b);
+        });
+    }
+
+    // מיידי בדפדפן; כשל מחזיר את הקודם. "בטל" מחזיר כל הזמנה לשלב שלה לפני השינוי.
+    async function setOrderStatus(ids, status, silent) {
+        if (!ids.length) return false;
+        if (offline()) { toast(ERRORS.network); return false; }
+        const prev = {};
+        ids.forEach(id => {
+            const o = S.orders.find(x => x.orderId === id);
+            if (o) { prev[id] = { status: o.status, statusAt: o.statusAt }; o.status = status; }
+        });
+        S.ordersSel.clear();
+        renderOrders();
+        const res = await api('order_status', { orderIds: ids, status: status });
+        if (!res.ok) {
+            ids.forEach(id => { const o = S.orders.find(x => x.orderId === id); if (o && prev[id]) Object.assign(o, prev[id]); });
+            renderOrders();
+            if (res.error !== 'unauthorized') toast(errorText(res, 'לא נשמר — נסו שוב.'));
+            return false;
+        }
+        ids.forEach(id => { const o = S.orders.find(x => x.orderId === id); if (o) o.statusAt = res.statusAt; });
+        if (silent) return true;
+        const label = ids.length === 1 ? ids[0] : ids.length + ' הזמנות';
+        toast(label + ' ← ' + status + '.', 'בטל', async () => {
+            const byPrev = {};
+            Object.keys(prev).forEach(id => { (byPrev[prev[id].status] = byPrev[prev[id].status] || []).push(id); });
+            let ok = true;
+            for (const s of Object.keys(byPrev)) ok = (await setOrderStatus(byPrev[s], s, true)) && ok;
+            if (ok) toast('הוחזר.');
+        });
+        return true;
     }
 
     // ---------- משימות ----------
@@ -1183,11 +1363,16 @@
             if (S.lastFocus && document.contains(S.lastFocus)) S.lastFocus.focus();
             else $('main-content').focus({ preventScroll: true });
         }
-        const cardId = st.crm === 'card' || st.crm === 'overlay' ? st.id : null;
-        if (cardId && byId(cardId)) {
-            if (S.openId !== cardId || $('crm-card-view').hidden) showCard(cardId);
-        } else if (S.openId || !$('crm-card-view').hidden) {
-            hideCard();
+        if (st.crm === 'orders') {
+            if ($('crm-orders-view').hidden) showOrders();
+        } else {
+            if (!$('crm-orders-view').hidden) hideOrders();
+            const cardId = st.crm === 'card' || st.crm === 'overlay' ? st.id : null;
+            if (cardId && byId(cardId)) {
+                if (S.openId !== cardId || $('crm-card-view').hidden) showCard(cardId);
+            } else if (S.openId || !$('crm-card-view').hidden || $('crm-list-view').hidden) {
+                hideCard();
+            }
         }
         const then = S.afterPop;
         S.afterPop = null;
@@ -1196,8 +1381,10 @@
 
     // הקישור מהמייל (#c=<מזהה>): הרשימה מתחת והכרטיס מעליה, כך ש"חזור" מחזיר לרשימה
     function openFromHash() {
-        const m = /^#c=(.+)$/.exec(location.hash);
+        const hash = location.hash;
+        const m = /^#c=(.+)$/.exec(hash);
         history.replaceState({ crm: 'list' }, '', location.pathname);
+        if (hash === '#orders') { openOrders(); return; }
         if (!m) return;
         const id = decodeURIComponent(m[1]);
         if (byId(id)) openCard(id);
@@ -1576,6 +1763,10 @@
             if (!m.hidden && !m.contains(e.target) && !$('crm-menu-btn').contains(e.target)) closeMenu();
         });
         $('crm-back').addEventListener('click', () => history.back());
+        $('crm-orders-btn').addEventListener('click', openOrders);
+        $('crm-orders-back').addEventListener('click', () => history.back());
+        $('crm-orders-refresh').addEventListener('click', loadOrders);
+        $('crm-orders-clear').addEventListener('click', () => { S.ordersSel.clear(); renderOrders(); });
         $('crm-edit-btn').addEventListener('click', () => { if (S.openId) openForm('edit', S.openId); });
         $('crm-outcome-skip').addEventListener('click', () => { S.outcome = null; closeOverlay('crm-outcome'); });
         $('crm-form').addEventListener('submit', submitForm);
