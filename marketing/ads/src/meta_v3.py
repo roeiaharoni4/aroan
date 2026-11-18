@@ -180,6 +180,42 @@ def draft_e():
     return fill(page(E_CSS, body), w=W, h=H, logo=data_uri(LOGO))
 
 
+def draft_e_still():
+    """E as a single image (Roei, 17.11: images first): the five contacts already struck
+    off and dimmed, and Aroam below them as the one that stays, set off in its own card -
+    the before and the after in one frame, which the video told in sequence."""
+    css = E_CSS + """
+.book{height:860px}
+.row{height:92px}
+.rin{height:92px}
+.rin:after{top:33%}
+.av{width:72px;height:72px}
+.av img{max-width:54px;max-height:54px}
+.who b{font-size:32px}
+.who span{font-size:24px}
+.keep{margin:22px 26px 0;border:3px solid #8FD6A3;border-radius:22px;background:#F3F9F5;padding:20px 22px}
+.keep .rin{height:auto;padding:0;border:0}
+.keep .av{width:112px;height:112px;background:#fff;box-shadow:0 0 0 3px #8FD6A3}
+.keep .av img{max-width:90px;max-height:90px}
+.keep .who b{font-size:42px;font-weight:900}
+.keep .who span{font-size:26px;color:#4A6B5A}
+.end{position:static;margin-top:30px;font-size:56px;line-height:1}
+"""
+    rows = "".join(f'<div class="row"><div class="rin" style="--s:1"><div class="av"><img src="{photo(img)}">'
+                   f'</div><div class="who"><b>{name}</b><span>{sub}</span></div></div></div>'
+                   for name, sub, img in SUPPLIERS)
+    body = f"""
+  <h1 style="top:404px;font-size:92px">5 ספקים בטלפון?<span>או אחד.</span></h1>
+  <div class="book">
+    <div class="bar"><b>אנשי קשר</b><small>ספקים</small></div>
+    {rows}
+    <div class="keep"><div class="rin"><div class="av"><img src="{data_uri(LOGO)}"></div><div class="who">
+      <b>אהרוני שיווק והפצה</b><span>נייר · ניקיון · חד פעמי · שקיות · ציוד משרדי</span></div></div></div>
+    <div class="end">ספק אחד. <span>הזמנה אחת.</span></div>
+  </div>"""
+    return fill(page(css, body), w=W, h=H, logo=data_uri(LOGO))
+
+
 # --- F: right next to you -------------------------------------------------------------
 
 # Industrial zones and office parks, at approximate positions (a schematic map, not a

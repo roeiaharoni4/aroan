@@ -1,4 +1,4 @@
-"""The guide must carry every text Roei pastes - verbatim - and every image it names."""
+"""The guide must carry every text Roei pastes - verbatim - and every image it names.\n\nIMAGES also says which file on disk each published path comes from - the publish uses it."""
 import html
 import pathlib
 import re
@@ -11,17 +11,17 @@ GUIDE = HERE / "guide.html"
 BIO = "ספק סיטונאי לעסקים ומוסדות במרכז: חד פעמי, נייר, ניקיון, שקיות וציוד משרדי. מעל 20 שנה."
 
 REQUIRED = [
-    # ads: primary text, headline, prefilled message (spec ad table; ad 1 is branded bags
-    # since the owner turned down the "send your last order" offer, 23.10)
-    "שקיות גופייה עם הלוגו של העסק, שקיות לפי מידה ועובי ושקיות אשפה — מספק אחד. אהרוני שיווק והפצה — מעל 20 שנה ספק לעסקים ומוסדות במרכז. שלחו הודעה ונחזור עם הצעת מחיר.",
-    "נייר טואלט ומגבות, חד פעמי, חומרי ניקוי וציוד משרדי — הזמנה אחת מספק אחד. אספקה למשרדים מיבנה ועד רעננה. שלחו הודעה ונחזור עם הצעת מחיר.",
-    "גלילי נייר תעשייתי, שקיות אשפה, כפפות ניטריל, סבון ידיים וחומרי ניקוי בגדלים מוסדיים — מספק אחד, באספקה קבועה. גם שקיות לפי מידה וממותגות. מעל 20 שנה מול עסקים במרכז. שלחו הודעה עם מה שאתם צריכים ונחזור עם הצעה.",
-    "שקיות ממותגות ולפי מידה",
-    "ספק אחד לכל המשרד",
-    "ספק קבוע למפעל ולמחסן",
-    "שלום, אשמח להצעת מחיר לשקיות ממותגות.",
-    "שלום, אשמח להצעת מחיר לציוד למשרד.",
-    "שלום, אשמח להצעת מחיר למפעל / מחסן.",
+    # the five ads (17.11.26): primary text, headline, prefilled message - final_v2/TEXTS.md
+    "משרד של 20 עובדים צורך בשנה בערך 480 גלילי נייר טואלט, 12,500 מגבות נייר ו-120 חבילות נייר צילום — ועוד כוסות, חומרי ניקוי ושקיות. אצלנו כל זה מגיע בהזמנה אחת, מספק אחד. אהרוני שיווק והפצה — מעל 20 שנה ספק לעסקים ומוסדות במרכז. שלחו הודעה ונחזור עם הצעת מחיר.",
+    "ספק לנייר, ספק לניקיון, ספק לחד פעמי, ספק לשקיות וספק לציוד משרדי? אפשר להזמין את כולם מספק אחד: נייר וטואלט, חומרי ניקוי, חד פעמי, שקיות וציוד משרדי — בהזמנה אחת. אהרוני שיווק והפצה, מעל 20 שנה מול עסקים ומוסדות במרכז. שלחו הודעה ונחזור עם הצעת מחיר.",
+    "אנחנו באור יהודה, באמצע גוש דן, ומספקים לעסקים ולמוסדות באזורי התעשייה והמשרדים במרכז — מהרצליה פיתוח ורעננה, דרך רמת החייל, קריית אריה ופארק אפק, ועד חולון, ראשון לציון ויבנה. נייר, חומרי ניקוי, חד פעמי, שקיות וציוד משרדי — מספק אחד. שלחו הודעה ונחזור עם הצעת מחיר.",
+    "מתקני נייר וסבון, נייר טואלט ומגבות, סבון ידיים וחומרי ניקוי — כל מה שחדר השירותים של העסק צריך, מספק אחד. גם המתקנים, וגם מה שממלא אותם. שלחו הודעה ונחזור עם הצעת מחיר.",
+    "נגמר הנייר באמצע השבוע? מרכיבים איתכם פעם אחת רשימה של מה שהעסק צורך, וכל חודש רק מאשרים בהודעה. נייר, חומרי ניקוי, חד פעמי ושקיות — מספק אחד. שלחו הודעה ונתחיל.",
+    "כמה המשרד שלכם צורך בשנה?", "ספק אחד במקום חמישה", "ספק לעסקים — ממש לידכם",
+    "כל מה שחדר השירותים צריך", "רשימה קבועה לחודש",
+    "שלום, אשמח להצעת מחיר לציוד למשרד.", "שלום, אשמח להצעת מחיר לכל הציוד של העסק.",
+    "שלום, אשמח להצעת מחיר. העסק שלנו נמצא ב-", "שלום, אשמח להצעת מחיר למתקנים ולמוצרים לשירותים.",
+    "שלום, אשמח לבנות רשימת הזמנה קבועה לעסק.",
     # WhatsApp Business
     "ספק סיטונאי לעסקים ומוסדות במרכז: חד פעמי ואריזות, מוצרי נייר, חומרי ניקוי, שקיות וציוד משרדי. מעל 20 שנה. אספקה מיבנה ועד רעננה.",
     "שלום, תודה שפניתם לאהרוני שיווק והפצה. כדי שנכין הצעה מדויקת, כתבו לנו: 1. שם העסק והעיר 2. מה אתם מזמינים בדרך כלל — או פשוט צילום של ההזמנה האחרונה",
@@ -49,13 +49,17 @@ REQUIRED = [
     "לעסקים ומוסדות במרכז, מיבנה ועד רעננה. להזמנות: 03-6346236 · הקטלוג המלא: aroam.co.il",
     # calls go to the office line; WhatsApp, where the ads lead, stays on 052-6000158 (24.10)
     "טלפון 03-6346236", "WhatsApp 052-6000158",
-    # campaign settings (spec)
-    "מעורבות (Engagement)", "Maximize number of conversations", "₪50", "אור יהודה + 20 ק\"מ",
+    # campaign settings (round 106): leads goal, pins on business zones, a 14-day test
+    "מעורבות (Engagement)", "Maximize number of leads", "Maximize number of conversations", "₪30",
+    "רדיוס 1 ק\"מ", "קריית אריה, פתח תקווה", "פארק אפק, ראש העין", "Customize per placement",
     "25–65", "059291906",
 ]
-IMAGES = ["bags_feed.png", "bags_story.png", "office_feed.png", "office_story.png",
-          "factory_feed.png", "factory_story.png", "post_area.png", "post_checklist.png",
-          "post_order.png", "post_steps.png", "cover.png", "profile.png"]
+# Published path -> file on disk. The Page's images live in img/, the ads in final_v2/.
+IMAGES = {f"img/{n}": HERE / "img" / n for n in
+          ["post_area.png", "post_checklist.png", "post_order.png", "post_steps.png", "cover.png", "profile.png"]}
+IMAGES.update({f"ads/{a}_{f}.png": HERE / "final_v2" / f"{a}_{f}.png"
+               for a in ["D_numbers", "E_contacts", "F_map", "A_restroom", "B_empty_roll"]
+               for f in ["feed", "story"]})
 
 fails = []
 
@@ -77,11 +81,11 @@ if GUIDE.exists():
     text = norm(html.unescape(re.sub(r"<[^>]+>", " ", src)))
     for s in REQUIRED:
         check(norm(s) in text, f"text: {s[:48]}")
-    for img in IMAGES:
-        check(f'src="img/{img}"' in src, f"guide shows img/{img}")
-        check((HERE / "img" / img).exists(), f"img/{img} exists on disk")
-    for ref in re.findall(r'src="(img/[^"]+)"', src):
-        check((HERE / ref).exists(), f"{ref} resolves")
+    for ref, disk in IMAGES.items():
+        check(f'src="{ref}"' in src, f"guide shows {ref}")
+        check(disk.exists(), f"{ref} exists on disk")
+    for ref in re.findall(r'src="([^"]+)"', src):
+        check(ref in IMAGES, f"{ref} is a known image")
 
 print("\n" + ("ALL CHECKS PASSED" if not fails else f"{len(fails)} FAILURES"))
 sys.exit(1 if fails else 0)
