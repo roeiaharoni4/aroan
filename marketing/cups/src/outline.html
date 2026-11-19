@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+<style>@font-face{font-family:A6;src:url(assets/Assistant-600.ttf)}
+#t{position:absolute;left:0;top:0;font:600 680px A6;letter-spacing:-0.01em;white-space:nowrap;line-height:1}</style>
+</head><body><span id="t">coffee</span><pre id="out">pending</pre>
+<script>
+// Outlines "coffee" in Assistant 600 exactly as Chrome set it in the mockup (68 units, letter-spacing -0.01em).
+// Pen positions come from Chrome's own layout (kerning included); outlines come from the font file.
+(async () => {
+  const out = document.getElementById('out');
+  try {
+    await document.fonts.load('600 680px A6');
+    const buf = await (await fetch('assets/Assistant-600.ttf')).arrayBuffer();
+    const font = opentype.parse(buf);
+    const el = document.getElementById('t'), node = el.firstChild, x0 = el.getBoundingClientRect().left;
+    const text = node.textContent, size = 68, F = 10;          // laid out at 10x for precision
+    const glyphs = font.stringToGlyphs(text);
+    if (glyphs.length !== text.length) throw 'ligature in use';
+    const parts = [], pos = [];
+    let right = 0;
+    for (let i = 0; i < text.length; i++) {
+      const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1);
+      const b = r.getBoundingClientRect(); const x = (b.left - x0) / F; pos.push(+x.toFixed(4)); right = (b.right - x0) / F;
+      parts.push(glyphs[i].getPath(x, 0, size).toPathData(4));
+    }
+    out.textContent = JSON.stringify({ d: parts.join(' '), pos, advance: right, size,
+      ascender: font.ascender, descender: font.descender, upm: font.unitsPerEm, version: font.tables.name.version.en });
+  } catch (e) { out.textContent = 'ERR ' + e; }
+})();
+</script></body></html>
