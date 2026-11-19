@@ -2021,6 +2021,23 @@ document.addEventListener("DOMContentLoaded", async () => {
                     hideSuggestions();
                 }
             });
+
+            // ההצעות יושבות בתוך הכותרת הדביקה, ולכן בגלילה הן נשארות צמודות
+            // למעלה ומסתירות את המוצרים שמתחתן — ובטלפון גלילה אינה "לחיצה
+            // בחוץ". סוגרים אותן כשגוללים (מגע או גלגלת, לא בתוך הרשימה עצמה),
+            // ב-Enter, ב-Esc וב-Tab, ופותחים שוב בלחיצה על השדה.
+            const outsideSuggestions = (e) => !(e.target && e.target.closest && e.target.closest("#search-suggestions"));
+            document.addEventListener("touchmove", (e) => { if (outsideSuggestions(e)) hideSuggestions(); }, { passive: true });
+            document.addEventListener("wheel", (e) => { if (outsideSuggestions(e)) hideSuggestions(); }, { passive: true });
+            searchInput.addEventListener("keydown", (e) => {
+                if (e.key === "Escape" || e.key === "Tab") hideSuggestions();
+                if (e.key === "Enter") {
+                    hideSuggestions();
+                    // בטלפון — סוגרים גם את המקלדת, כדי שהתוצאות ייראו
+                    if (window.matchMedia && window.matchMedia("(hover: none)").matches) searchInput.blur();
+                }
+            });
+            searchInput.addEventListener("click", handleSearchSuggestions);
         }
 
 
