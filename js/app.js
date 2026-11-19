@@ -3415,7 +3415,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <img src="${product.image || '/images/logo.png'}" alt="">
                 <div class="s-info">
                     <span class="s-name">${product.name}</span>
-                    <span class="s-sku">${product.fromRivhit ? 'מריווחית · ' + product.rivhit : product.id}</span>
+                    <span class="s-sku">${product.fromRivhit ? 'מריווחית · ' + product.rivhit : product.id}${CONFIG.agentMode && cart[product.id] ? ' · בסל: ' + cart[product.id] : ''}</span>
                 </div>
             `;
             div.onclick = () => selectSuggestion(product);
@@ -3431,6 +3431,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function selectSuggestion(product) {
+        // בדף הסוכן: לחיצה על הצעה מוסיפה יחידה לסל, מנקה את החיפוש ומחזירה
+        // את הסמן לשדה — כדי שאפשר יהיה להקליד מיד את המוצר הבא. כמות ומחיר
+        // מתקנים בעמוד הסל. בשאר הקטלוגים — כמו קודם: סינון ותצוגה מהירה.
+        if (CONFIG.agentMode) {
+            const before = cart[product.id] || 0;
+            cart[product.id] = before + 1;
+            updateSummary();
+            if (before === 0) {
+                trackEvent("add_to_cart", {
+                    item_id: product.id,
+                    item_name: product.name,
+                    item_category: product.category,
+                    source: 'search_suggestion'
+                });
+            }
+            searchInput.value = "";
+            hideSuggestions();
+            renderProducts();
+            searchInput.focus();
+            showToast(`נוסף לסל: ${product.name} · כמות ${cart[product.id]}`);
+            return;
+        }
         searchInput.value = product.name;
         hideSuggestions();
         renderProducts(); // Update grid
