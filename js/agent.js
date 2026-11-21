@@ -35,6 +35,8 @@
     let BASE_PRICES = {};
     let ACTIVE = null;
     let gateEl = null;
+    // הלקוח שהיה פעיל בכניסה הקודמת — רק כדי לומר בבורר של מי הסל שנשאר
+    let draftOwner = '';
     let rivhitLoaded = false;   // יש רשימת פריטים מריווחית (מהעותק במכשיר או מה-CRM)
 
     // ---------- עזרים ----------
@@ -583,6 +585,7 @@
         if (!gateEl) buildGate();
         gateEl.style.display = 'flex';
         document.body.classList.add('agent-gate-open');
+        renderDraftNote();
         renderGateList('');
         // הלקוחות מה-CRM מתעדכנים ברקע; הרשימה מתרעננת כשהם מגיעים
         syncWithCrm().then(() => {
@@ -601,6 +604,20 @@
         document.body.classList.remove('agent-gate-open');
     }
 
+    // סל שנשאר מהזמנה שלא נשלחה. בלי השורה הזאת הוא היה עובר בשקט ללקוח
+    // שבוחרים עכשיו — אותה טעות שהבורר נועד למנוע.
+    function renderDraftNote() {
+        const box = gateEl && gateEl.querySelector('#agent-draft');
+        if (!box) return;
+        const items = (window.APP && window.APP.getCartItems && window.APP.getCartItems().items) || [];
+        if (!items.length) { box.style.display = 'none'; return; }
+        const owner = ACTIVE ? ACTIVE.name : draftOwner;
+        const count = items.length === 1 ? 'פריט אחד' : `${items.length} פריטים`;
+        box.querySelector('#agent-draft-text').textContent =
+            `בסל יש ${count} מהזמנה שלא נשלחה${owner ? ` (${owner})` : ''}.`;
+        box.style.display = 'block';
+    }
+
     function buildGate() {
         gateEl = document.createElement('div');
         gateEl.id = 'agent-gate';
@@ -609,6 +626,10 @@
             <div class="agent-gate-inner">
                 <img src="/images/logo.png" alt="" class="agent-gate-logo" onerror="this.style.display='none'">
                 <h2>אצל מי אנחנו?</h2>
+                <div id="agent-draft" role="status" style="display:none; margin:0 0 1rem; padding:0.7rem 1rem; border:1px solid rgba(255,255,255,0.55); border-radius:var(--radius-md); background:rgba(255,255,255,0.1); font-size:0.92rem; line-height:1.6;">
+                    <span id="agent-draft-text"></span>
+                    <button type="button" class="agent-gate-btn" data-act="clear-draft" style="margin-inline-start:0.5rem;">ריקון הסל</button>
+                </div>
                 <input type="search" id="agent-search" class="agent-gate-search" placeholder="חיפוש לקוח..." autocomplete="off">
                 <div id="agent-list" class="agent-list"></div>
                 <div id="agent-new" class="agent-new" style="display:none;">
@@ -626,6 +647,15 @@
 
         const search = gateEl.querySelector('#agent-search');
         search.addEventListener('input', () => renderGateList(search.value));
+
+        gateEl.querySelector('[data-act="clear-draft"]').addEventListener('click', () => {
+            const clearBtn = document.getElementById('clear-cart-btn');
+            if (clearBtn) clearBtn.click();
+            draftOwner = '';
+            renderDraftNote();
+            toast('הסל רוקן');
+            search.focus();
+        });
 
         gateEl.querySelector('[data-act="save-new"]').addEventListener('click', submitNewCustomer);
         gateEl.querySelector('#agent-new-phone').addEventListener('keypress', (e) => {
@@ -1037,8 +1067,11 @@
                 ? existing
                 : upsertCustomer(existing ? existing.name : urlName, patch);
         } else {
-            const savedName = readJson(ACTIVE_KEY, null);
-            rec = savedName ? findCustomer(savedName) : null;
+            // בלי ?customer= הדף נפתח תמיד על הבורר ולא על הלקוח האחרון —
+            // כניסה שנפתחת ישר על לקוח של אתמול הובילה להזמנות על הלקוח הלא
+            // נכון. השם נשמר רק כדי שהבורר יגיד של מי הסל שנשאר.
+            draftOwner = readJson(ACTIVE_KEY, null) || '';
+            writeJson(ACTIVE_KEY, null);
         }
         if (rec) setActiveCustomer(rec);
 
