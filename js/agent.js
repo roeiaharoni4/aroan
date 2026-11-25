@@ -909,7 +909,9 @@
     function offlineUrls() {
         const urls = [
             '/agent/', '/css/style.css', '/js/app.js', '/js/agent.js', '/js/agent-store.js',
-            '/js/lib/papaparse.min.js', '/images/logo.png', '/data/products.csv'
+            '/js/lib/papaparse.min.js', '/images/logo.png', '/data/products.csv',
+            // הצעת מחיר ב-PDF — נטענים רק בלחיצה, ולכן צריך לשמור אותם מראש
+            '/js/lib/html2canvas.min.js', '/js/lib/jspdf.umd.min.js', '/js/quote-pdf.js'
         ];
         (window.APP.getProducts() || []).forEach(p => {
             if (p.image && urls.indexOf(p.image) === -1) urls.push(p.image);

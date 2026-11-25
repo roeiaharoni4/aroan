@@ -24,7 +24,7 @@
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700&display=swap"></noscript>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/css/style.css?v=47">
+    <link rel="stylesheet" href="/css/style.css?v=48">
 
     <!-- Scripts -->
     <script>
@@ -45,9 +45,9 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js"></script>
-    <script src="/js/app.js?v=78" defer></script>
+    <script src="/js/app.js?v=79" defer></script>
     <script src="/js/agent-store.js?v=1" defer></script>
-    <script src="/js/agent.js?v=10" defer></script>
+    <script src="/js/agent.js?v=11" defer></script>
 </head>
 
 <body>
@@ -227,7 +227,13 @@
                     </button>
                     <button id="print-pdf-btn" class="btn btn-primary"
                         style="background:var(--accent); color:white; min-width: 140px; display:none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>הדפס הצעת מחיר (PDF)
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>הדפסת הצעת מחיר
+                    </button>
+                    <!-- הצעת מחיר כקובץ PDF לשליחה מהטלפון (js/quote-pdf.js, אפיון 2026-11-25) -->
+                    <button id="share-pdf-btn" class="btn btn-primary" type="button"
+                        style="background:var(--primary-dark); color:white; min-width: 170px;"
+                        onclick="window.APP.shareQuotePdf()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M12 18v-6"></path><path d="m9 15 3 3 3-3"></path></svg>שליחת הצעה ב-PDF
                     </button>
                     <button id="history-btn" class="btn btn-outline" onclick="window.APP.openHistoryModal()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-left:5px;" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>היסטוריה

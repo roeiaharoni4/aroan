@@ -3840,22 +3840,153 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     // --- Print PDF Logic ---
-    async function printQuote() {
+    // ההצעה האחרונה שנשמרה, לפי הלקוח והסל. הדפסה ואחריה PDF (או PDF פעמיים)
+    // של אותה הצעה בדיוק לא נרשמות פעמיים ב-CRM ולא מקבלות שני מספרים.
+    let lastSavedQuote = null;
+
+    function quoteKey(customerName) {
+        return JSON.stringify([String(customerName).trim(),
+            Object.entries(cart).filter(([, q]) => q > 0).sort()
+                .map(([id, q]) => {
+                    const p = PRODUCTS.find(x => x.id === id);
+                    return [id, q, p ? p.price : null];
+                }),
+            CONFIG.quoteVat ? !!(document.getElementById('round-total') || {}).checked : null]);
+    }
+
+    // שם הלקוח, שמירת ההצעה ורישומה אצל הלקוח — משותף להדפסה ול-PDF
+    async function prepareQuote(promptText) {
         // כשההזמנה נפתחה מקישור שנשלח במייל, שם הלקוח מוצע כברירת מחדל.
         // ה-prompt נשאר כדי שרועי יוכל לתקן לפני ההדפסה.
         // אחרת — הלקוח שנבחר בדף הסוכן (js/agent.js), כדי שההצעה תירשם אצלו.
         const suggested = new URLSearchParams(window.location.search).get('customer')
             || (window.AGENT && window.AGENT.activeName && window.AGENT.activeName())
             || ((document.getElementById('cust-business') || {}).value || '').trim();
-        const customerName = prompt("טופס הדפסה: נא להזין שם לקוח", suggested || "לקוח כללי");
-        if (customerName === null) return;
+        const customerName = prompt(promptText || "טופס הדפסה: נא להזין שם לקוח", suggested || "לקוח כללי");
+        if (customerName === null) return null;
+
+        const key = quoteKey(customerName);
+        if (lastSavedQuote && lastSavedQuote.key === key) return lastSavedQuote.quote;
 
         const savedQuote = await saveQuote(customerName);
-        if (!savedQuote) return;
+        if (!savedQuote) return null;
+        lastSavedQuote = { key, quote: savedQuote };
 
         // js/agent.js מאזין לזה כדי לרשום את הלקוח, את מחיריו ואת ההצעה האחרונה.
         // בלי זה לקוח שקיבל רק הצעות מחיר לא נשמר אף פעם ברשימת הלקוחות.
         document.dispatchEvent(new CustomEvent('aroam:quote-saved', { detail: { quote: savedQuote } }));
+        return savedQuote;
+    }
+
+    // ספריות ה-PDF נטענות רק בלחיצה הראשונה (כ-560KB), ונשמרות לעבודה בלי רשת
+    const scriptLoads = {};
+    function loadScript(src) {
+        if (!scriptLoads[src]) {
+            scriptLoads[src] = new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = () => resolve();
+                s.onerror = () => { delete scriptLoads[src]; reject(new Error('load failed: ' + src)); };
+                document.head.appendChild(s);
+            });
+        }
+        return scriptLoads[src];
+    }
+
+    const QUOTE_PDF_SCRIPTS = ['/js/lib/html2canvas.min.js', '/js/lib/jspdf.umd.min.js', '/js/quote-pdf.js?v=2'];
+
+    // הצעת מחיר כקובץ PDF לשליחה מהטלפון (אפיון 2026-11-25). הקובץ נבנה
+    // בדפדפן ממסמך ההדפסה, ולכן עובד גם בלי רשת אחרי "הכנה לעבודה בלי רשת".
+    let pdfBusy = false;
+    async function shareQuotePdf() {
+        if (pdfBusy) return;
+        const btn = document.getElementById('share-pdf-btn');
+        const quote = await prepareQuote("הצעת מחיר ב-PDF: נא להזין שם לקוח");
+        if (!quote) return;
+
+        pdfBusy = true;
+        const label = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'מכין PDF…'; }
+        try {
+            for (const src of QUOTE_PDF_SCRIPTS) await loadScript(src);
+            const res = await window.QuotePdf.render(buildQuoteDocHtml(quote), { title: 'הצעת מחיר ' + quote.id });
+            const name = window.QuotePdf.fileName(quote.customer, quote.id);
+            trackEvent('quote_pdf', { pages: res.pages });
+            showPdfReady(res.blob, name, quote, res.pages);
+        } catch (e) {
+            console.error(e);
+            alert(navigator.onLine === false
+                ? 'לא ניתן ליצור את הקובץ בלי רשת בפעם הראשונה. כדאי ללחוץ פעם אחת "הכנה לעבודה בלי רשת" כשיש קליטה.'
+                : 'לא הצלחנו ליצור את קובץ ה-PDF. אפשר לנסות שוב, או להשתמש בהדפסה.');
+        } finally {
+            pdfBusy = false;
+            if (btn) { btn.disabled = false; btn.innerHTML = label; }
+        }
+    }
+
+    // חלון "ההצעה מוכנה". השיתוף נפתח מלחיצה נפרדת ולא מיד אחרי הבנייה:
+    // דפדפנים בטלפון פותחים את חלון השיתוף רק מלחיצה טרייה של המשתמש.
+    function showPdfReady(blob, name, quote, pages) {
+        const file = (typeof File === 'function') ? new File([blob], name, { type: 'application/pdf' }) : null;
+        const canShare = !!(file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] }));
+        const url = URL.createObjectURL(blob);
+        const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const sizeKb = Math.max(1, Math.round(blob.size / 1024));
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:11000; display:flex; align-items:center; justify-content:center; padding:20px;";
+        const box = document.createElement('div');
+        box.style.cssText = "background:#fff; color:#2F3E35; border-radius:16px; padding:1.6rem 1.4rem; max-width:420px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.25);";
+        const btnCss = "border:none; border-radius:10px; padding:11px 18px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit; width:100%;";
+        box.innerHTML = `
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#639C7D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><polyline points="9 15 11 17 15 13"></polyline></svg>
+            <h2 style="margin:0.6rem 0 0.3rem; color:#1A4231; font-size:1.35rem;">הצעת המחיר מוכנה</h2>
+            <p style="margin:0 0 0.2rem; font-weight:700;">${esc(quote.customer)} · ${esc(quote.id)}</p>
+            <p style="margin:0 0 1.1rem; color:#5B6E64; font-size:0.9rem;">${pages === 1 ? 'עמוד אחד' : pages + ' עמודים'} · <span dir="ltr">${sizeKb} KB</span></p>
+            <div style="display:flex; flex-direction:column; gap:0.55rem;">
+                ${canShare ? `<button type="button" data-act="share" style="${btnCss} background:#1A4231; color:#fff;">שליחה בוואטסאפ או במייל</button>` : ''}
+                <button type="button" data-act="download" style="${btnCss} background:${canShare ? '#EAF3EE' : '#1A4231'}; color:${canShare ? '#1A4231' : '#fff'};">הורדת הקובץ</button>
+                <button type="button" data-act="close" style="${btnCss} background:transparent; color:#5B6E64; font-weight:500;">סגירה</button>
+            </div>`;
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        markDialog(overlay);
+
+        const close = () => {
+            overlay.remove();
+            dialogClosed(overlay);
+            // הקישור לקובץ משתחרר אחרי שההורדה הספיקה להתחיל
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        };
+        const download = () => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        };
+        box.querySelector('[data-act="close"]').addEventListener('click', close);
+        box.querySelector('[data-act="download"]').addEventListener('click', download);
+        const shareBtn = box.querySelector('[data-act="share"]');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.share({ files: [file], title: name });
+                    close();
+                } catch (e) {
+                    // ביטול של חלון השיתוף אינו שגיאה. כל כשל אחר — הורדה במקום.
+                    if (!e || e.name !== 'AbortError') download();
+                }
+            });
+        }
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        dialogOpened(overlay, close, shareBtn || box.querySelector('[data-act="download"]'));
+    }
+
+    async function printQuote() {
+        const savedQuote = await prepareQuote();
+        if (!savedQuote) return;
 
         const modalBody = document.querySelector("#order-modal .modal-body");
 
@@ -3936,7 +4067,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 + `<span>${r[0]}</span><span class="qd-sum-val">${r[1]}</span></div>`;
         }).join('');
 
-        const kv = (k, v) => `<div class="qd-kv"><span>${k}</span><b>${esc(v)}</b></div>`;
+        // נקודתיים ורווח — בלעדיהם התווית והערך נדבקו ("לכבודמסעדת...")
+        const kv = (k, v) => `<div class="qd-kv"><span>${k}:</span> <b>${esc(v)}</b></div>`;
 
         // מה שמולא בטופס פרטי הלקוח עובר לכרטיס — רק שדות שמולאו
         const fv = id => ((document.getElementById(id) || {}).value || '').trim();
@@ -4043,6 +4175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         openHistoryModal,
         closeHistoryModal,
         printQuote,
+        shareQuotePdf,
         addCustomProduct,
         shareCartLink
     };
