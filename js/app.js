@@ -1791,6 +1791,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderFulfillmentOptions();
         orderModal.classList.add("open");
         dialogOpened(orderModal, () => closeOrderView());
+        if (CONFIG.agentMode) setTimeout(preloadQuotePdf, 800);
         if (CONFIG.cartView) {
             orderModal.classList.add("cart-page");
             // שורות מוצר עשירות (תמונה גדולה) רק בקטלוג עם מחירים — קטלוג הטיפוח.
@@ -1835,6 +1836,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!orderModal) return;
         // משחררים את נעילת השליחה — ההזמנה הקודמת הסתיימה
         if (submitOrderBtn) submitOrderBtn.disabled = false;
+        clearQuotePrint();
         orderModal.classList.remove("open");
         orderModal.classList.remove("cart-page");
         orderModal.classList.remove("cart-rich");
@@ -3893,7 +3895,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         return scriptLoads[src];
     }
 
-    const QUOTE_PDF_SCRIPTS = ['/js/lib/html2canvas.min.js', '/js/lib/jspdf.umd.min.js', '/js/quote-pdf.js?v=2'];
+    const QUOTE_PDF_SCRIPTS = ['/js/lib/html2canvas.min.js', '/js/lib/jspdf.umd.min.js', '/js/quote-pdf.js?v=3'];
+
+    // הספריות נטענות ברקע כשחלון ההזמנה נפתח בדף הסוכן, כדי שהלחיצה על
+    // "שליחת הצעה ב-PDF" לא תחכה להורדה שלהן (כ-160KB בדחיסה) בקליטה חלשה.
+    function preloadQuotePdf() {
+        if (!document.getElementById('share-pdf-btn')) return;
+        QUOTE_PDF_SCRIPTS.forEach(src => loadScript(src).catch(() => { }));
+    }
 
     // הצעת מחיר כקובץ PDF לשליחה מהטלפון (אפיון 2026-11-25). הקובץ נבנה
     // בדפדפן ממסמך ההדפסה, ולכן עובד גם בלי רשת אחרי "הכנה לעבודה בלי רשת".
@@ -3984,27 +3993,44 @@ document.addEventListener("DOMContentLoaded", async () => {
         dialogOpened(overlay, close, shareBtn || box.querySelector('[data-act="download"]'));
     }
 
+    // מסמך ההצעה שהוכן להדפסה. הוא נשאר בדף עד שההדפסה נגמרת: ספארי (במחשב
+    // ובאייפון) לא עוצר את הקוד בזמן חלון ההדפסה, וצילום העמוד נעשה אחר כך.
+    // עד 25.11.26 המסמך הוסר אחרי שנייה — ובספארי הודפס חלון ההזמנה עצמו.
+    // על המסך אין לזה השפעה: המסמך מוסתר, וכללי quote-print חלים רק בהדפסה.
+    let printDoc = null;
+    let printAfterHandler = null;
+    function clearQuotePrint() {
+        document.body.classList.remove('quote-print');
+        if (printDoc && printDoc.parentNode) printDoc.parentNode.removeChild(printDoc);
+        printDoc = null;
+        if (printAfterHandler) window.removeEventListener('afterprint', printAfterHandler);
+        printAfterHandler = null;
+    }
+
     async function printQuote() {
         const savedQuote = await prepareQuote();
         if (!savedQuote) return;
+        clearQuotePrint();
 
         const modalBody = document.querySelector("#order-modal .modal-body");
 
-        const docDiv = document.createElement("div");
-        docDiv.className = "quote-doc";
-        docDiv.innerHTML = buildQuoteDocHtml(savedQuote);
-        modalBody.appendChild(docDiv);
+        printDoc = document.createElement("div");
+        printDoc.className = "quote-doc";
+        printDoc.innerHTML = buildQuoteDocHtml(savedQuote);
+        modalBody.appendChild(printDoc);
 
         // כללי ההדפסה של ההצעה מגודרים תחת ה-class הזה, כדי שהדפסה רגילה
         // בשאר הקטלוגים לא תושפע.
         document.body.classList.add('quote-print');
 
-        window.print();
+        // ניקוי כשחלון ההדפסה נסגר. afterprint שמגיע מיד (יש דפדפנים בטלפון
+        // ששולחים אותו כבר בפתיחת החלון) לא מנקה — אז המסמך יורד בסגירת
+        // חלון ההזמנה או בהדפסה הבאה.
+        const printedAt = Date.now();
+        printAfterHandler = () => { if (Date.now() - printedAt > 1500) clearQuotePrint(); };
+        window.addEventListener('afterprint', printAfterHandler);
 
-        setTimeout(() => {
-            document.body.classList.remove('quote-print');
-            if (docDiv.parentNode) docDiv.parentNode.removeChild(docDiv);
-        }, 1000);
+        window.print();
     }
 
     // מסמך ההצעה המודפס. המבנה מועתק מתעודת ההזמנה שנשלחת במייל

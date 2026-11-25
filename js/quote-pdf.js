@@ -201,11 +201,18 @@
             const pdf = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4', compress: true });
             if (opts.title) pdf.setProperties({ title: opts.title, author: 'אהרוני שיווק והפצה' });
             for (let i = 0; i < pages.length; i++) {
-                const canvas = await window.html2canvas(pages[i], {
+                const target = pages[i];
+                const canvas = await window.html2canvas(target, {
                     scale: opts.scale || 2,
                     backgroundColor: '#ffffff',
                     logging: false,
                     useCORS: true,
+                    // html2canvas מעתיק את כל הדף לפני כל עמוד, ובספארי ובאייפון
+                    // מחכה שכל תמונה בעותק תיטען — בלי הגבלת זמן. בדף הסוכן יש
+                    // עשרות תמונות של הקטלוג, חלקן בטעינה עצלה שלא מתחילה בעותק
+                    // מוסתר. מעתיקים רק את העמוד שמצלמים.
+                    ignoreElements: el => (el.parentNode === document.body && el !== host)
+                        || (el.parentNode === host && el !== target),
                     onclone: (doc) => {
                         const s = doc.createElement('style');
                         s.textContent = css;
