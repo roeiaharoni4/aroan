@@ -537,12 +537,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const attribution = readAttribution();
 
         try {
-            // Send request to Google Apps Script Webhook via AJAX
-            await fetch('https://script.google.com/macros/s/AKfycbxfp0qDK0ergyj-cVzdCVWiLieGXDjsSAymi1vvk-fWPnDPpiPc9nO8ujJye6JREyyL/exec', {
+            // text/plain בלי no-cors: בקשה פשוטה בלי preflight, ולכן אפשר לקרוא
+            // את תשובת הסקריפט. עד 25.11.26 התשובה הייתה אטומה, וכשל בצד גוגל
+            // (מכסת מיילים, תקלה) הציג "הודעתכם נשלחה" והליד אבד בשקט.
+            const res = await fetch('https://script.google.com/macros/s/AKfycbxfp0qDK0ergyj-cVzdCVWiLieGXDjsSAymi1vvk-fWPnDPpiPc9nO8ujJye6JREyyL/exec', {
                 method: 'POST',
-                mode: 'no-cors',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'text/plain;charset=utf-8'
                 },
                 body: JSON.stringify({
                     // שם העסק מצורף לשם ולא כשדה נפרד: הסקריפט של הלידים בענן אינו
@@ -561,7 +562,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
             
-            // Since mode is no-cors, we assume success if no exception is thrown
+            // הסקריפט מחזיר success כמחרוזת ('true'/'false')
+            let reply = null;
+            try { reply = await res.json(); } catch (e) { reply = null; }
+            if (!reply || (reply.success !== 'true' && reply.success !== true)) {
+                throw new Error('lead not accepted: ' + (reply && reply.error || 'unreadable reply'));
+            }
             if (alertBox) {
                 alertBox.className = 'form-status-alert success';
                 alertBox.textContent = form.dataset.success || 'הודעתכם נשלחה בהצלחה! נציגנו יחזור אליכם בהקדם.';

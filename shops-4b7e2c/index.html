@@ -442,7 +442,7 @@
         };
     </script>
     <script src="/js/lib/papaparse.min.js" defer></script>
-    <script src="/js/app.js?v=81" defer></script>
+    <script src="/js/app.js?v=82" defer></script>
 </head>
 
 <body>
@@ -791,9 +791,12 @@
                 fetch(CHAIN_URL + '?_t=' + Date.now())
                     .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
                     .then(function (data) {
-                        MALLS = (data.malls || []).filter(function (m) { return m && m.name; })
-                            .map(function (m) { return { name: m.name, stores: m.stores || [] }; });
-                        STREET = (data.stores || []).filter(function (s) { return s; });
+                        // קובץ פגום (stores שאינו מערך, רשומות ריקות) הפיל את בורר הסניף.
+                        // השרת מנקה את הקובץ בשמירה מהעורך — זו הגנה למקרה של עריכה ידנית.
+                        var str = function (x) { return typeof x === 'string' && x.trim(); };
+                        MALLS = (Array.isArray(data.malls) ? data.malls : []).filter(function (m) { return m && str(m.name); })
+                            .map(function (m) { return { name: m.name, stores: Array.isArray(m.stores) ? m.stores.filter(str) : [] }; });
+                        STREET = (Array.isArray(data.stores) ? data.stores : []).filter(str);
                         route();
                     })
                     .catch(function (err) {

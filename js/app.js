@@ -58,6 +58,16 @@ const DEFAULT_CONFIG = {
 const VAT_RATE = 0.18;
 // תקרת מחיר ליחידה בעריכת מחיר בדף הסוכן — מעליה זו כמעט תמיד טעות הקלדה
 const MAX_UNIT_PRICE = 100000;
+// תקרת כמות למוצר אחד בסל. עד 25.11.26 לא הייתה: קישור עם 99999999999
+// יחידות התקבל כמו שהוא. 9,999 קרטונים/חבילות — הרבה מעבר להזמנה אמיתית.
+const MAX_QTY = 9999;
+function clampQty(q, quiet) {
+    const n = Math.floor(Number(q));
+    if (!(n > 0)) return 0;
+    if (n <= MAX_QTY) return n;
+    if (!quiet && window.APP && window.APP.showToast) window.APP.showToast(`כמות מקסימלית למוצר: ${MAX_QTY.toLocaleString('he-IL')}`);
+    return MAX_QTY;
+}
 const QUOTE_ROUND_KEY = 'aroam_quote_round';
 let CONFIG = {};
 
@@ -276,7 +286,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const [id, qty] = item.split(':');
                 const q = parseInt(qty, 10);
                 if (!id || !(q > 0)) return;
-                if (PRODUCTS.some(p => p.id === id)) urlCart[id] = q;
+                if (PRODUCTS.some(p => p.id === id)) urlCart[id] = clampQty(q, true);
                 else missingCartIds.push(id);   // קישור ישן — המוצר נמחק או שהמזהה שלו השתנה
             });
         }
@@ -293,7 +303,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 : JSON.parse(localStorage.getItem(CART_KEY) || 'null');
             if (savedCart) {
                 Object.entries(savedCart).forEach(([id, q]) => {
-                    if (q > 0 && PRODUCTS.some(p => p.id === id)) cart[id] = q;
+                    if (q > 0 && PRODUCTS.some(p => p.id === id)) cart[id] = clampQty(q, true);
                 });
             }
         } catch (e) { /* localStorage unavailable */ }
@@ -483,7 +493,42 @@ document.addEventListener("DOMContentLoaded", async () => {
         return '/';
     }
 
+    // כשל בטעינת קובץ המוצרים (קליטה חלשה) הציג עד 25.11.26 הודעה טכנית
+    // ("נא לבדוק את קישור הנתונים") וקטלוג ריק בלי דרך לצאת. עכשיו: עוד שני
+    // ניסיונות אוטומטיים, ואם גם הם נכשלים — הודעה רגילה עם "נסו שוב", וטעינה
+    // מחדש לבד כשהחיבור חוזר.
+    var productsLoadFailed = false;   // var ולא let: renderProducts עשויה לרוץ לפני השורה הזו (TDZ)
     async function loadProducts() {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt) await new Promise(r => setTimeout(r, attempt === 1 ? 1000 : 3000));
+            if (await loadProductsOnce()) { productsLoadFailed = false; return; }
+        }
+        productsLoadFailed = true;
+        window.addEventListener('online', () => { if (productsLoadFailed) location.reload(); }, { once: true });
+    }
+
+    function renderLoadFailure() {
+        const box = document.createElement('div');
+        box.className = 'load-failure';
+        box.setAttribute('role', 'alert');
+        box.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 2rem 1rem; color: var(--text-secondary, #555);';
+        const h = document.createElement('p');
+        h.style.cssText = 'font-weight: 700; font-size: 1.1rem; margin: 0 0 0.4rem; color: var(--text-primary, #2F3E35);';
+        h.textContent = 'לא הצלחנו לטעון את הקטלוג';
+        const p = document.createElement('p');
+        p.style.cssText = 'margin: 0 0 1rem;';
+        p.textContent = 'כנראה בעיה בחיבור לאינטרנט. כשהחיבור יחזור הקטלוג ייטען לבד.';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'add-to-cart-btn';
+        btn.style.cssText = 'display: inline-block; width: auto; padding: 0.6rem 1.6rem;';
+        btn.textContent = 'נסו שוב';
+        btn.addEventListener('click', () => location.reload());
+        box.append(h, p, btn);
+        return box;
+    }
+
+    function loadProductsOnce() {
         return new Promise((resolve) => {
             const hourlyTimestamp = Math.floor(Date.now() / 3600000);
             Papa.parse(DATA_SOURCE_URL + "&_t=" + hourlyTimestamp, {
@@ -538,12 +583,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                     }).filter(p => p.id && p.name);
 
                     console.log(`Loaded ${PRODUCTS.length} products`);
-                    resolve();
+                    resolve(true);
                 },
                 error: function (err) {
-                    console.error("Error loading products:", err);
-                    alert("שגיאה בטעינת הקטלוג. נא לבדוק את קישור הנתונים.");
-                    resolve();
+                    console.warn("Error loading products:", err);
+                    resolve(false);
                 }
             });
         });
@@ -1270,6 +1314,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!productsEl) return;
         const searchQuery = (searchInput?.value || "").trim();
         productsEl.innerHTML = "";
+        if (productsLoadFailed) { productsEl.appendChild(renderLoadFailure()); return; }
 
         // "הזמנות אחרונות": רשימת תאריכים נפתחת במקום ערימת כרטיסים.
         // חיפוש או בחירת מותג גוברים וחוזרים לתצוגת הכרטיסים הרגילה.
@@ -2240,6 +2285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const current = cart[id] || 0;
         let next = current + delta;
         if (next < 0) next = 0;
+        if (next > MAX_QTY) next = clampQty(next);
         if (next === 0) {
             delete cart[id];
             inputEl.value = "";
@@ -2273,6 +2319,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             delete cart[id];
             inputEl.value = "";
         } else {
+            value = clampQty(value);
             cart[id] = value;
             inputEl.value = value;
         }
@@ -2776,8 +2823,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // רק מוצרים שעדיין קיימים בקטלוג (נמחקו, או לא נכללים
                     // ברשימת הרשת ב-allowedProductsSource)
                     if (!PRODUCTS.some(p => p.id === i.id)) return;
-                    const qty = parseInt(i.qty, 10);
-                    if (!qty || qty <= 0) return;
+                    const qty = clampQty(i.qty, true);
+                    if (!qty) return;
                     cart[i.id] = qty;
                     added++;
                 });
@@ -2856,7 +2903,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             // אבל לא עשה כלום — ואפילו במחירים הוא עדכן את שורת הסכום בלבד
             // ולא את ההזמנה שנשלחת בפועל.
             qtyInp.addEventListener("input", () => {
-                const q = Math.max(0, parseInt(qtyInp.value, 10) || 0);
+                const raw = Math.max(0, parseInt(qtyInp.value, 10) || 0);
+                const q = clampQty(raw);
+                if (q !== raw && raw > 0) qtyInp.value = q;
                 if (q > 0) cart[product.id] = q; else delete cart[product.id];
                 updateSummary();
             });
@@ -3309,7 +3358,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (qvAddToCart) qvAddToCart.onclick = () => {
             if (!currentQvProductId) return;
-            const qty = parseInt(qvInput.value) || 0;
+            const qty = clampQty(parseInt(qvInput.value) || 0);
             if (qty > 0) {
                 cart[currentQvProductId] = qty;
             } else {
@@ -3528,7 +3577,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // מתקנים בעמוד הסל. בשאר הקטלוגים — כמו קודם: סינון ותצוגה מהירה.
         if (CONFIG.agentMode) {
             const before = cart[product.id] || 0;
-            cart[product.id] = before + 1;
+            cart[product.id] = clampQty(before + 1);
             updateSummary();
             if (before === 0) {
                 trackEvent("add_to_cart", {
@@ -3813,7 +3862,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 product.price = price;
             }
 
-            cart[item.id] = qty;
+            cart[item.id] = clampQty(qty, true);
             restored++;
         });
 
@@ -3847,7 +3896,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
 
         PRODUCTS.push(customProduct);
-        cart[customId] = qty;
+        cart[customId] = clampQty(qty) || 1;
 
         updateSummary();
         showToast(`הוסף: ${name}`);
