@@ -85,8 +85,9 @@
     // ---------- מאגר הלקוחות ----------
 
     function loadCustomers() {
+        // רשומה פגומה (null, בלי שם) הפילה את דף הסוכן — מסננים אותה
         const list = readJson(CUSTOMERS_KEY, []);
-        return Array.isArray(list) ? list : [];
+        return Array.isArray(list) ? list.filter(c => c && typeof c === 'object' && c.name) : [];
     }
 
     function saveCustomers(list) { writeJson(CUSTOMERS_KEY, list); }
@@ -238,7 +239,7 @@
 
     function loadOps() {
         const list = readJson(CRM_OPS_KEY, []);
-        return Array.isArray(list) ? list : [];
+        return Array.isArray(list) ? list.filter(o => o && typeof o === 'object' && o.op) : [];
     }
     function saveOps(list) { writeJson(CRM_OPS_KEY, list); }
     function enqueueOp(op) {
@@ -366,7 +367,7 @@
 
     function maybeShowMigration() {
         if (migrationShown || readJson(MIGRATED_KEY, false) === true) return;
-        if (localStorage.getItem('agent_logged_in') !== 'true') return;
+        if (readJson('agent_logged_in', false) !== true) return;
         const candidates = AS.localOnly(loadCustomers(), loadOps());
         if (!candidates.length) { writeJson(MIGRATED_KEY, true); return; }
         migrationShown = true;
@@ -863,7 +864,7 @@
 
     function loadOutbox() {
         const list = readJson(OUTBOX_KEY, []);
-        return Array.isArray(list) ? list : [];
+        return Array.isArray(list) ? list.filter(e => e && typeof e === 'object' && e.payload && e.payload.orderId) : [];
     }
 
     function enqueue(payload) {
@@ -882,12 +883,21 @@
             const list = loadOutbox();
             if (!list.length || !navigator.onLine) return;
             let sent = 0;
-            while (list.length) {
+            // כל הזמנה נוסתה פעם אחת בכל סבב. הזמנה שהשרת דוחה עוברת לסוף התור
+            // ולא חוסמת את אלה שאחריה; בלי רשת — עוצרים.
+            const rounds = list.length;
+            for (let i = 0; i < rounds && list.length; i++) {
                 const ok = await window.APP.postOrderPayload(list[0].payload);
-                if (!ok) break;
-                list.shift();
+                if (ok) {
+                    list.shift();
+                    sent++;
+                } else {
+                    if (navigator.onLine === false) break;
+                    const item = list.shift();
+                    item.attempts = (item.attempts || 0) + 1;
+                    list.push(item);
+                }
                 writeJson(OUTBOX_KEY, list);
-                sent++;
             }
             renderBar();
             if (sent) toast(`${sent} הזמנות ממתינות נשלחו`);
@@ -985,12 +995,14 @@
     document.addEventListener('aroam:order-sent', (e) => {
         const detail = e.detail || {};
         learnFromOrder(detail);
-        // התשובה אטומה (no-cors) ולכן false = כשל רשת בלבד. עדיף הזמנה
-        // כפולה בגיליון (אותו מספר הזמנה, ניתנת לזיהוי) על הזמנה אבודה.
+        // false = כשל רשת, או שהסקריפט בענן לא אישר את ההזמנה. נכנסת לתור;
+        // שליחה חוזרת של הזמנה שכבר נקלטה חוזרת כ-duplicate ולא נכתבת פעמיים.
         Promise.resolve(detail.delivery).then(ok => {
             if (ok) return;
             enqueue(detail.payload);
-            toast('אין רשת — ההזמנה נשמרה ותישלח כשהחיבור יחזור');
+            toast(navigator.onLine === false
+                ? 'אין רשת — ההזמנה נשמרה ותישלח כשהחיבור יחזור'
+                : 'ההזמנה לא נקלטה בשרת — נשמרה במכשיר ותישלח שוב אוטומטית');
         });
     });
 
@@ -1091,7 +1103,8 @@
             flushOutbox(true);
         };
 
-        if (localStorage.getItem('agent_logged_in') === 'true') unlocked();
+        // readJson מוגן: כשהדפדפן חוסם אחסון הקריאה זורקת ('true' נקרא כ-true)
+        if (readJson('agent_logged_in', false) === true) unlocked();
         else document.addEventListener('aroam:agent-unlocked', unlocked, { once: true });
     });
 

@@ -377,10 +377,15 @@
             // נשלחת לסקריפט. נשמרת ל-session בלבד — אותו דפוס כמו היסטוריית
             // ההצעות בדף הסוכן, ולא ב-localStorage.
             function apiPassword() {
-                var pw = sessionStorage.getItem('aroam_rakash_key') || '';
+                // מוגן: כשהדפדפן חוסם אחסון הקוד נשמר רק לטעינה הזאת
+                var pw = '';
+                try { pw = sessionStorage.getItem('aroam_rakash_key') || ''; } catch (e) { pw = window.__rakashKey || ''; }
                 if (!pw) {
                     pw = prompt('קוד גישה לרשימת ההזמנות:') || '';
-                    if (pw) sessionStorage.setItem('aroam_rakash_key', pw);
+                    if (pw) {
+                        window.__rakashKey = pw;
+                        try { sessionStorage.setItem('aroam_rakash_key', pw); } catch (e) { }
+                    }
                 }
                 return pw;
             }
@@ -413,7 +418,8 @@
                         if (!data.ok) {
                             // סיסמה שגויה — מוחקים כדי שהניסיון הבא ישאל מחדש
                             if (data.error === 'unauthorized') {
-                                sessionStorage.removeItem('aroam_rakash_key');
+                                try { sessionStorage.removeItem('aroam_rakash_key'); } catch (e) { }
+                                window.__rakashKey = '';
                                 throw new Error('קוד הגישה לרשימה שגוי. רעננו את העמוד והזינו אותו מחדש.');
                             }
                             throw new Error(data.error || 'שגיאה בטעינת ההזמנות');
@@ -719,7 +725,10 @@
                 // מזהה הגל נשמר עד שהמייל יוצא בהצלחה. אם מנה נכשלה באמצע
                 // והיא לוחצת שוב, הלחיצה השנייה ממשיכה את *אותו* גל — אחרת
                 // מה שכבר נשלח היה מקבל מזהה אחר ונופל מחוץ למייל הסיכום.
-                var waveId = sessionStorage.getItem('aroam_rakash_wave') || ('W' + Date.now());
+                var waveId = '';
+                try { waveId = sessionStorage.getItem('aroam_rakash_wave') || ''; } catch (e) { }
+                waveId = waveId || window.__rakashWave || ('W' + Date.now());
+                window.__rakashWave = waveId;
                 try { sessionStorage.setItem('aroam_rakash_wave', waveId); } catch (e) { }
                 var expected = filterOrders('approved').length;
                 var doneCount = 0, failCount = 0;
@@ -748,6 +757,7 @@
                         // הגל הושלם ומייל יצא — הלחיצה הבאה תפתח גל חדש,
                         // וכך הזמנה שנכשלה תנוסה שוב במקום להידלג עליה
                         try { sessionStorage.removeItem('aroam_rakash_wave'); } catch (e) { }
+                        window.__rakashWave = '';
                         var done = 'נשלחו ' + doneCount + ' הזמנות';
                         if (failCount) done += ', ו-' + failCount + ' נכשלו ונשארו מאושרות';
                         // מדווחים כמה תעודות באמת צורפו ולא כמה הזמנות נשלחו:

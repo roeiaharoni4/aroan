@@ -42,7 +42,9 @@ class SiteHeader extends HTMLElement {
         const html = document.documentElement;
 
         // Load saved theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        // מוגן: בספארי עם "חסום את כל העוגיות" הגישה ל-localStorage זורקת
+        let savedTheme = 'light';
+        try { savedTheme = localStorage.getItem('theme') || 'light'; } catch (e) { }
         html.setAttribute('data-theme', savedTheme);
         this.updateToggleIcon(toggleBtn, savedTheme);
 
@@ -50,7 +52,7 @@ class SiteHeader extends HTMLElement {
             const current = html.getAttribute('data-theme');
             const newTheme = current === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
+            try { localStorage.setItem('theme', newTheme); } catch (e) { }
             this.updateToggleIcon(toggleBtn, newTheme);
         });
     }

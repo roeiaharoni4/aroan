@@ -56,6 +56,8 @@ const DEFAULT_CONFIG = {
 // שיעור המע״מ בישראל. שינוי כאן משנה גם את התצוגה בחלון ההזמנה וגם את המסמך
 // המודפס — שניהם קוראים מ-quoteTotals ולא מחשבים בעצמם.
 const VAT_RATE = 0.18;
+// תקרת מחיר ליחידה בעריכת מחיר בדף הסוכן — מעליה זו כמעט תמיד טעות הקלדה
+const MAX_UNIT_PRICE = 100000;
 const QUOTE_ROUND_KEY = 'aroam_quote_round';
 let CONFIG = {};
 
@@ -296,11 +298,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         } catch (e) { /* localStorage unavailable */ }
 
-        // Load Favorites
-        const storedFavs = localStorage.getItem('catalog_favorites');
-        if (storedFavs) {
-            favorites = new Set(JSON.parse(storedFavs));
-        }
+        // Load Favorites. מוגן: בספארי עם "חסום את כל העוגיות" הגישה ל-localStorage
+        // זורקת, וכשהשורה הזאת לא הייתה עטופה הקטלוג כולו לא נטען (25.11.26)
+        try {
+            const storedFavs = JSON.parse(localStorage.getItem('catalog_favorites') || '[]');
+            if (Array.isArray(storedFavs)) favorites = new Set(storedFavs.filter(x => typeof x === 'string'));
+        } catch (e) { /* אחסון חסום או ערך פגום — בלי מועדפים */ }
 
         // Initial Render
         // סדר הקטגוריות נקבע כאן ולא לפי סדר השורות בקובץ — אחרת /catalog/ נפתח
@@ -1489,7 +1492,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         { transform: 'scale(1.5) translateY(-50px)', opacity: 0 }
                     ], { duration: 800 }).onfinish = () => flyer.remove();
                 }
-                localStorage.setItem('catalog_favorites', JSON.stringify([...favorites]));
+                try { localStorage.setItem('catalog_favorites', JSON.stringify([...favorites])); } catch (e) { }
 
                 // If we are in favorites view, verify if we should remove the card
                 if (activeCategory === 'favorites' && !favorites.has(product.id)) {
@@ -2081,8 +2084,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (CONFIG.allowShare) {
             if (sendWhatsappBtn) {
                 sendWhatsappBtn.addEventListener("click", () => {
+                    // אותו סל שכבר נשלח — פותחים שוב את וואטסאפ עם אותו מספר הזמנה,
+                    // בלי ליצור הזמנה חדשה (ראה sharedAgain)
+                    const again = sharedAgain('whatsapp');
+                    if (again === 'ignore') return;
+                    if (again) {
+                        window.open(`https://wa.me/972526000158?text=${encodeURIComponent(buildMessage(again))}`, "_blank");
+                        showOrderConfirmation(again, 'whatsapp');
+                        return;
+                    }
                     const sent = commitOrder('whatsapp');
                     if (!sent) return;
+                    rememberShared('whatsapp', sent.orderId);
 
                     const text = encodeURIComponent(buildMessage(sent.orderId));
                     const phone = "972526000158";
@@ -2119,7 +2132,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         try { ok = await sent.delivery; } catch (e) { ok = false; }
                         setBusy(false);
                         if (!ok) {
-                            showSendFailure('לא הצלחנו להתחבר לשרת. ההזמנה נשמרה בעגלה — בדקו את החיבור לאינטרנט ונסו שוב, או שלחו אותה בוואטסאפ.');
+                            showSendFailure('ההזמנה לא נקלטה אצלנו. היא שמורה בעגלה — בדקו את החיבור לאינטרנט ונסו שוב בעוד רגע, או שלחו אותה בוואטסאפ.');
                             return;
                         }
                         showOrderConfirmation(sent.orderId, 'email', { direct: true });
@@ -2153,8 +2166,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (orderModal) orderModal.classList.add('has-quote-request');
                 quoteBtn.addEventListener('click', () => {
                     if (Object.keys(cart).length === 0) return;
+                    const again = sharedAgain('quote');
+                    if (again === 'ignore') return;
+                    if (again) {
+                        window.open(`https://wa.me/972526000158?text=${encodeURIComponent(buildMessage(again, 'quote'))}`, "_blank");
+                        showOrderConfirmation(again, 'quote');
+                        return;
+                    }
                     const sent = commitOrder('quote');
                     if (!sent) return;
+                    rememberShared('quote', sent.orderId);
                     const text = encodeURIComponent(buildMessage(sent.orderId, 'quote'));
                     window.open(`https://wa.me/972526000158?text=${text}`, "_blank");
                     showOrderConfirmation(sent.orderId, 'quote');
@@ -2389,7 +2410,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         box.innerHTML = `
             <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#D32F2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             <h2 style="margin:0.8rem 0 0.4rem; color:#B71C1C; font-size:1.5rem;">ההזמנה לא נשלחה</h2>
-            <p style="margin:0 0 1.3rem; color:#5B6E64; font-size:0.95rem; line-height:1.6;">${message || 'לא הצלחנו להתחבר לשרת. ההזמנה נשמרה בעגלה — בדקו את החיבור לאינטרנט ולחצו שוב על "שלח הזמנה".'}</p>
+            <p style="margin:0 0 1.3rem; color:#5B6E64; font-size:0.95rem; line-height:1.6;">${message || 'ההזמנה לא נקלטה אצלנו. היא שמורה בעגלה — בדקו את החיבור לאינטרנט ולחצו שוב על "שלח הזמנה" בעוד רגע.'}</p>
             <button id="send-fail-close" style="background:#1A4231; color:#fff; border:none; border-radius:10px; padding:10px 34px; font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit;">הבנתי</button>
         `;
         overlay.appendChild(box);
@@ -2628,8 +2649,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Recent Orders (הזמנות אחרונות) ---
     function getRecentOrders() {
+        // ערך פגום (לא מערך, או רשומה בלי פריטים) הפיל את כל הקטלוג בטעינה
         try {
-            return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+            const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+            if (!Array.isArray(list)) return [];
+            return list.filter(o => o && typeof o === 'object').map(o => Object.assign({}, o, {
+                items: Array.isArray(o.items) ? o.items.filter(i => i && typeof i === 'object' && i.id) : []
+            }));
         } catch (e) {
             return [];
         }
@@ -2847,6 +2873,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 priceInp.className = "order-input";
                 priceInp.type = "number";
                 priceInp.step = "0.01";
+                priceInp.min = "0";
+                priceInp.max = String(MAX_UNIT_PRICE);
                 priceInp.value = product.price.toFixed(2);
                 // עריכת מחיר היחידה היא כלי של הסוכן להצעות מחיר. ללקוח היא רק
                 // מבלבלת: שינוי עדכן את שורת הסכום אך לא את סה"כ הסל ולא את
@@ -2884,7 +2912,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // אבל סה"כ הסל, שורת המע"מ והמסמך המודפס ממשיכים לקרוא את
                     // המחיר הישן מ-PRODUCTS — והמספרים על המסך סותרים זה את זה.
                     // המחיר חוזר ממילא מה-CSV בטעינה הבאה של הדף.
-                    if (CONFIG.editablePrices) product.price = parseFloat(priceInp.value) || 0;
+                    if (CONFIG.editablePrices) {
+                        // מחיר שלילי או ענק נכנס עד 25.11.26 להצעה, להזמנה ולקובץ
+                        // ריווחית (‎-10 ו-1e9 נתנו סה"כ ₪999,999,990). מינוס נמחק
+                        // כבר בהקלדה; מחיר מעל התקרה חוזר לערך הקודם.
+                        if (priceInp.value.indexOf('-') >= 0) priceInp.value = priceInp.value.replace(/-/g, '');
+                        const p = parseFloat(priceInp.value);
+                        if (p > MAX_UNIT_PRICE || !isFinite(p) && priceInp.value.trim() !== '') {
+                            priceInp.value = product.price > 0 ? String(product.price) : '';
+                            showToast(`מחיר ליחידה עד ${MAX_UNIT_PRICE.toLocaleString('he-IL')} ₪`);
+                        }
+                        product.price = parseFloat(priceInp.value) > 0 ? parseFloat(priceInp.value) : 0;
+                    }
                     updateRow();
                     updateSummary();
                 });
@@ -3076,9 +3115,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         return crmId ? Object.assign({}, customer, { crmId: crmId }) : customer;
     }
 
-    // מחזירה true כשהבקשה יצאה לדרך. התשובה אטומה (mode: no-cors) ולכן אין
-    // אישור הצלחה אמיתי — false מסמן כשל רשת בלבד, וזה מה שמזין את תור
-    // האופליין של דף הסוכן (js/agent.js).
+    // מחזירה true רק כשהסקריפט בענן אישר שההזמנה נקלטה: success (סקריפט
+    // ההזמנות) או ok (סקריפט הממתינות של רשת החנויות). עד 25.11.26 הבקשה
+    // נשלחה ב-mode: no-cors, התשובה הייתה אטומה, ו-true סימן רק "הבקשה יצאה" —
+    // כשל בצד גוגל (מכסה, תקלה, תקרת 250 בשעה) הציג ללקוח "ההזמנה נשלחה"
+    // בלי שנרשם דבר. text/plain הוא בקשה פשוטה בלי preflight, ולכן הדפדפן יכול
+    // לקרוא את התשובה — אותו דפוס כמו עמוד ה-CRM ודף הסוכן. false מזין את
+    // תור האופליין של דף הסוכן (js/agent.js); הזמנה שכבר נקלטה ונשלחת שוב
+    // חוזרת מהסקריפט כ-duplicate ולא נכתבת פעמיים.
     async function postOrderPayload(payload) {
         // אחרי אישור של מנהלת הרכש ההזמנה חוזרת ל-webhook הרגיל, גם בעמוד
         // שמוגדר לשלוח לגיליון הממתינות — לכן PENDING_APPROVAL גובר.
@@ -3089,19 +3133,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.log("Google Script Webhook URL is not set. Skipping backup email.");
             return false;
         }
+        let res;
         try {
-            await fetch(target, {
+            res = await fetch(target, {
                 method: "POST",
-                mode: "no-cors",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
-            console.log("Successfully sent order data to Google Script Webhook");
-            return true;
         } catch (error) {
             console.error("Error sending order data to Webhook:", error);
+            return false;
+        }
+        try {
+            const data = await res.json();
+            if (data && (data.success === true || data.ok === true)) return true;
+            console.error("The order script rejected the order:", data && data.error);
+            return false;
+        } catch (error) {
+            console.error("Unreadable reply from the order script:", error);
             return false;
         }
     }
@@ -3113,6 +3162,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     // הליבה המשותפת לכל שליחת הזמנה — ולידציה, מספר הזמנה, שמירה ל"הזמנות
     // אחרונות", דיווח ל-webhook ולאנליטיקס. הפתיחה של הערוץ (וואטסאפ/מייל)
     // נשארת אצל הקורא. מחזירה null כשהולידציה נכשלה.
+    // שליחה חוזרת של אותו סל בוואטסאפ. כל לחיצה יצרה הזמנה חדשה עם מספר חדש,
+    // ולכן גם הסינון של מספר כפול בסקריפט לא תפס אותה: לקוח שחזר מוואטסאפ ולחץ
+    // שוב — או נגע פעמיים — הופיע בגיליון פעמיים ושלוש (גן רותם, 25.8.26: שלוש
+    // הזמנות זהות ב-54 שניות). עכשיו: אותו סל באותה שיטה בתוך 30 דקות פותח את
+    // וואטסאפ שוב עם אותו מספר הזמנה, בלי הזמנה חדשה. נגיעה כפולה (פחות משנייה
+    // וחצי) לא עושה כלום.
+    const SHARED_KEY = 'aroam_last_shared_' + (window.location.pathname.split('/')[1] || 'root');
+    function sharedSignature(method) {
+        return method + '|' + Object.keys(cart).sort().map(id => id + ':' + cart[id]).join(',');
+    }
+    let sharedMem = null;   // כשהדפדפן חוסם אחסון — לפחות בתוך אותה טעינה
+    function sharedAgain(method) {
+        let last = sharedMem;
+        try { last = JSON.parse(sessionStorage.getItem(SHARED_KEY) || 'null') || sharedMem; } catch (e) { last = sharedMem; }
+        if (!last || typeof last !== 'object' || last.sig !== sharedSignature(method)) return null;
+        const age = Date.now() - Number(last.at || 0);
+        if (age < 1500) return 'ignore';
+        return age < 30 * 60 * 1000 && last.orderId ? String(last.orderId) : null;
+    }
+    function rememberShared(method, orderId) {
+        sharedMem = { sig: sharedSignature(method), orderId: orderId, at: Date.now() };
+        try { sessionStorage.setItem(SHARED_KEY, JSON.stringify(sharedMem)); } catch (e) { }
+    }
+
     function commitOrder(method) {
         // מדידה (13.11.26): begin_checkout נורה כבר בפתיחת הסל, ולכן עד עכשיו לא
         // היה אפשר לדעת מי ניסה לשלוח ונעצר. checkout_attempt = לחיצה על שליחה;
@@ -3391,7 +3464,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 { transform: 'scale(1)' }
             ], { duration: 300 });
         }
-        localStorage.setItem('catalog_favorites', JSON.stringify([...favorites]));
+        try { localStorage.setItem('catalog_favorites', JSON.stringify([...favorites])); } catch (e) { }
 
         // If we are in favorites view, remove the card or refresh
         if (activeCategory === 'favorites') {
@@ -3858,6 +3931,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // שם הלקוח, שמירת ההצעה ורישומה אצל הלקוח — משותף להדפסה ול-PDF
     async function prepareQuote(promptText) {
+        // קודם בודקים את הסל, ורק אז שואלים שם — אחרת סל ריק שאל שם לקוח
+        // ורק אחר כך אמר שאין מה לשמור
+        if (Object.keys(cart).length === 0) {
+            alert("הסל ריק. אין ממה להכין הצעת מחיר.");
+            return null;
+        }
+        // שורה במחיר 0 יוצאת ללקוח כ-"0.00 ₪". האזהרה הזאת הייתה רק בשליחת
+        // הזמנה — ל-74 מתוך 205 המוצרים המחיר בקובץ הוא 0 (25.11.26)
+        const noPrice = getCartItemsData().items.filter(it => !(it.price > 0)).length;
+        if (noPrice && !confirm(noPrice === 1
+            ? 'בהצעה יש שורה אחת במחיר 0 — להמשיך בכל זאת?'
+            : `בהצעה יש ${noPrice} שורות במחיר 0 — להמשיך בכל זאת?`)) return null;
         // כשההזמנה נפתחה מקישור שנשלח במייל, שם הלקוח מוצע כברירת מחדל.
         // ה-prompt נשאר כדי שרועי יוכל לתקן לפני ההדפסה.
         // אחרת — הלקוח שנבחר בדף הסוכן (js/agent.js), כדי שההצעה תירשם אצלו.

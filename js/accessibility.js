@@ -68,10 +68,11 @@
     // Initialize
     function init() {
         // Load preferences
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            preferences = JSON.parse(saved);
-        }
+        // מוגן: אחסון חסום (ספארי, "חסום את כל העוגיות") או ערך פגום הפילו את כל הכלי
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+            if (saved && typeof saved === 'object' && !Array.isArray(saved)) preferences = Object.assign({}, preferences, saved);
+        } catch (e) { }
 
         // Inject HTML
         const container = document.createElement('div');
@@ -157,7 +158,7 @@
     }
 
     function saveAndApply() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences)); } catch (e) { }
         applyPreferences();
     }
 
