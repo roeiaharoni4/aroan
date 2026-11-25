@@ -24,14 +24,25 @@ Outputs (../box/)
   thicker cup line · black band at the foot of every side with the contact line knocked out in white ·
   the cup's "coffee" logo on the drawn cup · "1000 כוסות · 8Boz" under the logo on the narrow sides ·
   "this way up" and "keep dry" symbols (ISO 780) on top of the narrow sides.
+
+Two more, after Roei sent the Dentes 4oz carton (22.11.26) and asked for its wording and its design, separately:
+`v3` = v2 with the Dentes wording: the quantity box lists 3 lines in Hebrew (right) and in English (left)
+       — per sleeve, sleeves per carton, total — and the narrow sides read "כוסות נייר 8Boz" / "סה״כ: 1000 יחידות".
+`v4` = the Dentes layout, same wording as v3. Wide sides: where Dentes has its black bar, the cup drawing (v2 style)
+       over the contact lines; bilingual title on the right; quantities in two columns at the foot (English under
+       the cup, Hebrew on the right); "CARTON NO. / ORDER NO." write-in lines; ISO symbols in the bottom corner.
+       Narrow sides: symbols, the regular logo (no bar), contact lines, title and total. (Roei chose v4 and asked
+       for the cup instead of the bar and logo, and the plain logo on the narrow sides, 22.11.26.)
 """
 import html as htmllib, json, pathlib, re, shutil, subprocess, sys, tempfile
 import build_print as B
 
 HERE = B.HERE
-V2 = "v2" in sys.argv[1:]
-OUT = HERE.parent / "box" / ("v2" if V2 else "")
-CACHE = HERE / "assets/box_text.json"
+VARIANT = next((a for a in sys.argv[1:] if a in ("v2", "v3", "v4")), "v1")
+V2 = VARIANT in ("v2", "v3")     # v2 look: band, symbols, thick cup line, cup logo
+V3, V4 = VARIANT == "v3", VARIANT == "v4"
+OUT = HERE.parent / "box" / ("" if VARIANT == "v1" else VARIANT)
+CACHE = HERE / ("assets/box_text.json" if VARIANT == "v1" else f"assets/box_text_{VARIANT}.json")
 INK = "#000000"
 BOARD = "#FFFFFF"      # white board, previews only
 KNOCK = "__KNOCK__"    # fill of the logo lettering: white (= no ink) in print files, board colour in previews
@@ -49,11 +60,25 @@ FLAP = W / 2
 
 TEXTS = [
     dict(name="head", text="כוסות נייר 8Boz", weight=800, dir="rtl"),
-    dict(name="qty1", text=f"{QTY[0]} כוסות בקרטון", weight=800, dir="rtl"),
-    dict(name="qty2", text=f"{QTY[1]} שרוולים של {QTY[2]} כוסות", weight=600, dir="rtl"),
     dict(name="details", text="03-6346236  ·  meiraroam@gmail.com  ·  aroam.co.il", weight=600, dir="ltr"),
-    dict(name="nqty", text=f"{QTY[0]} כוסות · 8Boz", weight=800, dir="rtl"),
 ]
+if VARIANT in ("v1", "v2"):
+    TEXTS += [
+        dict(name="qty1", text=f"{QTY[0]} כוסות בקרטון", weight=800, dir="rtl"),
+        dict(name="qty2", text=f"{QTY[1]} שרוולים של {QTY[2]} כוסות", weight=600, dir="rtl"),
+        dict(name="nqty", text=f"{QTY[0]} כוסות · 8Boz", weight=800, dir="rtl"),
+    ]
+else:   # Dentes wording (v3, v4): per sleeve, sleeves per carton, total; Hebrew and English
+    QTY_HE = [f"{QTY[2]} יחידות בשרוול", f"{QTY[1]} שרוולים בקרטון", f"סה״כ: {QTY[0]} יחידות"]
+    QTY_EN = [f"{QTY[2]} PCS PER SLEEVE", f"{QTY[1]} SLEEVES PER CARTON", f"TOTAL: {QTY[0]} PCS"]
+    TEXTS += [dict(name=f"qh{i}", text=t, weight=800 if i == 2 else 600, dir="rtl") for i, t in enumerate(QTY_HE)]
+    TEXTS += [dict(name=f"qe{i}", text=t, weight=800 if i == 2 else 600, dir="ltr") for i, t in enumerate(QTY_EN)]
+if V4:
+    TEXTS += [dict(name="head_en", text="Hot drink cups", weight=700, dir="ltr"),
+              dict(name="carton", text="CARTON NO.", weight=700, dir="ltr"),
+              dict(name="order", text="ORDER NO.", weight=700, dir="ltr")]
+    TEXTS += [dict(name=f"c{i}", text=t, weight=600, dir="ltr")
+              for i, t in enumerate(["03-6346236", "meiraroam@gmail.com", "aroam.co.il"])]
 
 
 # ---------------------------------------------------------------- text outlines
@@ -96,6 +121,22 @@ def place(subs, k, cx, top):
     return B.mapped(subs, f), (cx + (bx[0] - mx) * k, top, cx + (bx[2] - mx) * k, top + (bx[3] - bx[1]) * k)
 
 
+def put(T, name, k, x, base, align="c", fill=INK):
+    """Text item at scale k, baseline at `base`; x is its ink left ('l'), right ('r') or centre ('c').
+    Returns (svg, bbox)."""
+    subs = B.parse(T[name]["d"])
+    bx = ink_box(subs)
+    ax = {"l": bx[0], "r": bx[2], "c": (bx[0] + bx[2]) / 2}[align]
+    f = lambda p: (x + (p[0] - ax) * k, base + p[1] * k)
+    return (f'<path d="{B.d_of(B.mapped(subs, f), 3)}" fill="{fill}"/>',
+            (x + (bx[0] - ax) * k, base + bx[1] * k, x + (bx[2] - ax) * k, base + bx[3] * k))
+
+
+def tw(T, name):
+    bx = ink_box(B.parse(T[name]["d"]))
+    return bx[2] - bx[0]
+
+
 # ---------------------------------------------------------------- logo, one colour
 
 def logo_parts():
@@ -109,14 +150,16 @@ def logo_parts():
     return B.parse(" ".join(ds["leaf"])), B.parse(" ".join(ds["wordmark"] + ds["tagline"]))
 
 
-def place_logo(width, cx, top):
+def place_logo(width, cx, top, rev=False):
+    """rev: for a black ground, the leaf gets no ink (board) and the lettering is printed black."""
     leaf, letters = logo_parts()
     bx = ink_box(leaf)
     k = width / (bx[2] - bx[0])
     mx = (bx[0] + bx[2]) / 2
     f = lambda p: (cx + (p[0] - mx) * k, top + (p[1] - bx[1]) * k)
-    svg = (f'<path d="{B.d_of(B.mapped(leaf, f), 3)}" fill="{INK}"/>'
-           f'<path d="{B.d_of(B.mapped(letters, f), 3)}" fill="{KNOCK}"/>')
+    a, b = (KNOCK, INK) if rev else (INK, KNOCK)
+    svg = (f'<path d="{B.d_of(B.mapped(leaf, f), 3)}" fill="{a}"/>'
+           f'<path d="{B.d_of(B.mapped(letters, f), 3)}" fill="{b}"/>')
     return svg, (bx[3] - bx[1]) * k
 
 
@@ -132,13 +175,13 @@ def cup_drawing(cx, top, hc):
     yb, ye = top + rim_h, top + hc - sag
     body = (f"M{cx - body_w / 2:.3f} {yb:.3f}L{cx - bot_w / 2:.3f} {ye:.3f}"
             f"Q{cx:.3f} {ye + 2 * sag:.3f} {cx + bot_w / 2:.3f} {ye:.3f}L{cx + body_w / 2:.3f} {yb:.3f}")
-    return rim + body, (0.022 if V2 else 0.011) * hc
+    return rim + body, (0.022 if (V2 or V4) else 0.011) * hc
 
 
 def cup_svg(cx, top, hc):
     d, sw = cup_drawing(cx, top, hc)
     out = f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{sw:.3f}" stroke-linejoin="round" stroke-linecap="round"/>'
-    if V2:   # the cup's own "coffee" + leaf logo, as printed on the real cup
+    if V2 or V4:   # the cup's own "coffee" + leaf logo, as printed on the real cup
         yb, ye = top + 0.058 * hc, top + hc - 0.028 * hc
         yc = yb + 0.42 * (ye - yb)
         w_at = 0.735 * hc + (0.52 * hc - 0.735 * hc) * (yc - yb) / (ye - yb)
@@ -213,6 +256,34 @@ def qty_block(T, cx):
     return bh, render
 
 
+def qty_block_bi(T, cx):
+    """v3: boxed quantities, Hebrew lines right-aligned on the right, English left-aligned on the left, a rule between.
+    Returns (height, render(top) -> svg)."""
+    wh = max(tw(T, f"qh{i}") for i in range(3))
+    we = max(tw(T, f"qe{i}") for i in range(3))
+    padx, pady, mid = 0.045 * H, 0.03 * H, 0.07 * H
+    k = min(0.038 * H / 100, (0.90 * L - mid - 2 * padx) / (wh + we))
+    pitch = 150 * k
+    ink = [ink_box(B.parse(T[f"q{s}{i}"]["d"])) for s in "he" for i in range(3)]
+    cap = -min(b[1] for b in ink) * k
+    desc = max(b[3] for b in ink) * k
+    bw = (wh + we) * k + mid + 2 * padx
+    bh = 2 * pady + cap + 2 * pitch + desc
+
+    def render(top):
+        x0 = cx - bw / 2
+        out = [f'<rect x="{x0:.3f}" y="{top:.3f}" width="{bw:.3f}" height="{bh:.3f}" rx="{0.012 * H:.3f}" '
+               f'fill="none" stroke="{INK}" stroke-width="{0.0045 * H:.3f}"/>']
+        xm = x0 + padx + we * k + mid / 2
+        out.append(f'<path d="M{xm:.3f} {top + pady:.3f}V{top + bh - pady:.3f}" stroke="{INK}" stroke-width="{0.003 * H:.3f}"/>')
+        for i in range(3):
+            base = top + pady + cap + i * pitch
+            out.append(put(T, f"qh{i}", k, x0 + bw - padx, base, "r")[0])
+            out.append(put(T, f"qe{i}", k, x0 + padx, base, "l")[0])
+        return "\n".join(out)
+    return bh, render
+
+
 def wide_panel(T):
     art = []
     head = B.parse(T["head"]["d"])
@@ -222,7 +293,7 @@ def wide_panel(T):
     dsvg, dtop = details(T, L)
     art.append(dsvg)
 
-    qh, qrender = qty_block(T, L / 2)
+    qh, qrender = (qty_block_bi if V3 else qty_block)(T, L / 2)
     gap = 0.05 * H
     zone_top, zone_bot = hb[3] + 0.05 * H, dtop - 0.05 * H
     hc = (0.34 if V2 else 0.32) * H      # cup drawing height, shrunk if the stack does not fit
@@ -253,17 +324,128 @@ def narrow_panel(T):
         art.append(sym(x + 0.12 * sz, sy + 0.12 * sz, 0.76 * sz))
     logo_w = 0.54 * W
     logo_h = (lb[3] - lb[1]) * logo_w / (lb[2] - lb[0])
+    gap = 0.05 * H
+    zone_top, zone_bot = sy + sz + 0.04 * H, dtop - 0.04 * H
+    if V3:   # "כוסות נייר 8Boz" over "סה״כ: 1000 יחידות"
+        k1 = min(0.062 * H / 100, 0.80 * W / tw(T, "head"))
+        k2 = 0.048 * H / 100
+        b1 = ink_box(B.parse(T["head"]["d"]))
+        b2 = ink_box(B.parse(T["qh2"]["d"]))
+        cap1, d1, cap2 = -b1[1] * k1, b1[3] * k1, -b2[1] * k2
+        lead = 0.03 * H
+        text_h = cap1 + d1 + lead + cap2 + b2[3] * k2
+        y = zone_top + (zone_bot - zone_top - (logo_h + gap + text_h)) / 2
+        art.append(place_logo(logo_w, W / 2, y)[0])
+        base1 = y + logo_h + gap + cap1
+        art.append(put(T, "head", k1, W / 2, base1)[0])
+        art.append(put(T, "qh2", k2, W / 2, base1 + d1 + lead + cap2)[0])
+        art.append(dsvg)
+        return "\n".join(art)
     nq = B.parse(T["nqty"]["d"])
     kq = (0.068 * H) / 100
     nq_h = (ink_box(nq)[3] - ink_box(nq)[1]) * kq
-    gap = 0.05 * H
-    zone_top, zone_bot = sy + sz + 0.04 * H, dtop - 0.04 * H
     y = zone_top + (zone_bot - zone_top - (logo_h + gap + nq_h)) / 2
     lsvg, _ = place_logo(logo_w, W / 2, y)
     art.append(lsvg)
     qs, _ = place(nq, kq, W / 2, y + logo_h + gap)
     art.append(f'<path d="{B.d_of(qs, 3)}" fill="{INK}"/>')
     art.append(dsvg)
+    return "\n".join(art)
+
+
+# ---------------------------------------------------------------- v4: the Dentes layout
+
+# Left column of the wide side: where Dentes has its black bar. Roei (22.11.26): the cup drawing there instead of
+# a bar with the logo, and the plain logo (no bar) on the narrow sides.
+COL_X, COL_W, COL_H = 0.085 * L, 0.27 * L, 0.585 * H
+XR = L - 0.075 * L                                       # right text edge on the wide side
+
+
+def contacts(T, cx, top):
+    """The three contact lines, centred on cx, ink top at `top`. Returns (svg, height)."""
+    kc = 0.78 * COL_W / max(tw(T, f"c{i}") for i in range(3))
+    boxes = [ink_box(B.parse(T[f"c{i}"]["d"])) for i in range(3)]
+    cap, desc, pitch = -min(b[1] for b in boxes) * kc, max(b[3] for b in boxes) * kc, 165 * kc
+    svg = "\n".join(put(T, f"c{i}", kc, cx, top + cap + i * pitch)[0] for i in range(3))
+    return svg, cap + 2 * pitch + desc
+
+
+def contacts_h(T):
+    return contacts(T, 0, 0)[1]
+
+
+def symbols(x_right, bottom, sz):
+    """The two ISO 780 symbols in frames, side by side, right edge at x_right."""
+    out, sgap = [], 0.22 * sz
+    for sym, x in ((sym_up, x_right - 2 * sz - sgap), (sym_dry, x_right - sz)):
+        out.append(f'<rect x="{x:.3f}" y="{bottom - sz:.3f}" width="{sz:.3f}" height="{sz:.3f}" rx="{0.08 * sz:.3f}" '
+                   f'fill="none" stroke="{INK}" stroke-width="{0.004 * H:.3f}"/>')
+        out.append(sym(x + 0.12 * sz, bottom - sz + 0.12 * sz, 0.76 * sz))
+    return "\n".join(out)
+
+
+def wide_panel_v4(T):
+    art = []
+    # left column: cup drawing (rim as wide as the column) over the contact lines
+    cx = COL_X + COL_W / 2
+    hc = 0.88 * COL_W / 0.80
+    gap = 0.045 * H
+    ch = contacts_h(T)
+    y = (COL_H - (hc + gap + ch)) / 2 + 0.01 * H
+    art.append(cup_svg(cx, y, hc))
+    art.append(contacts(T, cx, y + hc + gap)[0])
+    # title, right-aligned
+    area = XR - (COL_X + COL_W + 0.05 * L)
+    kt = 0.94 * area / max(tw(T, "head_en"), tw(T, "head"))
+    base_en = 0.29 * H
+    art.append(put(T, "head_en", kt, XR, base_en, "r")[0])
+    art.append(put(T, "head", kt, XR, base_en + 125 * kt, "r")[0])
+    # quantities: English under the cup (left-aligned), Hebrew on the right (right-aligned)
+    wh = max(tw(T, f"qh{i}") for i in range(3))
+    we = max(tw(T, f"qe{i}") for i in range(3))
+    kq = min(0.037 * H / 100, (XR - COL_X - 0.07 * L) / (wh + we))
+    for i in range(3):
+        base = 0.68 * H + i * 145 * kq
+        art.append(put(T, f"qe{i}", kq, COL_X, base, "l")[0])
+        art.append(put(T, f"qh{i}", kq, XR, base, "r")[0])
+    # write-in lines and symbols at the foot
+    kc = 0.030 * H / 100
+    base = 0.915 * H
+    line_len, lw = 0.13 * L, 0.0035 * H
+    x = COL_X
+    for name in ("carton", "order"):
+        s, bx = put(T, name, kc, x, base, "l")
+        art.append(s)
+        x0 = bx[2] + 0.012 * L
+        art.append(f'<rect x="{x0:.3f}" y="{base - lw:.3f}" width="{line_len:.3f}" height="{lw:.3f}" fill="{INK}"/>')
+        x = x0 + line_len + 0.045 * L
+    art.append(symbols(XR, base + 0.004 * H, 0.085 * H))
+    return "\n".join(art)
+
+
+def narrow_panel_v4(T):
+    art = []
+    # symbols centred on top, as in v2
+    sz, sy = 0.085 * H, 0.055 * H
+    art.append(symbols(W / 2 + sz + 0.11 * sz, sy + sz, sz))
+    # the regular logo (black leaf, unprinted lettering), contact lines under it
+    lb = ink_box(logo_parts()[0])
+    logo_w = 0.52 * W
+    logo_h = (lb[3] - lb[1]) * logo_w / (lb[2] - lb[0])
+    gap, ch = 0.035 * H, contacts_h(T)
+    zone_top, zone_bot = sy + sz + 0.035 * H, 0.615 * H
+    y = zone_top + (zone_bot - zone_top - (logo_h + gap + ch)) / 2
+    art.append(place_logo(logo_w, W / 2, y)[0])
+    art.append(contacts(T, W / 2, y + logo_h + gap)[0])
+    # title and total
+    k1 = min(0.068 * H / 100, 0.78 * W / tw(T, "head"))
+    base1 = 0.725 * H
+    art.append(put(T, "head", k1, W / 2, base1)[0])
+    k2 = k1 * 0.62
+    art.append(put(T, "head_en", k2, W / 2, base1 + 118 * k2)[0])
+    k3 = 0.040 * H / 100
+    art.append(put(T, "qh2", k3, W / 2, 0.87 * H)[0])
+    art.append(put(T, "qe2", k3 * 0.85, W / 2, 0.87 * H + 135 * k3 * 0.85)[0])
     return "\n".join(art)
 
 
@@ -295,7 +477,7 @@ def poly_d(pts):
 def build():
     OUT.mkdir(parents=True, exist_ok=True)
     T = outline(TEXTS)
-    wide, narrow = wide_panel(T), narrow_panel(T)
+    wide, narrow = (wide_panel_v4(T), narrow_panel_v4(T)) if V4 else (wide_panel(T), narrow_panel(T))
     xs, panels, outline_pts, creases, FW, FH = flat_geometry()
 
     def art_on_flat():
@@ -308,21 +490,30 @@ def build():
         return "\n".join(g)
 
     # print file
-    m, notes_h = 20.0, 52.0 + (13.2 if V2 else 0)
-    PW, PH = FW + 2 * m, FH + 2 * m + notes_h
+    m = 20.0
     notes = [
         "Paper cup carton 8B: printed regular slotted carton (RSC). Example proportions: fit to the factory dieline.",
         "Board: white corrugated. Print 1 colour: black.",
+    ] + ([
+        "Logo: the leaf is printed black; its lettering gets no ink (white board).",
+        "Wide sides: cup drawing and contact lines (left), bilingual title (right), quantities (English left, Hebrew",
+        "right), CARTON NO. / ORDER NO. write-in lines, ISO 780 symbols.",
+        "Narrow sides: ISO 780 symbols, logo, contact lines, title and total.",
+        "Keep the artwork in proportion. All text is converted to outlines.",
+    ] if V4 else [
         "Logo: the leaf is printed black; its lettering gets no ink (white board).",
         "Wide sides: title, cup drawing, quantity box. Narrow sides: logo. Contact line on all four sides.",
         "Keep the artwork centred on each side and in proportion. All text is converted to outlines.",
-    ] + ([
+    ]) + ([
         "v2: black band at the foot of each side, contact line in it unprinted; band bleeds 3 mm past the crease and the free edge.",
         "v2: 'this way up' and 'keep dry' symbols (ISO 780) on top of the narrow sides.",
     ] if V2 else []) + [
         "Magenta = guides only, do not print. Solid = cut. Dashed = crease.",
     ]
-    note_svg = [f'<text x="{m}" y="{m + 6}" font-size="11" font-weight="bold">Paper cups 8B: carton artwork{" (v2)" if V2 else ""}</text>']
+    notes_h = 13.0 + 6.6 * len(notes)
+    PW, PH = FW + 2 * m, FH + 2 * m + notes_h
+    tag = "" if VARIANT == "v1" else f" ({VARIANT})"
+    note_svg = [f'<text x="{m}" y="{m + 6}" font-size="11" font-weight="bold">Paper cups 8B: carton artwork{tag}</text>']
     note_svg += [f'<text x="{m}" y="{m + 17 + 6.6 * i:.1f}">{t}</text>' for i, t in enumerate(notes)]
     body = "\n".join([
         f'<g transform="translate({m} {m + notes_h})">',

@@ -8,7 +8,8 @@ Inputs
 Outputs (../print/)
   coffee-logo-shape.svg/.pdf      the logo as one colour, flat
   coffee-logo-on-green.svg/.pdf   the same on the cup green, as it prints (white = no ink)
-  cup-wrap-<size>.svg/.pdf        flat sidewall per size with the logo bent to the cone
+  cup-wrap-<size>.svg/.pdf        flat sidewall with the logo bent to the cone, twice: on both sides of the cup,
+                                  180 degrees apart, each a quarter turn from the seam (Roei, 23.11.26)
   cup-print-spec.pdf              one-page sheet for the factory: wrap, colour code, print (build_spec.py)
 
 The lockup copies the mockup exactly (units = mockup px): text at 68, letter-spacing -0.01em, leaf 32 wide,
@@ -30,11 +31,9 @@ WIDTH_SHARE = 0.209
 CENTRE_UP = 0.535
 BLEED = 3.0      # mm, all round
 OVERLAP = 6.0    # mm, seam overlap allowance on one side
-# Typical sizes. The factory's own dieline overrides these.
+# The cup is 8oz only (Roei, 22.11.26: no other sizes). Typical size; the factory's own dieline overrides it.
 SIZES = [
-    ("4oz", 62.0, 45.0, 60.0),
     ("8oz", 80.0, 56.0, 92.0),
-    ("12oz", 90.0, 60.0, 110.0),
 ]
 
 # ---------------------------------------------------------------- paths
@@ -187,7 +186,7 @@ def write_svg(path, w, h, body, title):
 
 
 def logo_files():
-    size = SIZES[1]
+    size = SIZES[0]
     W = logo_width(size)
     lg = logo_mm(W)
     pad = 4.0
@@ -240,15 +239,18 @@ def wrap_file(name, top_d, bot_d, h):
     # logo, bent to the cone: (x along the wall, y down) -> polar
     lg = flatten(logo_mm(g["width"]), 0.08)
 
-    def warp(p):
+    # twice, on both sides of the cup (Roei, 23.11.26): 180 degrees apart, each a quarter turn from the seam
+    def warp(p, phi0):
         rho = Ri + g["t_c"] - p[1]
-        return P(rho, p[0] / rho)
+        return P(rho, phi0 + p[0] / rho)
 
-    logo = [[warp(p) for p in poly] for poly in lg]
+    centres = (-th / 4, th / 4)
+    logo = [[warp(p, c) for p in poly] for c in centres for poly in lg]
 
     # centre-line marks and labels (non-printing)
     mark = "#E6007E"
-    cl_top, cl_bot = P(ro + 6, 0), P(ri - 6, 0)
+    cmarks = "".join(f"M{P(ro + 6, c)[0]:.3f} {P(ro + 6, c)[1]:.3f}L{P(ro, c)[0]:.3f} {P(ro, c)[1]:.3f}"
+                     f"M{P(ri, c)[0]:.3f} {P(ri, c)[1]:.3f}L{P(ri - 6, c)[0]:.3f} {P(ri - 6, c)[1]:.3f}" for c in centres)
     body = [
         '<g id="print">',
         f'<path d="{d_poly([flood])}" fill="{GREEN}"/>',
@@ -257,7 +259,7 @@ def wrap_file(name, top_d, bot_d, h):
         f'<g id="non-printing" fill="none" stroke="{mark}" stroke-width="0.25">',
         f'<path d="{d_poly([trim])}" stroke-dasharray="2 1.2"/>',
         f'<path d="M{seam[0][0]:.3f} {seam[0][1]:.3f}L{seam[1][0]:.3f} {seam[1][1]:.3f}" stroke-dasharray="0.8 0.8"/>',
-        f'<path d="M{cl_top[0]:.3f} {cl_top[1]:.3f}L{P(ro, 0)[0]:.3f} {P(ro, 0)[1]:.3f}M{P(ri, 0)[0]:.3f} {P(ri, 0)[1]:.3f}L{cl_bot[0]:.3f} {cl_bot[1]:.3f}"/>',
+        f'<path d="{cmarks}"/>',
         '</g>',
         f'<g id="notes" fill="{mark}" font-family="Arial, Helvetica, sans-serif" font-size="3">',
         f'<text x="{margin}" y="{margin + 2}" font-size="4.6" font-weight="bold">coffee cup — {name} sidewall wrap</text>',
@@ -265,8 +267,8 @@ def wrap_file(name, top_d, bot_d, h):
     lines = [
         f"Colour: {PANTONE} (ref. HEX {GREEN}), full flood over the outer wall. 1 colour.",
         f"Flood includes {BLEED:g} mm bleed and {OVERLAP:g} mm seam overlap (left).",
-        "Logo = knockout (unprinted white board, no white ink), once, opposite the seam. Bent to the cone.",
-        "On the factory dieline keep the logo's proportions and position.",
+        "Logo = knockout (unprinted white board, no white ink), twice: both sides, 180 deg apart, 1/4 turn from the seam.",
+        "Bent to the cone. On the factory dieline keep the logos' proportions and positions. Magenta ticks = logo centres.",
         "Magenta = guides only, do not print. Dashed = cup edge (rim on top). Dotted = seam.",
     ]
     body += [f'<text x="{margin}" y="{margin + 7.6 + 4.2 * i:.1f}">{t}</text>' for i, t in enumerate(lines)]

@@ -33,6 +33,7 @@
       const parts = []; let minx = 1e9, maxx = -1e9;
       for (let i = 0; i < it.text.length; i++) {
         const ch = it.text[i];
+        if (/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/.test(ch)) continue;   // bidi controls: no glyph, no width
         const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1);
         const b = r.getBoundingClientRect();
         const g = font.charToGlyph(ch);

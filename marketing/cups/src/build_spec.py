@@ -5,16 +5,16 @@ import build_print as B
 
 HERE = B.HERE
 OUT = B.OUT
-TODAY = "18.11.2026"
+TODAY = "23.11.2026"
 RGB = ", ".join(str(int(B.GREEN[i:i + 2], 16)) for i in (1, 3, 5))
 
 PRINT = [
     ("הלוגו", "המילה coffee והעלה נשארים בצבע הנייר (knockout). <b>אין דיו לבנה.</b>",
      "“coffee” + leaf are knocked out: unprinted white board. No white ink."),
-    ("מיקום", "פעם אחת, במרכז הצד שמול התפר. מרכז הלוגו ב-53% מגובה הדופן, מהתחתית. ישר, לא נטוי.",
-     "Once, centred opposite the seam. Logo centre at 53% of the wall height from the bottom. Level."),
-    ("גודל", "רוחב הלוגו ≈ 21% מהיקף הכוס בגובה הלוגו. לשמור על הפרופורציה, לא למתוח.",
-     "Logo width ≈ 21% of the circumference at its height. Keep proportions."),
+    ("מיקום", "פעמיים, משני צידי הכוס (180°), כל לוגו רבע סיבוב מהתפר. המרכז ב-53% מגובה הדופן, מלמטה. ישר.",
+     "Twice, both sides (180° apart), each a 1/4 turn from the seam. Centre at 53% of the wall height. Level."),
+    ("גודל", "רוחב כל לוגו ≈ 21% מהיקף הכוס בגובה הלוגו. לשמור על הפרופורציה, לא למתוח.",
+     "Each logo ≈ 21% of the circumference at its height wide. Keep proportions."),
     ("נייר", "קרטון כוסות לבן (לא קראפט). פנים הכוס והתחתית בלי הדפסה.",
      "White cup board (not kraft). Inside and bottom unprinted."),
     ("לפני ייצור", "הוכחה דיגיטלית על התבנית של המפעל לאישור, ודוגמה מודפסת לאישור הגוון. לבדוק שהקצה הדק של העלה לא נסגר.",
@@ -41,7 +41,7 @@ h2 {{ font-size: 12pt; font-weight: 800; color: {B.GREEN}; margin: 4mm 0 2mm; di
 h2 .num {{ display: inline-grid; place-items: center; width: 5.6mm; height: 5.6mm; border-radius: 50%; background: {B.GREEN}; color: #fff; font-size: 9pt; align-self: center; }}
 h2 .en {{ font-weight: 600; margin: 0; }}
 .en {{ color: #5B6E64; font-size: 8.4pt; line-height: 1.28; margin-top: .3mm; text-align: right; }}
-.wrap img {{ width: 82%; margin: 0 auto; display: block; border: .5pt solid #D5DED9; border-radius: 1.5mm; }}
+.wrap img {{ width: 78%; margin: 0 auto; display: block; border: .5pt solid #D5DED9; border-radius: 1.5mm; }}
 .legend {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 6mm; font-size: 8.8pt; margin-top: 2mm; }}
 .k {{ display: inline-block; width: 8mm; border-top: .9pt dashed #E6007E; vertical-align: middle; margin-inline-end: 2mm; }}
 .k.dot {{ border-top-style: dotted; }}
@@ -76,9 +76,8 @@ footer {{ margin-top: 4mm; font-size: 8.2pt; color: #5B6E64; border-top: .5pt so
   <div><span class="k fill"></span>הירוק — מודפס <span class="en" dir="ltr" style="display:inline">· printed flood</span></div>
   <div><span class="k"></span>שפת הכוס, השפה העליונה למעלה <span class="en" dir="ltr" style="display:inline">· cup edge, rim on top</span></div>
   <div><span class="k dot"></span>התפר — ההדבקה בצד שמאל <span class="en" dir="ltr" style="display:inline">· seam, overlap on the left</span></div>
-  <div>הקווים הוורודים והכיתוב — לא להדפסה <span class="en" dir="ltr" style="display:inline">· magenta = guides only</span></div>
+  <div>הוורוד — לא להדפסה; סימון קצר = מרכז לוגו <span class="en" dir="ltr" style="display:inline">· magenta = guides; ticks = logo centres</span></div>
 </div>
-<div class="also">בדוגמה: 8oz. פריסות ל-4oz ול-12oz בקבצים המצורפים. <span class="en" dir="ltr" style="display:inline">· Shown: 8oz. 4oz and 12oz wraps attached.</span></div>
 
 <h2><span class="num">2</span>קוד הצבע<span class="en" dir="ltr">Colour code</span></h2>
 <div class="colour">
@@ -99,7 +98,7 @@ footer {{ margin-top: 4mm; font-size: 8.2pt; color: #5B6E64; border-top: .5pt so
 <h2><span class="num">3</span>ההדפסה<span class="en" dir="ltr">Print</span></h2>
 <table class="spec">{rows}</table>
 
-<footer>קבצים מצורפים, PDF ו-SVG וקטוריים: הפריסה <span class="mono" dir="ltr">cup-wrap-4oz / 8oz / 12oz</span> · הלוגו <span class="mono" dir="ltr">coffee-logo-shape</span> · הלוגו על הירוק <span class="mono" dir="ltr">coffee-logo-on-green</span></footer>
+<footer>קבצים מצורפים: הפריסה <span class="mono" dir="ltr">cup-wrap-8oz.pdf</span> · קוד הצבע <span class="mono" dir="ltr">cup-colour.pdf</span> <span class="en" dir="ltr" style="display:inline">· Attached: the wrap and the colour sheet.</span></footer>
 </body></html>"""
 
 
