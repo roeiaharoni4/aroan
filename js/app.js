@@ -1229,7 +1229,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         'שתיה': ['כוס'], 'שתייה': ['שתיה', 'כוס'],
         'חמה': ['כוסות נייר', 'אספרסו', 'בוחשני'], 'חם': ['כוסות נייר', 'אספרסו', 'בוחשני'],
         'קרה': ['שתיה קרה', 'כוס פלסטיק', 'כוסות פלסטיק'], 'קר': ['שתיה קרה', 'כוס פלסטיק', 'כוסות פלסטיק'],
-        'קפה': ['אספרסו', 'כוסות נייר'],
+        'קפה': ['טסטר', 'אספרסו', 'כוסות נייר'],
         'ניקוי': ['ניקיון'], 'ניקיון': ['ניקוי'],
         'ספריי': ['רסס'],
         'סלוטיפ': ['סלוטייפ'], 'סלוטייפ': ['סלוטיפ'],
@@ -1244,35 +1244,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     // בשאילתה מילה נוספת, אחרת כל חיפוש שכולל אותן היה מחזיר אפס
     const SEARCH_STOPWORDS = new Set(['חומרי', 'חומר', 'מוצרי', 'מוצר', 'לעסקים', 'לעסק', 'סיטונאי',
         'סיטונאות', 'בסיטונאות', 'למשרד', 'למשרדים', 'של', 'עם', 'ל', 'ב']);
-    function searchVariants(term) {
+    // רבים ← יחיד בקירוב: "כוסות" מוצא "כוס", "צלחות" מוצא "צלחת"
+    const withSingular = v => (v.length >= 5 && /(ות|ים)$/.test(v)) ? [v, v.slice(0, -2)] : [v];
+    // אותה מילה בצורות שונות, בלי מילים נרדפות
+    function searchForms(term) {
         const out = [term];
-        (SEARCH_SYNONYMS[term] || []).forEach(v => out.push(v));
         // אותיות שימוש בתחילת מילה (ו/ה/ב/ל/מ/ש/כ) — עד שתיים, כל עוד נשארת מילה
         let s = term;
         for (let i = 0; i < 2 && s.length >= 4 && /^[ולבהמשכ]/.test(s); i++) {
             s = s.slice(1);
             out.push(s);
         }
-        // רבים ← יחיד בקירוב: "כוסות" מוצא "כוס", "צלחות" מוצא "צלחת"
-        out.slice().forEach(v => {
-            if (v.length >= 5 && /(ות|ים)$/.test(v)) out.push(v.slice(0, -2));
-        });
-        return out;
+        return out.flatMap(withSingular);
     }
 
     const normalizeSearch = s => (s || "").toLowerCase().replace(/["'`´׳״]/g, "").replace(/\s+/g, " ");
-    // משותף לתוצאות ולהצעות שמתחת לשדה — קודם ההצעות השתמשו בהתאמה רציפה
-    // בלבד ולא הציגו כלום לחיפושים שהתוצאות עצמן כן מצאו.
-    function productMatchesSearch(p, query) {
-        const nq = normalizeSearch(query);
+    function searchTerms(nq) {
         const all = nq.split(" ").filter(Boolean);
         const kept = all.filter(t => !SEARCH_STOPWORDS.has(t));
-        const terms = kept.length ? kept : all;
-        // גם הקטגוריה ותת-הקטגוריה: "כוסות חד פעמיות" ו"סכו״ם" מוצאים מוצרים
-        // שהשם שלהם לא כולל את המילים האלה
+        return kept.length ? kept : all;
+    }
+    // כמה המוצר מתאים לחיפוש; 0 = לא מתאים. משותף לתוצאות ולהצעות שמתחת לשדה.
+    // כל מילה בשאילתה חייבת להימצא (בכל סדר) בשם, במותג, בקטגוריה או בתת-הקטגוריה —
+    // בעצמה או דרך מילה נרדפת. הניקוד קובע את הסדר: מוצר שהמילה כתובה בשמו קודם
+    // למוצר שנמצא רק דרך מילה נרדפת, ולכן "קפה" מציג קודם את הקפה ואחריו את
+    // כוסות הנייר. בין המילים הנרדפות — הראשונה ברשימה קודמת.
+    function searchScore(p, query) {
+        const nq = normalizeSearch(query);
+        const name = normalizeSearch(p.name);
+        const rest = normalizeSearch(`${p.brand || ""} ${p.category || ""} ${p.subcategory || ""}`);
         const hay = normalizeSearch(`${p.name} ${p.brand || ""} ${p.category || ""} ${p.subcategory || ""}`);
-        if (terms.every(t => searchVariants(t).some(v => hay.includes(v)))) return true;   // כל מילה בשם/מותג
-        return normalizeSearch(p.id || "").includes(nq);                                    // או מק"ט מלא
+        const words = ' ' + name.replace(/[-/(),]/g, ' ');
+        let total = 0;
+        for (const t of searchTerms(nq)) {
+            const forms = searchForms(t);
+            if (forms.some(f => name.includes(f))) {
+                total += forms.some(f => words.includes(' ' + f)) ? 4 : 3;   // בתחילת מילה בשם — עוד יותר
+            } else if (forms.some(f => rest.includes(f))) {
+                total += 2;
+            } else {
+                const syn = SEARCH_SYNONYMS[t] || [];
+                const i = syn.findIndex(w => withSingular(w).some(v => hay.includes(v)));
+                if (i === -1) { total = 0; break; }
+                total += 1 + (syn.length - i) / (syn.length + 1);
+            }
+        }
+        if (total && name.startsWith(nq)) total += 1;
+        // מק"ט מלא — ההתאמה החזקה ביותר
+        if (normalizeSearch(p.id || "").includes(nq)) total += 10;
+        return total;
+    }
+    function productMatchesSearch(p, query) {
+        return searchScore(p, query) > 0;
+    }
+    // המתאימים בלבד, מהמתאים ביותר; בשוויון — סדר הקובץ
+    function rankBySearch(list, query) {
+        return list.map((p, i) => ({ p, i, s: searchScore(p, query) }))
+            .filter(x => x.s > 0)
+            .sort((a, b) => b.s - a.s || a.i - b.i)
+            .map(x => x.p);
     }
 
     // מצב "אין תוצאות": במקום מבוי סתום — הצעה לשאול בוואטסאפ על המוצר שחיפשו.
@@ -1335,7 +1365,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             // חיפוש לפי מילים: כל מילה בשאילתה חייבת להימצא (בכל סדר) בשם/מותג/מק"ט.
             // כך "אולוויז מידה 4" מוצא "תחבושות אולוויז אולטרה לילה סקיור נייט מידה 4".
             // נירמול מרכאות/גרשיים כדי ש-מ"ל, מ״ל ו-מ׳ל יתאימו זה לזה.
-            filtered = filtered.filter(p => productMatchesSearch(p, searchQuery));
+            // במיון ברירת המחדל — המתאים ביותר קודם (ראו searchScore)
+            filtered = sortMode === 'default'
+                ? rankBySearch(filtered, searchQuery)
+                : filtered.filter(p => productMatchesSearch(p, searchQuery));
         } else if (activeBrand) {
             // בחירת מותג מציגה את כל מוצרי המותג מכל הקטגוריות
             filtered = PRODUCTS.filter(p => p.brand === activeBrand);
@@ -3539,9 +3572,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        const matches = PRODUCTS
-            .filter(p => productMatchesSearch(p, query))
-            .slice(0, 5); // Limit to 5 suggestions
+        const matches = rankBySearch(PRODUCTS, query).slice(0, 5); // המתאימים ביותר, עד 5
 
         if (matches.length === 0) {
             suggestionsContainer.style.display = 'none';
